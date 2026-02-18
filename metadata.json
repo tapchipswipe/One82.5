@@ -1,0 +1,7 @@
+{
+  "name": "One82 Analytics",
+  "description": "AI-Powered Transaction Analytics Platform transforming raw data into actionable business insights.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
