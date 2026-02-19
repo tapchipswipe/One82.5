@@ -5,6 +5,8 @@ import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
 import StatementReader from './components/StatementReader';
 import Onboarding from './components/Onboarding';
+import ISODashboard from './components/ISODashboard';
+import InventoryManager from './components/InventoryManager';
 import Login from './components/Login';
 import Settings from './components/Settings';
 import DataChat from './components/DataChat';
@@ -12,7 +14,7 @@ import Forecast from './components/Forecast';
 import Customers from './components/Customers';
 import { StorageService } from './services/storage';
 import { detectAnomalies } from './services/geminiService';
-import { User, BusinessType } from './types';
+import { User, BusinessType, UserRole } from './types';
 import { THEME_COLORS } from './constants';
 
 const App: React.FC = () => {
@@ -32,9 +34,9 @@ const App: React.FC = () => {
     setLoading(false);
   }, []);
 
-  // Step 7: Proactive AI Guardrails (Background Anomaly Monitor)
+  // Step 7: Proactive AI Guardrails (Background Anomaly Monitor) - MERCHANTS ONLY
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.role !== 'merchant') return;
     const monitor = async () => {
       const transactions = StorageService.getTransactions();
       const anomaly = await detectAnomalies(transactions);
@@ -52,7 +54,7 @@ const App: React.FC = () => {
         window.dispatchEvent(new Event('user-update')); // Trigger UI refresh
       }
     };
-    
+
     const interval = setInterval(monitor, 60000); // Check every minute
     return () => clearInterval(interval);
   }, [user]);
@@ -60,11 +62,18 @@ const App: React.FC = () => {
   const toggleTheme = () => setDarkMode(!darkMode);
   const handleLogin = (u: User) => setUser(u);
   const handleLogout = () => { StorageService.clearUser(); setUser(null); };
-  const handleOnboardingComplete = (type: BusinessType) => {
+
+  const handleOnboardingComplete = (role: UserRole, data: { businessType?: BusinessType, orgName?: string }) => {
     if (user) {
-        const updated = { ...user, businessType: type, onboardingComplete: true };
-        setUser(updated);
-        StorageService.saveUser(updated);
+      const updated: User = {
+        ...user,
+        role: role,
+        onboardingComplete: true,
+        businessType: data.businessType,
+        organizationName: data.orgName
+      };
+      setUser(updated);
+      StorageService.saveUser(updated);
     }
   };
 
@@ -73,14 +82,38 @@ const App: React.FC = () => {
   if (!user.onboardingComplete) return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} /></div>;
 
   return (
-    <Layout activeView={activeView} onNavigate={setActiveView} darkMode={darkMode} toggleTheme={toggleTheme} businessType={user.businessType} onLogout={handleLogout}>
-      {activeView === 'dashboard' && <Dashboard businessType={user.businessType} />}
-      {activeView === 'transactions' && <Transactions />}
-      {activeView === 'statements' && <StatementReader />}
-      {activeView === 'settings' && <Settings />}
-      {activeView === 'chat' && <DataChat />}
-      {activeView === 'forecast' && <Forecast />}
-      {activeView === 'customers' && <Customers />}
+    <Layout
+      activeView={activeView}
+      onNavigate={setActiveView}
+      darkMode={darkMode}
+      toggleTheme={toggleTheme}
+      role={user.role}
+      businessType={user.businessType || 'Retail'} // Fallback for ISOs
+      onLogout={handleLogout}
+    >
+      {user.role === 'merchant' && (
+        <>
+          {activeView === 'dashboard' && <Dashboard businessType={user.businessType!} />}
+          {activeView === 'transactions' && <Transactions />}
+          {activeView === 'settings' && <Settings />}
+          {activeView === 'chat' && <DataChat />}
+          {activeView === 'forecast' && <Forecast />}
+          {activeView === 'customers' && <Customers />}
+        </>
+      )}
+
+      {user.role === 'iso' && (
+        <>
+          {activeView === 'dashboard' && <ISODashboard />}
+          {activeView === 'statements' && <StatementReader />}
+          {activeView === 'settings' && <Settings />}
+          {/* Fallback to Dashboard if view not found */}
+          {activeView !== 'dashboard' && activeView !== 'statements' && activeView !== 'settings' && <ISODashboard />}
+        </>
+      )}
+
+      {/* Fallback for safety */}
+      {user.role === 'admin' && activeView === 'statements' && <StatementReader />}
     </Layout>
   );
 };

@@ -1,13 +1,18 @@
 
 export type BusinessType = 'Retail' | 'Restaurant' | 'Service' | 'E-Commerce' | 'Convenience Store';
 
+export type UserRole = 'merchant' | 'iso';
+
 export interface User {
   id: string;
   email: string;
   name: string;
-  businessType: BusinessType;
+  role: UserRole;
+  // Specific to Merchant
+  businessType?: BusinessType;
+  // Specific to ISO
+  organizationName?: string;
   onboardingComplete: boolean;
-  role: 'admin' | 'user';
   credits: number;
   plan: 'Free' | 'Pro' | 'Enterprise';
 }
@@ -74,4 +79,32 @@ export interface CreditLog {
   action: string;
   amount: number;
   timestamp: number;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  email: string;
+  reorderMethod: 'Email' | 'API';
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  sku: string;
+  currentStock: number;
+  reorderPoint: number;
+  unitCost: number;
+  supplierId: string;
+  dailyBurnRate: number; // Avg units sold per day
+  daysRemaining: number;
+  status: 'Good' | 'Low' | 'Critical';
+}
+
+export interface Order {
+  id: string;
+  itemId: string;
+  quantity: number;
+  status: 'Draft' | 'Sent' | 'Delivered';
+  date: number;
 }
