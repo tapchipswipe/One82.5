@@ -326,3 +326,86 @@ export const connectLiveAssistant = async ({ onopen, onmessage, onerror, onclose
     return { sendRealtimeInput: () => { }, close: onclose };
   }
 };
+
+/**
+ * Full Merchant Statement Analysis (structured)
+ */
+export const analyzeStatementFull = async (
+  base64Data: string,
+  mimeType: string
+): Promise<import('../types').MerchantStatementAnalysis> => {
+  const apiKey = getApiKey();
+
+  const simulatedResult: import('../types').MerchantStatementAnalysis = {
+    merchantName: "Demo Merchant LLC",
+    mccCode: "5812",
+    mccDescription: "Eating Places & Restaurants",
+    riskLevel: "Medium",
+    dailyVolume: 1417,
+    monthlyVolume: 42500,
+    yearlyVolume: 510000,
+    avgTicketSize: 34.25,
+    txnCount: 1240,
+    blendedRate: 2.20,
+    cardBrandMix: { visa: 52, mastercard: 28, amex: 14, discover: 6 },
+    interchangeByBrand: { visa: 1.51, mastercard: 1.55, amex: 2.35, discover: 1.56 },
+    swipedPercent: 74,
+    keyedPercent: 26,
+    debitPercent: 38,
+    creditPercent: 62,
+    totalResidual: 425,
+    supportCost: 120,
+    netProfit: 305,
+    attritionRisk: "Medium",
+    growthPattern: "Stable",
+    fluctuationRate: 8.4,
+  };
+
+  if (!apiKey) return simulatedResult;
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `You are an expert payments analyst for an ISO. Analyze this merchant statement document and extract the following as a strict JSON object (no markdown):
+{
+  "merchantName": string,
+  "mccCode": string,
+  "mccDescription": string,
+  "riskLevel": "Low"|"Medium"|"High",
+  "dailyVolume": number,
+  "monthlyVolume": number,
+  "yearlyVolume": number,
+  "avgTicketSize": number,
+  "txnCount": number,
+  "blendedRate": number,
+  "cardBrandMix": { "visa": number, "mastercard": number, "amex": number, "discover": number },
+  "interchangeByBrand": { "visa": number, "mastercard": number, "amex": number, "discover": number },
+  "swipedPercent": number,
+  "keyedPercent": number,
+  "debitPercent": number,
+  "creditPercent": number,
+  "totalResidual": number,
+  "supportCost": number,
+  "netProfit": number,
+  "attritionRisk": "Low"|"Medium"|"High",
+  "growthPattern": "Growing"|"Stable"|"Shrinking",
+  "fluctuationRate": number
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-1.5-flash-latest',
+      contents: {
+        parts: [
+          { inlineData: { mimeType, data: base64Data } },
+          { text: prompt }
+        ]
+      }
+    });
+    const text = response.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return JSON.parse(jsonMatch[0]) as import('../types').MerchantStatementAnalysis;
+    return simulatedResult;
+  } catch (e) {
+    console.error("Statement analysis failed, using simulation.", e);
+    return simulatedResult;
+  }
+};

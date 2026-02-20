@@ -108,3 +108,49 @@ export interface Order {
   status: 'Draft' | 'Sent' | 'Delivered';
   date: number;
 }
+
+export interface CardBrandMix {
+  visa: number;
+  mastercard: number;
+  amex: number;
+  discover: number;
+}
+
+export interface MerchantStatementAnalysis {
+  merchantName: string;
+  mccCode: string;
+  mccDescription: string;
+  riskLevel: 'Low' | 'Medium' | 'High';
+
+  // Volume
+  dailyVolume: number;
+  monthlyVolume: number;
+  yearlyVolume: number;
+
+  // Ticket
+  avgTicketSize: number;
+  txnCount: number;
+
+  // Rate & Interchange
+  blendedRate: number; // total effective rate %
+  cardBrandMix: CardBrandMix;
+  interchangeByBrand: { visa: number; mastercard: number; amex: number; discover: number }; // rate %
+
+  // Processing Method
+  swipedPercent: number;
+  keyedPercent: number;
+
+  // Payment Type Split
+  debitPercent: number;
+  creditPercent: number;
+
+  // Profitability
+  totalResidual: number;
+  supportCost: number;
+  netProfit: number;
+
+  // Health
+  attritionRisk: 'Low' | 'Medium' | 'High';
+  growthPattern: 'Growing' | 'Stable' | 'Shrinking';
+  fluctuationRate: number; // % swings month over month
+}
