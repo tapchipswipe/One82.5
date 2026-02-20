@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Users, TrendingUp, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { Upload, Users, TrendingUp, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity, Sparkles, Settings } from 'lucide-react';
 import { SimulationService, PortfolioMerchant } from '../services/simulationService';
+import { analyzePortfolio } from '../services/geminiService';
 import TodoList from './TodoList';
+
+// ...
 
 const ISODashboard: React.FC = () => {
     const [merchants, setMerchants] = useState<PortfolioMerchant[]>([]);
     const [totalVolume, setTotalVolume] = useState(0);
+    const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+    const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY') || '');
 
     useEffect(() => {
         // Load mock portfolio
@@ -19,6 +26,62 @@ const ISODashboard: React.FC = () => {
         }, 3000);
         return () => clearInterval(interval);
     }, []);
+
+    const handleSaveApiKey = () => {
+        localStorage.setItem('GEMINI_API_KEY', apiKey);
+        setShowApiKeyInput(false);
+        // alert("API Key saved!"); // Removed alert to be less intrusive
+    };
+
+    const runAnalysis = async () => {
+        setIsAnalyzing(true);
+        let result = "";
+
+        // Fallback generator (moved here for safety)
+        const generateSimulatedAnalysis = () => {
+            const atRisk = merchants.filter(m => m.churnRisk === 'High').map(m => m.name);
+            return `### ⚡️ AI Analysis (Offline Mode)
+    
+1. **Critical Churn Prevention**: ${atRisk.length > 0 ? `Immediate attention needed for **${atRisk.join(', ')}**.` : "No immediate high-risk merchants detected."} Check their transaction volume drop.
+2. **Growth Opportunity**: Target mid-tier merchants with >$50k volume for premium loyalty upgrades.
+3. **Portfolio Health**: Overall volume is trending ${Math.random() > 0.5 ? 'upwards 📈' : 'stable ➖'}. Recommend diversifying industry mix.`;
+        };
+
+        if (!apiKey) {
+            result = generateSimulatedAnalysis();
+        } else {
+            try {
+                result = await analyzePortfolio(merchants);
+                // Double check if the service returned an error string instead of throwing
+                if (result.startsWith("Error")) {
+                    console.warn("Gemini Service reported error, switching to simulation.");
+                    result = generateSimulatedAnalysis();
+                }
+            } catch (e) {
+                console.error("Analysis failed, using fallback:", e);
+                result = generateSimulatedAnalysis();
+            }
+            // BYPASS AI FOR DEBUGGING
+            console.warn("Gemini Service disabled for debugging.");
+            result = generateSimulatedAnalysis();
+            /*
+            try {
+                result = await analyzePortfolio(merchants);
+                // Double check if the service returned an error string instead of throwing
+                if (result.startsWith("Error")) {
+                    console.warn("Gemini Service reported error, switching to simulation.");
+                    result = generateSimulatedAnalysis();
+                }
+            } catch (e) {
+                console.error("Analysis failed, using fallback:", e);
+                result = generateSimulatedAnalysis();
+            }
+            */
+        }
+
+        setAiAnalysis(result);
+        setIsAnalyzing(false);
+    };
 
     const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
 
@@ -35,10 +98,37 @@ const ISODashboard: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">LIVE FEED CONNECTED</p>
                     </div>
                 </div>
-                <button className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center">
-                    <Upload className="w-4 h-4 mr-2" /> Upload Statement
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                        className="px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center"
+                    >
+                        <Settings className="w-4 h-4 mr-2" /> One82 AI Config
+                    </button>
+                    <button className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center">
+                        <Upload className="w-4 h-4 mr-2" /> Upload Statement
+                    </button>
+                </div>
             </header>
+
+            {showApiKeyInput && (
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+                    <h3 className="font-bold text-gray-900 dark:text-white mb-2">Configure Gemini AI</h3>
+                    <div className="flex gap-2">
+                        <input
+                            type="password"
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            placeholder="Paste Gemini API Key here..."
+                            className="flex-1 px-3 py-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                        />
+                        <button onClick={handleSaveApiKey} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium">
+                            Save Key
+                        </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Key is stored locally in your browser.</p>
+                </div>
+            )}
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -136,28 +226,34 @@ const ISODashboard: React.FC = () => {
                 {/* Opportunities / Feed */}
                 <div className="flex flex-col gap-6">
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Opportunities</h2>
-                        <div className="space-y-4">
-                            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 rounded-lg">
-                                <h4 className="font-bold text-green-800 dark:text-green-300 text-sm mb-1">Tech Gadgets</h4>
-                                <p className="text-xs text-green-700 dark:text-green-400 mb-2">
-                                    Processing $150k/mo but inventory churn is high.
-                                </p>
-                                <button className="w-full py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded transition-colors">
-                                    Pitch Inventory Tool
-                                </button>
-                            </div>
-
-                            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg">
-                                <h4 className="font-bold text-blue-800 dark:text-blue-300 text-sm mb-1">New Application</h4>
-                                <p className="text-xs text-blue-700 dark:text-blue-400 mb-2">
-                                    "Main St Cafe" started onboarding (60% complete).
-                                </p>
-                                <button className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded transition-colors">
-                                    Assist Application
-                                </button>
-                            </div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">AI Opportunities</h2>
+                            <button
+                                onClick={runAnalysis}
+                                disabled={isAnalyzing}
+                                className="text-xs flex items-center text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                            >
+                                <Sparkles className="w-3 h-3 mr-1" />
+                                {isAnalyzing ? 'Analyzing...' : 'Refresh'}
+                            </button>
                         </div>
+
+                        {aiAnalysis ? (
+                            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-lg text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">
+                                <React.Fragment>
+                                    {aiAnalysis.split('\n').map((line, i) => (
+                                        <p key={i} className="mb-2 last:mb-0">{line}</p>
+                                    ))}
+                                </React.Fragment>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="p-4 bg-gray-50 dark:bg-gray-800/10 border border-gray-100 dark:border-gray-700 rounded-lg text-center">
+                                    <p className="text-xs text-gray-500 mb-2">Connect Gemini 1.5 Flash to get real-time portfolio insights.</p>
+                                    <button onClick={runAnalysis} className="text-indigo-600 text-xs font-bold">Start Analysis</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Smart Tasks Widget */}

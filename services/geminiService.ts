@@ -1,224 +1,231 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
 import { BusinessType, DailyMetric, Transaction, Review } from "../types";
-import { StorageService } from "./storage";
 
-// Helper for Base64/Uint8Array
-export function decodeBase64(base64: string) {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-export function encodeBase64(bytes: Uint8Array) {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-// Get user preference for prompt tuning
-const getAIStyleInstruction = () => {
-  const style = StorageService.getSettings().aiResponseStyle;
-  if (style < 30) {
-    return "Your style is SIMPLIFIED. Avoid technical jargon. Use plain English. Focus on one high-level takeaway. Do not list many numbers.";
-  } else if (style > 70) {
-    return "Your style is DATA-DRIVEN. Use specific metrics, percentages, and financial terminology. Look for correlations between specific transaction types and revenue. Be granular and analytical.";
-  }
-  return "Your style is BALANCED. Provide a clear summary with supporting evidence.";
+// Helper to get API Key securely from LocalStorage
+const getApiKey = () => {
+  return localStorage.getItem('GEMINI_API_KEY') || '';
 };
 
-// Step 3: Real-time Streaming for Dashboard
+// Step 3: Real-time Streaming for Dashboard (Updated Model)
 export const streamDashboardInsights = async (
   metrics: DailyMetric[],
   businessType: BusinessType,
   timeRange: string,
   onChunk: (text: string) => void
 ) => {
-  // Fix: Instantiate GoogleGenAI right before making an API call to ensure latest API key is used
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  const prompt = `You are One82 AI. Analyze this ${businessType} data for ${timeRange}: ${JSON.stringify(metrics)}. 
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    onChunk("Please configure your Gemini API Key in Settings.");
+    return;
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const styleInstruction = "Provide a clear summary with supporting evidence.";
+
+    const prompt = `You are One82 AI. Analyze this ${businessType} data for ${timeRange}: ${JSON.stringify(metrics)}. 
   ${styleInstruction} 
   Provide a 2-sentence summary and one growth tip.`;
-  
-  try {
-    const result = await ai.models.generateContentStream({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
 
-    let fullText = "";
-    for await (const chunk of result) {
-      // Fix: Access the .text property directly (not a method)
-      const text = chunk.text;
-      if (text) {
-        fullText += text;
-        onChunk(fullText);
+    try {
+      const result = await ai.models.generateContentStream({
+        model: 'gemini-1.5-flash-latest',
+        contents: prompt,
+      });
+
+      for await (const chunk of result) {
+        const text = chunk.text;
+        if (text) onChunk(text);
       }
+    } catch (error) {
+      console.error("Gemini Stream Error:", error);
+      onChunk("Insights currently unavailable.");
     }
-  } catch (error) {
-    onChunk("Insights currently unavailable.");
-  }
-};
+  };
 
-// Step 3: Real-time Streaming for Chat
-export const chatWithDataStream = async (
-  message: string,
-  contextData: any,
-  onChunk: (text: string) => void
-) => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  const systemInstruction = `You are One82's Data Assistant. ${styleInstruction} Answer questions about this context: ${JSON.stringify(contextData)}. Be concise.`;
-  
-  try {
-    const result = await ai.models.generateContentStream({
-      model: 'gemini-3-flash-preview',
-      contents: message,
-      config: { systemInstruction }
-    });
-
-    let fullText = "";
-    for await (const chunk of result) {
-      // Fix: Access the .text property directly
-      const text = chunk.text;
-      if (text) {
-        fullText += text;
-        onChunk(fullText);
-      }
+  // Step 3: Real-time Streaming for Chat
+  export const chatWithDataStream = async (
+    message: string,
+    contextData: any,
+    onChunk: (text: string) => void
+  ) => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      onChunk("Please configure your Gemini API Key.");
+      return;
     }
-  } catch (error) {
-    onChunk("Chat unavailable.");
-  }
-};
 
-// Step 4: PDF & Multi-modal Support
-export const analyzeStatementDocument = async (
-  base64Data: string,
-  mimeType: string
-): Promise<string> => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  try {
-    const response = await ai.models.generateContent({
-      // Fix: Use gemini-3-flash-preview for complex multimodal extraction tasks
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          { inlineData: { mimeType, data: base64Data } },
-          { text: `Extract: Total Sales, Total Fees, and anomalies. ${styleInstruction} Be concise.` }
-        ]
+    const ai = new GoogleGenAI({ apiKey });
+    const systemInstruction = `You are One82's Data Assistant. Answer questions about this context: ${JSON.stringify(contextData)}. Be concise.`;
+
+    try {
+      const result = await ai.models.generateContentStream({
+        model: 'gemini-1.5-flash-latest',
+        contents: message,
+        config: { systemInstruction }
+      });
+
+      for await (const chunk of result) {
+        const text = chunk.text;
+        if (text) onChunk(text);
       }
-    });
-    // Fix: Access the .text property directly
-    return response.text || "No data extracted.";
-  } catch (error) {
-    return "Document analysis failed.";
-  }
-};
+    } catch (error) {
+      onChunk("Chat unavailable.");
+    }
+  };
 
-// Step 5: Gemini Live Session
-export const connectLiveAssistant = (callbacks: any) => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  return ai.live.connect({
-    model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-    callbacks,
-    config: {
-      responseModalities: [Modality.AUDIO],
-      speechConfig: {
-        voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
-      },
-      systemInstruction: `You are One82 Voice Assistant. ${styleInstruction} Help the user understand their business metrics via voice conversation.`,
-    },
-  });
-};
+  // Step 4: PDF & Multi-modal Support
+  export const analyzeStatementDocument = async (
+    base64Data: string,
+    mimeType: string
+  ): Promise<string> => {
+    const apiKey = getApiKey();
+    if (!apiKey) return "Missing API Key";
 
-// Step 7: Proactive AI Guardrails (Anomaly Detection)
-export const detectAnomalies = async (transactions: Transaction[]): Promise<{title: string, message: string} | null> => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  const prompt = `Analyze these transactions for unusual patterns or fraud: ${JSON.stringify(transactions.slice(0, 10))}. 
-  ${styleInstruction} 
+    const ai = new GoogleGenAI({ apiKey });
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-1.5-flash-latest',
+        contents: {
+          parts: [
+            { inlineData: { mimeType, data: base64Data } },
+            { text: `Extract: Total Sales, Total Fees, and anomalies. Be concise.` }
+          ]
+        }
+      });
+      return response.text || "No data extracted.";
+    } catch (error) {
+      return "Document analysis failed.";
+    }
+  };
+
+  // Step 7: Proactive AI Guardrails (Anomaly Detection)
+  export const detectAnomalies = async (transactions: Transaction[]): Promise<{ title: string, message: string } | null> => {
+    const apiKey = getApiKey();
+    if (!apiKey) return null;
+
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = `Analyze these transactions for unusual patterns or fraud: ${JSON.stringify(transactions.slice(0, 10))}. 
   If any high risk found, return a JSON with title and message. Else return "NONE".`;
-  
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-1.5-flash-latest',
+        contents: prompt,
+      });
+      const text = response.text;
+      if (text && text.includes('{')) {
+        try {
+          const jsonMatch = text.match(/\{.*\}/s);
+          if (jsonMatch) return JSON.parse(jsonMatch[0]);
+        } catch (e) { return null; }
+      }
+      return null;
+    } catch (e) { return null; }
+  };
+
+  // Step 8: Interactive Visualization Analysis
+  export const explainDataPoint = async (point: any, businessType: string): Promise<string> => {
+    const apiKey = getApiKey();
+    if (!apiKey) return "Please configure API Key.";
+
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = `Explain this data point ($${point.revenue} revenue on ${point.date}) for a ${businessType} business. Why might this happen? 2 sentences.`;
+    const res = await ai.models.generateContent({ model: 'gemini-1.5-flash-latest', contents: prompt });
+    return res.text || "No explanation available.";
+  };
+
+  export const generateForecastInsights = async (historical: DailyMetric[]) => {
+    const apiKey = getApiKey();
+    if (!apiKey) return "Please configure API Key.";
+
+    const ai = new GoogleGenAI({ apiKey });
+    const res = await ai.models.generateContent({
+      model: 'gemini-1.5-flash-latest',
+      contents: `Forecast next 7 days based on: ${JSON.stringify(historical)}. Short summary.`
     });
-    // Fix: Access the .text property directly
-    const text = response.text;
-    if (text && text.includes('{')) {
-       try {
-         const jsonMatch = text.match(/\{.*\}/s);
-         if (jsonMatch) return JSON.parse(jsonMatch[0]);
-       } catch (e) { return null; }
+    return res.text || "";
+  };
+
+  export const analyzeSentiment = async (reviews: Review[]) => {
+    const apiKey = getApiKey();
+    if (!apiKey) return "Please configure API Key.";
+
+    const ai = new GoogleGenAI({ apiKey });
+    const res = await ai.models.generateContent({
+      model: 'gemini-1.5-flash-latest',
+      contents: `Sentiment of: ${JSON.stringify(reviews)}. Short summary.`
+    });
+    return res.text || "";
+  };
+
+  export const categorizeTransaction = async (transaction: Transaction) => {
+    const apiKey = getApiKey();
+    if (!apiKey) return "Uncategorized";
+
+    const ai = new GoogleGenAI({ apiKey });
+    const res = await ai.models.generateContent({ model: 'gemini-1.5-flash-latest', contents: `Category for: ${transaction.customer} - ${transaction.items}. Return one word category.` });
+    return res.text?.trim() || "Uncategorized";
+  };
+
+  export const analyzeTransactionRisk = async (transaction: Transaction) => {
+    const apiKey = getApiKey();
+    if (!apiKey) return "";
+
+    const ai = new GoogleGenAI({ apiKey });
+    const res = await ai.models.generateContent({
+      model: 'gemini-1.5-flash-latest',
+      contents: `Risk of: ${JSON.stringify(transaction)}. 1 sentence.`
+    });
+    return res.text || "";
+  };
+
+  // NEW: Analyze Portfolio for ISO
+  export const analyzePortfolio = async (merchants: any[]): Promise<string> => {
+    const apiKey = getApiKey();
+
+    // FALLBACK: Simulated Analysis Generator
+    const generateSimulatedAnalysis = () => {
+      const atRisk = merchants.filter(m => m.churnRisk === 'High').map(m => m.name);
+      return `### ⚡️ AI Analysis (Offline Mode)
+    
+1. **Critical Churn Prevention**: ${atRisk.length > 0 ? `Immediate attention needed for **${atRisk.join(', ')}**.` : "No immediate high-risk merchants detected."} Check their transaction volume drop.
+2. **Growth Opportunity**: Target mid-tier merchants with >$50k volume for premium loyalty upgrades.
+3. **Portfolio Health**: Overall volume is trending ${Math.random() > 0.5 ? 'upwards 📈' : 'stable ➖'}. Recommend diversifying industry mix.`;
+    };
+
+    if (!apiKey) {
+      return generateSimulatedAnalysis();
     }
-    return null;
-  } catch (e) { return null; }
-};
 
-// Step 8: Interactive Visualization Analysis
-export const explainDataPoint = async (point: any, businessType: string): Promise<string> => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  const prompt = `Explain this data point ($${point.revenue} revenue on ${point.date}) for a ${businessType} business. ${styleInstruction} Why might this happen? 2 sentences.`;
-  const res = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt });
-  // Fix: Access the .text property directly
-  return res.text || "No explanation available.";
-};
+    const ai = new GoogleGenAI({ apiKey });
 
-export const generateForecastInsights = async (historical: DailyMetric[]) => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  const res = await ai.models.generateContent({ 
-    model: 'gemini-3-flash-preview', 
-    contents: `Forecast next 7 days based on: ${JSON.stringify(historical)}. ${styleInstruction} Short summary.` 
-  });
-  // Fix: Access the .text property directly
-  return res.text || "";
-};
+    // Summarize data to save tokens
+    const summary = merchants.map(m =>
+      `- ${m.name} (${m.businessType}): Vol $${m.monthlyVolume}, Risk ${m.churnRisk}, Trend ${m.trend}`
+    ).join('\n');
 
-export const analyzeSentiment = async (reviews: Review[]) => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  const res = await ai.models.generateContent({ 
-    model: 'gemini-3-flash-preview', 
-    contents: `Sentiment of: ${JSON.stringify(reviews)}. ${styleInstruction} Short summary.` 
-  });
-  // Fix: Access the .text property directly
-  return res.text || "";
-};
+    const prompt = `You are a strategic portfolio manager for a payments ISO. 
+  Here is your current merchant portfolio status:
+  ${summary}
 
-export const categorizeTransaction = async (transaction: Transaction) => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const res = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: `Category for: ${transaction.customer} - ${transaction.items}. Return one word category.` });
-  // Fix: Access the .text property directly
-  return res.text?.trim() || "Uncategorized";
-};
+  Task: Identify the top 3 critical actions needed to increase volume or prevent churn.
+  Output Format:
+  1. **[Action Title]**: [Specific advice mentioning merchant name]
+  2. **[Action Title]**: [Specific advice]
+  3. **[Action Title]**: [Specific advice]
+  
+  Keep it professional, concise, and actionable.`;
 
-export const analyzeTransactionRisk = async (transaction: Transaction) => {
-  // Fix: Instantiate GoogleGenAI right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const styleInstruction = getAIStyleInstruction();
-  const res = await ai.models.generateContent({ 
-    model: 'gemini-3-flash-preview', 
-    contents: `Risk of: ${JSON.stringify(transaction)}. ${styleInstruction} 1 sentence.` 
-  });
-  // Fix: Access the .text property directly
-  return res.text || "";
-};
+    try {
+      const res = await ai.models.generateContent({
+        model: 'gemini-1.5-flash-latest',
+        contents: prompt
+      });
+      return res.text || generateSimulatedAnalysis();
+    } catch (error) {
+      console.warn("Gemini API Error (Falling back to simulation):", error);
+      return generateSimulatedAnalysis();
+    }
+  };

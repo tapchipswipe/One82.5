@@ -24,14 +24,19 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = StorageService.getUser();
-    if (storedUser) setUser(storedUser);
-    const settings = StorageService.getSettings();
-    if (settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) setDarkMode(true);
-    const root = document.documentElement;
-    const colorSet = THEME_COLORS[settings.primaryColor || 'green'];
-    Object.entries(colorSet).forEach(([shade, value]) => root.style.setProperty(`--color-primary-${shade}`, value));
-    setLoading(false);
+    try {
+      const storedUser = StorageService.getUser();
+      if (storedUser) setUser(storedUser);
+      const settings = StorageService.getSettings();
+      if (settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) setDarkMode(true);
+      const root = document.documentElement;
+      const colorSet = THEME_COLORS[settings.primaryColor || 'green'];
+      Object.entries(colorSet).forEach(([shade, value]) => root.style.setProperty(`--color-primary-${shade}`, value));
+    } catch (e) {
+      console.error("Initialization Failed:", e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // Step 7: Proactive AI Guardrails (Background Anomaly Monitor) - MERCHANTS ONLY
