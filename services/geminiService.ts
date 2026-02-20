@@ -20,29 +20,28 @@ export const streamDashboardInsights = async (
     return;
   }
 
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const styleInstruction = "Provide a clear summary with supporting evidence.";
+  const ai = new GoogleGenAI({ apiKey });
+  const styleInstruction = "Provide a clear summary with supporting evidence.";
 
-    const prompt = `You are One82 AI. Analyze this ${businessType} data for ${timeRange}: ${JSON.stringify(metrics)}. 
+  const prompt = `You are One82 AI. Analyze this ${businessType} data for ${timeRange}: ${JSON.stringify(metrics)}. 
   ${styleInstruction} 
   Provide a 2-sentence summary and one growth tip.`;
 
-    try {
-      const result = await ai.models.generateContentStream({
-        model: 'gemini-1.5-flash-latest',
-        contents: prompt,
-      });
+  try {
+    const result = await ai.models.generateContentStream({
+      model: 'gemini-1.5-flash-latest',
+      contents: prompt,
+    });
 
-      for await (const chunk of result) {
-        const text = chunk.text;
-        if (text) onChunk(text);
-      }
-    } catch (error) {
-      console.error("Gemini Stream Error:", error);
-      onChunk("Insights currently unavailable.");
+    for await (const chunk of result) {
+      const text = chunk.text;
+      if (text) onChunk(text);
     }
-  };
+  } catch (error) {
+    console.error("Gemini Stream Error:", error);
+    onChunk("Insights currently unavailable.");
+  }
+};
 
   // Step 3: Real-time Streaming for Chat
   export const chatWithDataStream = async (
@@ -229,3 +228,42 @@ export const streamDashboardInsights = async (
       return generateSimulatedAnalysis();
     }
   };
+
+// Utility functions for base64 encoding/decoding (used by LiveAssistant)
+export const encodeBase64 = (data: Uint8Array): string => {
+  return btoa(Array.from(data, byte => String.fromCharCode(byte)).join(''));
+};
+
+export const decodeBase64 = (base64: string): Uint8Array => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+
+// Live Voice Assistant Connection
+export const connectLiveAssistant = async (handlers: {
+  onopen: () => void;
+  onmessage: (message: any) => void;
+  onerror: (error: any) => void;
+  onclose: () => void;
+}) => {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("Gemini API key required for Live Assistant.");
+
+  const ai = new GoogleGenAI({ apiKey });
+  const session = await ai.live.connect({
+    model: 'gemini-2.0-flash-live-001',
+    callbacks: {
+      onopen: handlers.onopen,
+      onmessage: handlers.onmessage,
+      onerror: handlers.onerror,
+      onclose: handlers.onclose,
+    },
+    config: {
+      responseModalities: [Modality.AUDIO],
+      systemInstruction: "You are One82, an intelligent business assistant. Help merchants understand their sales data and make smart business decisions. Keep responses concise.",
+    }
+  });
+  return session;
+};

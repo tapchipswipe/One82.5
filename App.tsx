@@ -104,6 +104,7 @@ const App: React.FC = () => {
           {activeView === 'chat' && <DataChat />}
           {activeView === 'forecast' && <Forecast />}
           {activeView === 'customers' && <Customers />}
+          {activeView === 'inventory' && <InventoryManager />}
         </>
       )}
 
@@ -111,9 +112,10 @@ const App: React.FC = () => {
         <>
           {activeView === 'dashboard' && <ISODashboard />}
           {activeView === 'statements' && <StatementReader />}
+          {activeView === 'portfolio' && <ISODashboard />}
           {activeView === 'settings' && <Settings />}
           {/* Fallback to Dashboard if view not found */}
-          {activeView !== 'dashboard' && activeView !== 'statements' && activeView !== 'settings' && <ISODashboard />}
+          {activeView !== 'dashboard' && activeView !== 'statements' && activeView !== 'portfolio' && activeView !== 'settings' && <ISODashboard />}
         </>
       )}
 

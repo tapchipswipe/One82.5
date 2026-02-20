@@ -52,7 +52,6 @@ const ISODashboard: React.FC = () => {
         } else {
             try {
                 result = await analyzePortfolio(merchants);
-                // Double check if the service returned an error string instead of throwing
                 if (result.startsWith("Error")) {
                     console.warn("Gemini Service reported error, switching to simulation.");
                     result = generateSimulatedAnalysis();
@@ -61,22 +60,6 @@ const ISODashboard: React.FC = () => {
                 console.error("Analysis failed, using fallback:", e);
                 result = generateSimulatedAnalysis();
             }
-            // BYPASS AI FOR DEBUGGING
-            console.warn("Gemini Service disabled for debugging.");
-            result = generateSimulatedAnalysis();
-            /*
-            try {
-                result = await analyzePortfolio(merchants);
-                // Double check if the service returned an error string instead of throwing
-                if (result.startsWith("Error")) {
-                    console.warn("Gemini Service reported error, switching to simulation.");
-                    result = generateSimulatedAnalysis();
-                }
-            } catch (e) {
-                console.error("Analysis failed, using fallback:", e);
-                result = generateSimulatedAnalysis();
-            }
-            */
         }
 
         setAiAnalysis(result);
