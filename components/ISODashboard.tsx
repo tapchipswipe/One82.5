@@ -36,51 +36,13 @@ const ISODashboard: React.FC = () => {
 
     const runAnalysis = async () => {
         setIsAnalyzing(true);
-        let result = "";
-
-        // Fallback generator (moved here for safety)
-        const generateSimulatedAnalysis = () => {
-            const atRisk = merchants.filter(m => m.churnRisk === 'High').map(m => m.name);
-            return `### ⚡️ AI Analysis (Offline Mode)
-    
-1. **Critical Churn Prevention**: ${atRisk.length > 0 ? `Immediate attention needed for **${atRisk.join(', ')}**.` : "No immediate high-risk merchants detected."} Check their transaction volume drop.
-2. **Growth Opportunity**: Target mid-tier merchants with >$50k volume for premium loyalty upgrades.
-3. **Portfolio Health**: Overall volume is trending ${Math.random() > 0.5 ? 'upwards 📈' : 'stable ➖'}. Recommend diversifying industry mix.`;
-        };
-
-        if (!apiKey) {
-            result = generateSimulatedAnalysis();
-        } else {
-            try {
-                result = await analyzePortfolio(merchants);
-                // Double check if the service returned an error string instead of throwing
-                if (result.startsWith("Error")) {
-                    console.warn("Gemini Service reported error, switching to simulation.");
-                    result = generateSimulatedAnalysis();
-                }
-            } catch (e) {
-                console.error("Analysis failed, using fallback:", e);
-                result = generateSimulatedAnalysis();
-            }
-            // BYPASS AI FOR DEBUGGING
-            console.warn("Gemini Service disabled for debugging.");
-            result = generateSimulatedAnalysis();
-            /*
-            try {
-                result = await analyzePortfolio(merchants);
-                // Double check if the service returned an error string instead of throwing
-                if (result.startsWith("Error")) {
-                    console.warn("Gemini Service reported error, switching to simulation.");
-                    result = generateSimulatedAnalysis();
-                }
-            } catch (e) {
-                console.error("Analysis failed, using fallback:", e);
-                result = generateSimulatedAnalysis();
-            }
-            */
+        try {
+            const result = await analyzePortfolio(merchants);
+            setAiAnalysis(result);
+        } catch (e) {
+            console.error("Dashboard analysis failed:", e);
+            setAiAnalysis("Portfolio analysis currently unavailable.");
         }
-
-        setAiAnalysis(result);
         setIsAnalyzing(false);
     };
 
