@@ -12,8 +12,10 @@ import Settings from './components/Settings';
 import DataChat from './components/DataChat';
 import Forecast from './components/Forecast';
 import Customers from './components/Customers';
+import MerchantLedger from './components/MerchantLedger';
 import { StorageService } from './services/storage';
 import { detectAnomalies } from './services/geminiService';
+import { SimulationService } from './services/simulationService';
 import { User, BusinessType, UserRole } from './types';
 import { THEME_COLORS } from './constants';
 
@@ -22,6 +24,7 @@ const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const merchants = SimulationService.generatePortfolio();
 
   useEffect(() => {
     try {
@@ -111,9 +114,10 @@ const App: React.FC = () => {
         <>
           {activeView === 'dashboard' && <ISODashboard />}
           {activeView === 'statements' && <StatementReader />}
+          {activeView === 'portfolio' && <div className="p-6"><MerchantLedger merchants={merchants} /></div>}
           {activeView === 'settings' && <Settings />}
-          {/* Fallback to Dashboard if view not found */}
-          {activeView !== 'dashboard' && activeView !== 'statements' && activeView !== 'settings' && <ISODashboard />}
+          {/* Fallback */}
+          {!['dashboard', 'statements', 'portfolio', 'settings'].includes(activeView) && <ISODashboard />}
         </>
       )}
 

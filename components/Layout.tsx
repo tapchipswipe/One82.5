@@ -76,7 +76,7 @@ const Layout: React.FC<LayoutProps> = ({
             {/* ISO Navigation */}
             {role === 'iso' && (
               <>
-                <NavItem view="statements" icon={FileText} label="Statement Goldmine" />
+                <NavItem view="statements" icon={FileText} label="Statement Analysis" />
                 <NavItem view="portfolio" icon={Briefcase} label="Merchants" />
               </>
             )}
