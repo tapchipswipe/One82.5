@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, CreditCard, FileText, Settings, Menu, Moon, Sun,
-  LogOut, MessageSquare, Briefcase, TrendingUp, Users, Mic
+  LogOut, MessageSquare, Briefcase, TrendingUp, Users, Mic, Plug2
 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { AppNotification, User, UserRole } from '../types';
@@ -78,6 +78,7 @@ const Layout: React.FC<LayoutProps> = ({
               <>
                 <NavItem view="statements" icon={FileText} label="Statement Analysis" />
                 <NavItem view="portfolio" icon={Briefcase} label="Merchants" />
+                <NavItem view="integrations" icon={Plug2} label="Integrations" />
               </>
             )}
 
