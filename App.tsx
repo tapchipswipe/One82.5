@@ -109,6 +109,8 @@ const App: React.FC = () => {
           {activeView === 'chat' && <DataChat />}
           {activeView === 'forecast' && <Forecast />}
           {activeView === 'customers' && <Customers />}
+          {activeView === 'inventory' && <InventoryManager />}
+          {activeView === 'integrations' && <Integrations />}
         </>
       )}
 

@@ -73,8 +73,8 @@ Built with a modern, high-performance stack:
 
 ## 📈 Roadmap
 - [x] **Phase 1**: Role-Based Architecture & Dashboard Framework.
-- [/] **Phase 2**: Real-Time Portfolio Engine & Churn Detection.
-- [ ] **Phase 3**: Automated Supplier Ordering UI.
+- [x] **Phase 2**: Real-Time Portfolio Engine & Churn Detection.
+- [x] **Phase 3**: Inventory Intelligence & Merchant POS Integrations.
 - [ ] **Phase 4**: Advanced Predictive Analytics for Merchant Growth.
 
 ---

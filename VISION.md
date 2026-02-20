@@ -51,8 +51,9 @@ The platform handles two distinct user roles with separate interfaces:
 - [ ] **Statement Tool:** Keep as a utility tab for importing *new* leads.
 
 ### Phase 3: Inventory Intelligence (Merchant Side)
-- [ ] **Inventory Engine:** Logic to calculate run-rates based on transaction history.
-- [ ] **Direct Ordering UI:** Interface to place orders with suppliers.
+- [x] **Inventory Engine:** Logic to calculate run-rates based on transaction history.
+- [x] **Direct Ordering UI:** Interface to place orders with suppliers — one-click reorder modal wired up.
+- [x] **Merchant Integrations:** Merchants can now connect live POS data (Square, Stripe, Clover) via the Integrations page.
 
 ### Phase 4: Polish
 - [ ] Dark/Light/System Mode (Done).
