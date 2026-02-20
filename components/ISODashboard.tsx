@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Users, TrendingUp, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity, Sparkles, Settings } from 'lucide-react';
+import { Upload, Users, TrendingUp, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity, Sparkles, Settings, CreditCard } from 'lucide-react';
 import { SimulationService, PortfolioMerchant } from '../services/simulationService';
 import { analyzePortfolio } from '../services/geminiService';
 import TodoList from './TodoList';
@@ -10,22 +10,31 @@ import MerchantLedger from './MerchantLedger';
 const ISODashboard: React.FC = () => {
     const [merchants, setMerchants] = useState<PortfolioMerchant[]>([]);
     const [totalVolume, setTotalVolume] = useState(0);
+    const [ccVolume, setCcVolume] = useState(243817.50); // Live CC volume ticker
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
     const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY') || '');
 
     useEffect(() => {
-        // Load mock portfolio
         const data = SimulationService.generatePortfolio();
         setMerchants(data);
         setTotalVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
 
-        // Simulate live updates
-        const interval = setInterval(() => {
-            setTotalVolume(prev => prev + (Math.random() * 100)); // Simulate transactions coming in
+        // Simulate live portfolio volume ticking (every 3s)
+        const portfolioTicker = setInterval(() => {
+            setTotalVolume(prev => prev + (Math.random() * 100));
         }, 3000);
-        return () => clearInterval(interval);
+
+        // Simulate live CC volume ticking (every 1.5s — faster = more alive)
+        const ccTicker = setInterval(() => {
+            setCcVolume(prev => prev + (Math.random() * 250 + 50));
+        }, 1500);
+
+        return () => {
+            clearInterval(portfolioTicker);
+            clearInterval(ccTicker);
+        };
     }, []);
 
     const handleSaveApiKey = () => {
@@ -94,38 +103,45 @@ const ISODashboard: React.FC = () => {
             )}
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Volume (Live)</p>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white font-mono">
-                        ${totalVolume.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                {/* Live Portfolio Volume */}
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Portfolio Volume</p>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white font-mono">
+                        ${totalVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                     </h3>
-                    <div className="mt-2 text-xs text-green-500 flex items-center">
-                        <Activity className="w-3 h-3 mr-1" /> processing now
+                    <div className="mt-2 text-xs text-green-500 flex items-center gap-1">
+                        <Activity className="w-3 h-3" /> live · updating
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Active Merchants</p>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{merchants.length}</h3>
-                    <div className="mt-2 text-xs text-blue-500 flex items-center">
-                        <Users className="w-3 h-3 mr-1" /> across 3 industries
+                {/* Live CC Volume Ticker */}
+                <div className="bg-indigo-600 p-5 rounded-xl shadow-sm border border-indigo-700">
+                    <p className="text-xs text-indigo-200 mb-1 uppercase tracking-wide">CC Volume (Live)</p>
+                    <h3 className="text-xl font-bold text-white font-mono tabular-nums">
+                        ${ccVolume.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                    </h3>
+                    <div className="mt-2 text-xs text-indigo-200 flex items-center gap-1">
+                        <CreditCard className="w-3 h-3" /> processing now
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-red-100 dark:border-red-900/30">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Churn Risk</p>
-                    <h3 className="text-2xl font-bold text-red-600 dark:text-red-400">{atRiskCount}</h3>
-                    <div className="mt-2 text-xs text-red-500 flex items-center">
-                        <AlertTriangle className="w-3 h-3 mr-1" /> require attention
+                {/* Merchants Count */}
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Merchants</p>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{merchants.length}</h3>
+                    <div className="mt-2 text-xs text-gray-400 flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {[...new Set(merchants.map(m => m.businessType))].length} industries
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Avg. Margin</p>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">0.45%</h3>
-                    <div className="mt-2 text-xs text-gray-400">
-                        Target: 0.50%
+                {/* Churn Risk */}
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-red-100 dark:border-red-900/30">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Churn Risk</p>
+                    <h3 className="text-xl font-bold text-red-600 dark:text-red-400">{atRiskCount}</h3>
+                    <div className="mt-2 text-xs text-red-500 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> require attention
                     </div>
                 </div>
             </div>
