@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, CreditCard, FileText, Settings, Menu, Moon, Sun,
-  LogOut, MessageSquare, Briefcase, TrendingUp, Users, Mic, Plug2, DollarSign
+  LogOut, MessageSquare, Briefcase, TrendingUp, Users, Mic, Plug2,
+  DollarSign, Zap, Bell, ChevronRight
 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { AppNotification, User, UserRole } from '../types';
@@ -14,7 +15,7 @@ interface LayoutProps {
   onNavigate: (view: string) => void;
   darkMode: boolean;
   toggleTheme: () => void;
-  role?: UserRole; // Added role prop
+  role?: UserRole;
   businessType?: string;
   onLogout: () => void;
 }
@@ -34,98 +35,157 @@ const Layout: React.FC<LayoutProps> = ({
     return () => window.removeEventListener('user-update', update);
   }, []);
 
-  const NavItem = ({ view, icon: Icon, label }: { view: string, icon: any, label: string }) => {
+  const NavItem = ({ view, icon: Icon, label }: { view: string; icon: any; label: string }) => {
+    const isActive = activeView === view;
     return (
       <button
         onClick={() => { onNavigate(view); setIsSidebarOpen(false); }}
-        className={`flex items-center w-full px-4 py-3 mb-1 text-sm font-medium transition-colors rounded-lg group ${activeView === view ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+        className={`relative flex items-center w-full px-3 py-2.5 mb-0.5 text-sm font-medium rounded-xl transition-all duration-150 group ${isActive
+            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
+            : 'text-gray-400 hover:bg-white/5 hover:text-white'
           }`}
       >
-        <Icon className={`w-5 h-5 mr-3 ${activeView === view ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500'}`} />
-        {label}
+        {/* Active left indicator */}
+        {isActive && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-white rounded-r-full -ml-0.5 opacity-0" />
+        )}
+        <Icon className={`w-4 h-4 mr-3 flex-shrink-0 transition-colors ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`} />
+        <span className="flex-1 text-left">{label}</span>
+        {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-70" />}
       </button>
     );
   };
+
+  const NavSection = ({ label }: { label: string }) => (
+    <p className="px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-600">{label}</p>
+  );
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <div className={`flex h-screen overflow-hidden ${darkMode ? 'dark' : ''}`}>
       {showLive && <LiveAssistant onClose={() => setShowLive(false)} />}
 
-      {isSidebarOpen && <div className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
+      {/* Mobile backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
-      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-200 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex flex-col h-full">
-          <div className="flex items-center h-16 px-6 border-b border-slate-200 dark:border-slate-800">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg mr-3">1</div>
-            <span className="text-xl font-bold text-slate-900 dark:text-white">One82</span>
+      {/* ── Sidebar ── */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-30 w-60 flex flex-col
+        bg-[#0f0f1a] border-r border-white/5
+        transform transition-transform duration-200 ease-in-out
+        lg:relative lg:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        {/* Logo */}
+        <div className="flex items-center h-16 px-5 border-b border-white/5">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-600/40">
+            <Zap className="w-4 h-4 text-white" />
           </div>
+          <span className="ml-3 text-white font-bold text-lg tracking-tight">One82</span>
+          <span className="ml-2 text-[10px] font-semibold text-indigo-400 bg-indigo-600/15 px-1.5 py-0.5 rounded uppercase tracking-wide">
+            {role === 'iso' ? 'ISO' : 'Pro'}
+          </span>
+        </div>
 
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            <NavItem view="dashboard" icon={LayoutDashboard} label="Dashboard" />
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-3 overflow-y-auto scrollbar-none">
+          <NavSection label="Overview" />
+          <NavItem view="dashboard" icon={LayoutDashboard} label="Dashboard" />
 
-            {/* Merchant Navigation */}
-            {role === 'merchant' && (
-              <>
-                <NavItem view="forecast" icon={TrendingUp} label="Forecast" />
-                <NavItem view="chat" icon={MessageSquare} label="Ask AI" />
-                <NavItem view="transactions" icon={CreditCard} label="Transactions" />
-                <NavItem view="customers" icon={Users} label="Customers" />
-              </>
-            )}
+          {role === 'merchant' && (
+            <>
+              <NavSection label="Business" />
+              <NavItem view="forecast" icon={TrendingUp} label="Forecast" />
+              <NavItem view="chat" icon={MessageSquare} label="Ask AI" />
+              <NavItem view="transactions" icon={CreditCard} label="Transactions" />
+              <NavItem view="customers" icon={Users} label="Customers" />
+            </>
+          )}
 
-            {/* ISO Navigation */}
-            {role === 'iso' && (
-              <>
-                <NavItem view="statements" icon={FileText} label="Statement Analysis" />
-                <NavItem view="portfolio" icon={Briefcase} label="Merchants" />
-                <NavItem view="profitability" icon={DollarSign} label="Profitability" />
-                <NavItem view="integrations" icon={Plug2} label="Integrations" />
-              </>
-            )}
+          {role === 'iso' && (
+            <>
+              <NavSection label="Portfolio" />
+              <NavItem view="statements" icon={FileText} label="Statement Analysis" />
+              <NavItem view="portfolio" icon={Briefcase} label="Merchants" />
+              <NavItem view="profitability" icon={DollarSign} label="Profitability" />
+              <NavSection label="Settings" />
+              <NavItem view="integrations" icon={Plug2} label="Integrations" />
+            </>
+          )}
 
-            <NavItem view="settings" icon={Settings} label="Settings" />
-          </nav>
+          <NavItem view="settings" icon={Settings} label="Settings" />
+        </nav>
 
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-            <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-slate-500">Credits</span>
-                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{user?.credits}</span>
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">{user?.plan} Tier</div>
+        {/* Bottom panel */}
+        <div className="p-3 border-t border-white/5 space-y-2">
+          {/* Voice assistant button */}
+          <button
+            onClick={() => setShowLive(true)}
+            className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/25 gap-2"
+          >
+            <Mic className="w-4 h-4" /> Voice Assistant
+          </button>
+
+          {/* User card */}
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-default">
+            <div className="w-7 h-7 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-400 flex-shrink-0">
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
-
-            <button onClick={() => setShowLive(true)} className="flex items-center justify-center w-full px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
-              <Mic className="w-4 h-4 mr-2" /> Voice Assistant
-            </button>
-
-            <button onClick={onLogout} className="flex items-center w-full px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-              <LogOut className="w-5 h-5 mr-3" /> Sign Out
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-white truncate">{user?.name}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wide">{user?.plan} · {user?.credits} credits</p>
+            </div>
+            <button onClick={onLogout} className="text-gray-600 hover:text-gray-300 transition-colors" title="Sign out">
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </aside>
 
-      <div className="flex flex-col flex-1 w-0 overflow-hidden bg-slate-50 dark:bg-black">
-        <header className="flex items-center justify-between h-16 px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm relative z-10">
-          <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 rounded-md lg:hidden hover:bg-slate-100 dark:hover:bg-slate-800">
-            <Menu className="w-6 h-6" />
+      {/* ── Main ── */}
+      <div className="flex flex-col flex-1 w-0 overflow-hidden bg-gray-50 dark:bg-[#0a0a12]">
+        {/* Top bar */}
+        <header className="flex items-center justify-between h-14 px-5 bg-white dark:bg-[#0f0f1a] border-b border-gray-100 dark:border-white/5 shadow-sm relative z-10">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 -ml-2 text-gray-500 rounded-lg lg:hidden hover:bg-gray-100 dark:hover:bg-white/5"
+          >
+            <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-3 ml-auto">
-            <button onClick={toggleTheme} className="p-2 text-slate-500 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <div className="flex items-center gap-2">
-              <div className="text-right hidden sm:block">
-                <div className="text-sm font-medium text-slate-900 dark:text-white">{user?.name}</div>
-                <div className="text-xs text-slate-500 uppercase">{role || 'User'}</div>
+
+            {unreadCount > 0 && (
+              <button className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+                <Bell className="w-4 h-4" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+              </button>
+            )}
+
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-100 dark:border-white/5 ml-1">
+              <div className="hidden sm:block text-right">
+                <p className="text-xs font-semibold text-gray-900 dark:text-white">{user?.name}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">{role || 'User'}</p>
               </div>
-              <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                {user?.name.charAt(0).toUpperCase() || 'U'}
+              <div className="w-7 h-7 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
             </div>
           </div>
         </header>
+
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
