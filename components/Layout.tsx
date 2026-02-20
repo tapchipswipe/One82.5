@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, CreditCard, FileText, Settings, Menu, Moon, Sun,
   LogOut, MessageSquare, Briefcase, TrendingUp, Users, Mic, Plug2,
-  DollarSign, Zap, Bell, ChevronRight
+  DollarSign, Zap, Bell, ChevronRight, Paintbrush
 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { AppNotification, User, UserRole } from '../types';
@@ -119,6 +119,7 @@ const Layout: React.FC<LayoutProps> = ({
             </>
           )}
 
+          <NavItem view="brand" icon={Paintbrush} label="Brand Guide" />
           <NavItem view="settings" icon={Settings} label="Settings" />
         </nav>
 

@@ -15,6 +15,7 @@ import Customers from './components/Customers';
 import MerchantLedger from './components/MerchantLedger';
 import Integrations from './components/Integrations';
 import Profitability from './components/Profitability';
+const BrandGuide = React.lazy(() => import('./components/BrandGuide'));
 import { StorageService } from './services/storage';
 import { detectAnomalies } from './services/geminiService';
 import { SimulationService } from './services/simulationService';
@@ -91,6 +92,10 @@ const App: React.FC = () => {
   if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} /></div>;
   if (!user.onboardingComplete) return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} /></div>;
 
+  const brandView = activeView === 'brand' && (
+    <React.Suspense fallback={null}><div className="p-6"><BrandGuide /></div></React.Suspense>
+  );
+
   return (
     <Layout
       activeView={activeView}
@@ -109,6 +114,7 @@ const App: React.FC = () => {
           {activeView === 'chat' && <DataChat />}
           {activeView === 'forecast' && <Forecast />}
           {activeView === 'customers' && <Customers />}
+          {brandView}
         </>
       )}
 
@@ -120,8 +126,9 @@ const App: React.FC = () => {
           {activeView === 'profitability' && <Profitability />}
           {activeView === 'integrations' && <Integrations />}
           {activeView === 'settings' && <Settings />}
+          {brandView}
           {/* Fallback */}
-          {!['dashboard', 'statements', 'portfolio', 'profitability', 'integrations', 'settings'].includes(activeView) && <ISODashboard />}
+          {!['dashboard', 'statements', 'portfolio', 'profitability', 'integrations', 'settings', 'brand'].includes(activeView) && <ISODashboard />}
         </>
       )}
 
