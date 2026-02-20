@@ -90,3 +90,59 @@ export const SimulationService = {
     ];
   }
 };
+
+// ─────────────────────────────────────────────
+// SALES REP PROFITABILITY
+// ─────────────────────────────────────────────
+
+export interface SalesRep {
+  id: string;
+  name: string;
+  merchantCount: number;
+  totalPortfolioVolume: number;  // Total monthly volume across their merchants
+  grossResidual: number;         // Total monthly residual earned from their portfolio
+  supportCost: number;           // Monthly cost of support/overhead allocated to this rep
+  netProfit: number;             // grossResidual - supportCost
+  subscriptionFee: number;       // What the ISO charges this rep per month
+  trend: 'up' | 'down' | 'flat';
+  volumeHistory: number[];       // 6-month residual history
+  topMerchant: string;
+}
+
+export const generateSalesReps = (): SalesRep[] => [
+  {
+    id: 'rep1', name: 'Marcus T.', merchantCount: 8,
+    totalPortfolioVolume: 320000, grossResidual: 1440, supportCost: 180,
+    netProfit: 1260, subscriptionFee: 100, trend: 'up',
+    volumeHistory: [1100, 1180, 1240, 1300, 1380, 1440],
+    topMerchant: 'Tech Gadgets',
+  },
+  {
+    id: 'rep2', name: 'Sophia R.', merchantCount: 5,
+    totalPortfolioVolume: 143000, grossResidual: 644, supportCost: 120,
+    netProfit: 524, subscriptionFee: 100, trend: 'up',
+    volumeHistory: [490, 510, 555, 580, 620, 644],
+    topMerchant: "Joe's Pizza",
+  },
+  {
+    id: 'rep3', name: 'James W.', merchantCount: 3,
+    totalPortfolioVolume: 68000, grossResidual: 306, supportCost: 120,
+    netProfit: 186, subscriptionFee: 100, trend: 'flat',
+    volumeHistory: [310, 295, 305, 298, 310, 306],
+    topMerchant: 'Boutique 82',
+  },
+  {
+    id: 'rep4', name: 'Elena K.', merchantCount: 12,
+    totalPortfolioVolume: 580000, grossResidual: 2610, supportCost: 250,
+    netProfit: 2360, subscriptionFee: 100, trend: 'up',
+    volumeHistory: [1900, 2050, 2200, 2350, 2480, 2610],
+    topMerchant: 'Corner Market',
+  },
+  {
+    id: 'rep5', name: 'David N.', merchantCount: 2,
+    totalPortfolioVolume: 28000, grossResidual: 126, supportCost: 120,
+    netProfit: 6, subscriptionFee: 100, trend: 'down',
+    volumeHistory: [220, 200, 180, 160, 140, 126],
+    topMerchant: 'Apex Gym',
+  },
+];

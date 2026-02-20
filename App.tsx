@@ -14,6 +14,7 @@ import Forecast from './components/Forecast';
 import Customers from './components/Customers';
 import MerchantLedger from './components/MerchantLedger';
 import Integrations from './components/Integrations';
+import Profitability from './components/Profitability';
 import { StorageService } from './services/storage';
 import { detectAnomalies } from './services/geminiService';
 import { SimulationService } from './services/simulationService';
@@ -116,10 +117,11 @@ const App: React.FC = () => {
           {activeView === 'dashboard' && <ISODashboard />}
           {activeView === 'statements' && <StatementReader />}
           {activeView === 'portfolio' && <div className="p-6"><MerchantLedger merchants={merchants} /></div>}
+          {activeView === 'profitability' && <Profitability />}
           {activeView === 'integrations' && <Integrations />}
           {activeView === 'settings' && <Settings />}
           {/* Fallback */}
-          {!['dashboard', 'statements', 'portfolio', 'integrations', 'settings'].includes(activeView) && <ISODashboard />}
+          {!['dashboard', 'statements', 'portfolio', 'profitability', 'integrations', 'settings'].includes(activeView) && <ISODashboard />}
         </>
       )}
 
