@@ -3,7 +3,7 @@
 ## Core Mission
 Turn transaction data into a "Goldmine" for both Merchants and ISOs (Independent Sales Organizations).
 1.  **For Merchants (Inventory Intelligence):** Connect to live POS data (Square/Stripe/Clover). Automate inventory management. Know exactly when to reorder and order directly from the platform.
-2.  **For ISOs (The "Goldmine"):** Analyze the *live stream* of all merchant transactions to find insights, churn risks, and up-sell opportunities. *Statements are just one input; the real value is the flow.*
+2.  **For ISOs (The "Goldmine"):** Translate the *live stream of customer transactions* into valuable insights — identifying churn risks, growth patterns, and up-sell opportunities the moment the data flows in. *The value is not in the statements — it's in the real-time data itself.*
 
 ---
 
@@ -25,11 +25,12 @@ The platform handles two distinct user roles with separate interfaces:
 
 ### 2. ISO View (The Aggregator/Processor)
 *   **Data Source:** Live Feed of all Merchants in Portfolio.
-*   **The "Goldmine" (Portfolio Intelligence):**
-    *   *Churn Prediction:* "Merchant #12 (Joe's Pizza) volume dropped 40% vs last month. At risk."
-    *   *Volume Analysis:* Live ticker of total processed volume.
-    *   *Growth Opportunities:* "Merchant #5 is processing $50k/mo but isn't using our Inventory tool. Up-sell opportunity."
-*   **Statement Tool (Secondary):** Upload a PDF merchant statement -> AI extracts rates, fees, and volume -> Generates a "Savings Proposal".
+*   **The "Goldmine" (Transaction Intelligence):**
+    *   *Real-time Data Translation:* Every customer swipe becomes a data point. The platform converts this live stream into merchant health scores, revenue trends, and behavioral patterns.
+    *   *Churn Prediction:* "Merchant #12 (Joe's Pizza) customer frequency dropped 40% vs last month. At risk."
+    *   *Volume Analysis:* Live ticker of total processed customer volume.
+    *   *Growth Opportunities:* "Merchant #5 customers are spending 20% more per visit than their segment average. Up-sell premium tools."
+*   **Statement Tool (Secondary Utility):** Upload a PDF merchant statement → AI extracts rates, fees, and volume → Generates a "Savings Proposal" for new lead acquisition only.
 
 ---
 

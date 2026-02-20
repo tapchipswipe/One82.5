@@ -8,9 +8,9 @@
 ---
 
 ## 🌟 The Vision
-**One82.5** is a dual-perspective platform designed to turn raw transaction data into a "Goldmine" of insights for both **Merchants** and **ISOs** (Independent Sales Organizations).
+**One82.5** is a dual-perspective platform designed to turn raw **customer transaction data** into a "Goldmine" of insights for both **Merchants** and **ISOs** (Independent Sales Organizations).
 
-Instead of relying on static monthly statements, One82.5 leverages a **live stream of transactions** to provide real-time intelligence, churn prediction, and automated inventory management.
+Instead of relying on static monthly statements, One82.5 captures a **live stream of customer transactions** and translates every swipe, sale, and pattern into real-time intelligence — the moment the data flows in.
 
 ---
 
@@ -27,9 +27,10 @@ Empower business owners with data-driven operations.
 Transform manual processing into a proactive portfolio management powerhouse.
 - **Portfolio Intelligence**: Real-time tracking of total processed volume across all merchants.
 - **Merchant Ledger**: An Excel-style detailed list to keep track of every merchant, their processing rates, and live volume.
-- **Churn Prediction**: AI-driven alerts for merchants with declining volumes.
-- **Growth Engine**: Identification of up-sell opportunities based on merchant feature usage.
-- **Statement Reader**: AI utility to extract fees, rates, and volume from PDF statements to generate savings proposals.
+- **The Goldmine**: Translates live customer transaction streams into merchant health scores, behavioral patterns, and revenue trend signals.
+- **Churn Prediction**: AI-driven alerts when a merchant's customer frequency or spend declines.
+- **Growth Engine**: Identifies up-sell opportunities based on transaction patterns, not just feature usage.
+- **Statement Reader**: A secondary lead-acquisition tool that extracts fees from PDFs to generate savings proposals for new prospects.
 
 ---
 
