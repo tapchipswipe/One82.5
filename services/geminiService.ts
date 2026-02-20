@@ -254,3 +254,75 @@ export const analyzePortfolio = async (merchants: any[]): Promise<string> => {
     return generateSimulatedAnalysis();
   }
 };
+
+/**
+ * HELPERS For Live Voice Assistant
+ */
+export const encodeBase64 = (data: Uint8Array): string => {
+  return btoa(String.fromCharCode(...data));
+};
+
+export const decodeBase64 = (base64String: string): Uint8Array => {
+  const binaryStr = atob(base64String);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
+  return bytes;
+};
+
+export const connectLiveAssistant = async ({ onopen, onmessage, onerror, onclose }: {
+  onopen: () => void;
+  onmessage: (msg: any) => void;
+  onerror: (err: any) => void;
+  onclose: () => void;
+}) => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    // Simulate connection
+    onopen();
+    setTimeout(() => {
+      onmessage({ serverContent: { interrupted: false } });
+    }, 500);
+    return { sendRealtimeInput: () => { }, close: onclose };
+  }
+
+  try {
+    const HOST = 'generativelanguage.googleapis.com';
+    const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+    const ws = new WebSocket(url);
+
+    return new Promise<any>((resolve, reject) => {
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          setup: {
+            model: "models/gemini-2.0-flash-exp",
+            generationConfig: {
+              responseModalities: ["AUDIO", "TEXT"],
+              speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
+            },
+            systemInstruction: {
+              role: "user",
+              parts: [{ text: "You are the One82 voice assistant. Keep answers short and professional." }]
+            }
+          }
+        }));
+        onopen();
+        resolve({
+          sendRealtimeInput: (chunks: any[]) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: chunks }], turnComplete: true } }));
+            }
+          },
+          close: () => ws.close()
+        });
+      };
+      ws.onmessage = (e) => onmessage(JSON.parse(e.data));
+      ws.onerror = onerror;
+      ws.onclose = onclose;
+    });
+  } catch (e) {
+    onerror(e);
+    return { sendRealtimeInput: () => { }, close: onclose };
+  }
+};
