@@ -3,6 +3,7 @@ import { Upload, Users, TrendingUp, DollarSign, AlertTriangle, ArrowUpRight, Arr
 import { SimulationService, PortfolioMerchant } from '../services/simulationService';
 import { analyzePortfolio } from '../services/geminiService';
 import TodoList from './TodoList';
+import MerchantLedger from './MerchantLedger';
 
 // ...
 
@@ -260,6 +261,9 @@ const ISODashboard: React.FC = () => {
                     <TodoList role="iso" className="h-[300px]" />
                 </div>
             </div>
+
+            {/* Excel-style Merchant Ledger */}
+            <MerchantLedger merchants={merchants} />
         </div>
     );
 };

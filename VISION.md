@@ -44,6 +44,7 @@ The platform handles two distinct user roles with separate interfaces:
 - [ ] **Portfolio Engine:** Simulate a stream of transactions from multiple merchants.
 - [ ] **ISO Dashboard 2.0:**
     *   Live Volume Ticker.
+    *   **Merchant Ledger (Excel Style):** Full list tracking processing rates, volume, and contact info.
     *   "At Risk" Merchant List (Churn Detection).
     *   "Opportunity" Alerts (Up-sell features).
 - [ ] **Statement Tool:** Keep as a utility tab for importing *new* leads.

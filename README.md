@@ -26,6 +26,7 @@ Empower business owners with data-driven operations.
 ### 2. ISO View (The Aggregator/Processor)
 Transform manual processing into a proactive portfolio management powerhouse.
 - **Portfolio Intelligence**: Real-time tracking of total processed volume across all merchants.
+- **Merchant Ledger**: An Excel-style detailed list to keep track of every merchant, their processing rates, and live volume.
 - **Churn Prediction**: AI-driven alerts for merchants with declining volumes.
 - **Growth Engine**: Identification of up-sell opportunities based on merchant feature usage.
 - **Statement Reader**: AI utility to extract fees, rates, and volume from PDF statements to generate savings proposals.
