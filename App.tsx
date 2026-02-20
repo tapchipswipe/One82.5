@@ -23,7 +23,7 @@ import { THEME_COLORS } from './constants';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState('dashboard');
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const merchants = SimulationService.generatePortfolio();
