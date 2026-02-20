@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useGeminiLive } from '../services/geminiLiveHook'; // Assuming we will create this hook or use the existing service
 
 const LiveSituationRoom: React.FC = () => {
     const [isListening, setIsListening] = useState(false);

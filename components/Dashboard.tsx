@@ -25,7 +25,6 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
   const [explanation, setExplanation] = useState<{ point: any, text: string } | null>(null);
 
   const settings = StorageService.getSettings();
-  const isAdmin = StorageService.getUser()?.role === 'admin';
 
   // Memoize cache key components to ensure stability
   const cacheKey = useMemo(() =>
@@ -180,15 +179,6 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
         </div>
       </div>
 
-      {isAdmin && (
-        <div className="bg-indigo-600 rounded-xl p-8 text-white flex flex-col md:flex-row items-center gap-6">
-          <div className="p-4 bg-white/20 rounded-full"><Award className="w-12 h-12" /></div>
-          <div>
-            <h3 className="text-xl font-bold">Admin Competitor Benchmarking</h3>
-            <p className="opacity-80 mt-1">Your business is outperforming 72% of similar {businessType}s in your region.</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
