@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONE82 Brand Design</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f9fafb;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        h1 {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            color: #111827;
+        }
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 40px 0 20px;
+            color: #374151;
+        }
+        .hero {
+            background: white;
+            border-radius: 16px;
+            padding: 80px 40px;
+            margin-bottom: 40px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .logo-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .logo-container img {
+            width: 100%;
+            height: auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #111827;
+        }
+        .card p {
+            font-size: 15px;
+            color: #6b7280;
+            line-height: 1.7;
+        }
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+        }
+        .color-swatch {
+            text-align: center;
+        }
+        .color-box {
+            height: 100px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+        }
+        .color-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+        }
+        .typography-sample {
+            margin-bottom: 24px;
+        }
+        .type-display {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+        .type-heading {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+        .type-body {
+            font-size: 16px;
+            font-weight: 400;
+            color: #6b7280;
+        }
+        .usage-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+        .usage-example {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .usage-example h4 {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            color: #22c55e;
+        }
+        .usage-example.incorrect h4 {
+            color: #ef4444;
+        }
+        .example-box {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+        }
+        .example-box img {
+            max-width: 200px;
+            height: auto;
+        }
+        .incorrect .example-box {
+            background: linear-gradient(45deg, #f59e0b 25%, transparent 25%, transparent 75%, #f59e0b 75%, #f59e0b), 
+                        linear-gradient(45deg, #f59e0b 25%, transparent 25%, transparent 75%, #f59e0b 75%, #f59e0b);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+        .incorrect .example-box img {
+            transform: skewX(-10deg);
+        }
+        @media (max-width: 768px) {
+            .usage-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ONE82 Brand Design</h1>
+        <p style="font-size: 18px; color: #6b7280; margin-bottom: 40px;">Modern, fast, and trustworthy commerce intelligence</p>
+
+        <div class="hero">
+            <div class="logo-container">
+                <img src="public/logos/one82-logo-white-centered-v2.png" alt="ONE82 Logo">
+            </div>
+        </div>
+
+        <h2>Brand Colors</h2>
+        <div class="card">
+            <div class="color-grid">
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #1f2937;"></div>
+                    <div class="color-name">Primary Dark</div>
+                    <p style="font-size: 12px; color: #9ca3af; margin-top: 4px;">#1f2937</p>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #ffffff; border: 1px solid #e5e7eb;"></div>
+                    <div class="color-name">Background</div>
+                    <p style="font-size: 12px; color: #9ca3af; margin-top: 4px;">#ffffff</p>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #f3f4f6;"></div>
+                    <div class="color-name">Light Gray</div>
+                    <p style="font-size: 12px; color: #9ca3af; margin-top: 4px;">#f3f4f6</p>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #374151;"></div>
+                    <div class="color-name">Charcoal</div>
+                    <p style="font-size: 12px; color: #9ca3af; margin-top: 4px;">#374151</p>
+                </div>
+            </div>
+        </div>
+
+        <h2>Typography</h2>
+        <div class="card">
+            <div class="typography-sample">
+                <div class="type-display">Intelligence at Speed</div>
+                <p style="font-size: 13px; color: #9ca3af; margin-top: 4px;">Display / Bold 800</p>
+            </div>
+            <div class="typography-sample">
+                <div class="type-heading">Real-time Portfolio Engine</div>
+                <p style="font-size: 13px; color: #9ca3af; margin-top: 4px;">Heading / Bold 700</p>
+            </div>
+            <div class="typography-sample">
+                <div class="type-body">Turn transaction data into actionable intelligence for merchants and ISOs. Clean, geometric sans-serif with generous spacing.</div>
+                <p style="font-size: 13px; color: #9ca3af; margin-top: 4px;">Body / Regular 400</p>
+            </div>
+        </div>
+
+        <h2>Design Principles</h2>
+        <div class="grid">
+            <div class="card">
+                <h3>Operational</h3>
+                <p>Bold, functional, and trustworthy. Not playful—optimized for commerce intelligence and data clarity.</p>
+            </div>
+            <div class="card">
+                <h3>High Contrast</h3>
+                <p>Dark logo on white backgrounds. Minimal visual noise. Clean separations between UI elements.</p>
+            </div>
+            <div class="card">
+                <h3>Geometric Clarity</h3>
+                <p>Clean sans-serif typography with strong weights. Generous spacing. No condensed or decorative fonts.</p>
+            </div>
+            <div class="card">
+                <h3>Minimal Accents</h3>
+                <p>Accent colors only in product UI when needed. Keep branding neutral and professional.</p>
+            </div>
+        </div>
+
+        <h2>Logo Usage</h2>
+        <div class="usage-grid">
+            <div class="usage-example">
+                <h4>✓ Correct</h4>
+                <div class="example-box">
+                    <img src="public/logos/one82-logo-white-centered-v2.png" alt="Correct usage">
+                </div>
+                <p style="font-size: 14px; color: #6b7280; margin-top: 12px;">Centered on white, proper clear space, no distortion</p>
+            </div>
+            <div class="usage-example incorrect">
+                <h4>✗ Incorrect</h4>
+                <div class="example-box">
+                    <img src="public/logos/one82-logo-white-centered-v2.png" alt="Incorrect usage">
+                </div>
+                <p style="font-size: 14px; color: #6b7280; margin-top: 12px;">Textured background, distorted, no clear space</p>
+            </div>
+        </div>
+
+        <h2 style="margin-top: 60px;">Voice & Messaging</h2>
+        <div class="card">
+            <div class="grid">
+                <div>
+                    <h3>✓ Do</h3>
+                    <p style="margin-bottom: 8px;">"Real-time transaction intelligence"</p>
+                    <p style="margin-bottom: 8px;">"Turn data into decisions"</p>
+                    <p>"Operational clarity for commerce"</p>
+                </div>
+                <div>
+                    <h3>✗ Don't</h3>
+                    <p style="margin-bottom: 8px;">"Revolutionary game-changer! 🚀"</p>
+                    <p style="margin-bottom: 8px;">"The ultimate solution"</p>
+                    <p>"Disruptive innovation magic"</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 80px; padding-top: 40px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 14px;">
+            <p>ONE82 Brand Template • Updated Feb 2026</p>
+        </div>
+    </div>
+</body>
+</html>

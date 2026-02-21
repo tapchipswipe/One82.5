@@ -23,7 +23,7 @@ import { THEME_COLORS } from './constants';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState('dashboard');
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const merchants = SimulationService.generatePortfolio();
@@ -35,7 +35,7 @@ const App: React.FC = () => {
       const settings = StorageService.getSettings();
       if (settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) setDarkMode(true);
       const root = document.documentElement;
-      const colorSet = THEME_COLORS[settings.primaryColor || 'green'];
+      const colorSet = THEME_COLORS[settings.primaryColor || 'charcoal'];
       Object.entries(colorSet).forEach(([shade, value]) => root.style.setProperty(`--color-primary-${shade}`, value));
     } catch (e) {
       console.error("Initialization Failed:", e);

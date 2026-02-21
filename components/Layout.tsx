@@ -40,16 +40,12 @@ const Layout: React.FC<LayoutProps> = ({
     return (
       <button
         onClick={() => { onNavigate(view); setIsSidebarOpen(false); }}
-        className={`relative flex items-center w-full px-3 py-2.5 mb-0.5 text-sm font-medium rounded-xl transition-all duration-150 group ${isActive
-            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
-            : 'text-gray-400 hover:bg-white/5 hover:text-white'
+        className={`relative flex items-center w-full px-3 py-2.5 mb-0.5 text-sm font-medium rounded-lg transition-all duration-150 group ${isActive
+            ? 'bg-gray-900 text-white'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
           }`}
       >
-        {/* Active left indicator */}
-        {isActive && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-white rounded-r-full -ml-0.5 opacity-0" />
-        )}
-        <Icon className={`w-4 h-4 mr-3 flex-shrink-0 transition-colors ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`} />
+        <Icon className={`w-4 h-4 mr-3 flex-shrink-0 transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}`} />
         <span className="flex-1 text-left">{label}</span>
         {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-70" />}
       </button>
@@ -57,7 +53,7 @@ const Layout: React.FC<LayoutProps> = ({
   };
 
   const NavSection = ({ label }: { label: string }) => (
-    <p className="px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-600">{label}</p>
+    <p className="px-3 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">{label}</p>
   );
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -77,18 +73,20 @@ const Layout: React.FC<LayoutProps> = ({
       {/* ── Sidebar ── */}
       <aside className={`
         fixed inset-y-0 left-0 z-30 w-60 flex flex-col
-        bg-[#0f0f1a] border-r border-white/5
+        bg-white border-r border-gray-200
         transform transition-transform duration-200 ease-in-out
         lg:relative lg:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Logo */}
-        <div className="flex items-center h-16 px-5 border-b border-white/5">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-600/40">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <span className="ml-3 text-white font-bold text-lg tracking-tight">One82</span>
-          <span className="ml-2 text-[10px] font-semibold text-indigo-400 bg-indigo-600/15 px-1.5 py-0.5 rounded uppercase tracking-wide">
+        <div className="flex items-center h-16 px-5 border-b border-gray-200">
+          <img 
+            src="/logos/one82-logo-white-centered-v2.png" 
+            alt="ONE82" 
+            className="h-10 w-10 object-contain"
+          />
+          <span className="ml-3 text-gray-900 font-bold text-lg tracking-tight">ONE82</span>
+          <span className="ml-2 text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded uppercase tracking-wide">
             {role === 'iso' ? 'ISO' : 'Pro'}
           </span>
         </div>
@@ -123,25 +121,25 @@ const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         {/* Bottom panel */}
-        <div className="p-3 border-t border-white/5 space-y-2">
+        <div className="p-3 border-t border-gray-200 space-y-2">
           {/* Voice assistant button */}
           <button
             onClick={() => setShowLive(true)}
-            className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/25 gap-2"
+            className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-bold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors gap-2"
           >
             <Mic className="w-4 h-4" /> Voice Assistant
           </button>
 
           {/* User card */}
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-default">
-            <div className="w-7 h-7 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-400 flex-shrink-0">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors cursor-default">
+            <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
               {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{user?.name}</p>
+              <p className="text-xs font-semibold text-gray-900 truncate">{user?.name}</p>
               <p className="text-[10px] text-gray-500 uppercase tracking-wide">{user?.plan} · {user?.credits} credits</p>
             </div>
-            <button onClick={onLogout} className="text-gray-600 hover:text-gray-300 transition-colors" title="Sign out">
+            <button onClick={onLogout} className="text-gray-400 hover:text-gray-600 transition-colors" title="Sign out">
               <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -149,12 +147,12 @@ const Layout: React.FC<LayoutProps> = ({
       </aside>
 
       {/* ── Main ── */}
-      <div className="flex flex-col flex-1 w-0 overflow-hidden bg-gray-50 dark:bg-[#0a0a12]">
+      <div className="flex flex-col flex-1 w-0 overflow-hidden bg-gray-50 dark:bg-gray-50">
         {/* Top bar */}
-        <header className="flex items-center justify-between h-14 px-5 bg-white dark:bg-[#0f0f1a] border-b border-gray-100 dark:border-white/5 shadow-sm relative z-10">
+        <header className="flex items-center justify-between h-14 px-5 bg-white border-b border-gray-200 shadow-sm relative z-10">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 -ml-2 text-gray-500 rounded-lg lg:hidden hover:bg-gray-100 dark:hover:bg-white/5"
+            className="p-2 -ml-2 text-gray-500 rounded-lg lg:hidden hover:bg-gray-100"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -162,24 +160,24 @@ const Layout: React.FC<LayoutProps> = ({
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
             >
               {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
             {unreadCount > 0 && (
-              <button className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+              <button className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
                 <Bell className="w-4 h-4" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               </button>
             )}
 
-            <div className="flex items-center gap-2 pl-2 border-l border-gray-100 dark:border-white/5 ml-1">
+            <div className="flex items-center gap-2 pl-2 border-l border-gray-200 ml-1">
               <div className="hidden sm:block text-right">
-                <p className="text-xs font-semibold text-gray-900 dark:text-white">{user?.name}</p>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">{role || 'User'}</p>
+                <p className="text-xs font-semibold text-gray-900">{user?.name}</p>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide">{role || 'User'}</p>
               </div>
-              <div className="w-7 h-7 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
+              <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
             </div>

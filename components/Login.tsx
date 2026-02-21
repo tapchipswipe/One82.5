@@ -45,61 +45,50 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const fillDemo = () => { setEmail('demo@one82.io'); setPassword('admin'); };
 
   return (
-    <div className="min-h-screen flex bg-[#0a0a14] overflow-hidden">
+    <div className="min-h-screen flex bg-white overflow-hidden">
 
       {/* ── Left panel: brand ── */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 relative p-14 overflow-hidden">
-        {/* Animated gradient orbs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[100px] animate-pulse delay-1000" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-indigo-400/10 rounded-full blur-[80px]" />
-          {/* Grid overlay */}
-          <div className="absolute inset-0 opacity-5"
-            style={{
-              backgroundImage: 'linear-gradient(rgba(99,102,241,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.5) 1px, transparent 1px)',
-              backgroundSize: '40px 40px'
-            }}
-          />
-        </div>
-
+      <div className="hidden lg:flex flex-col justify-between w-1/2 relative p-14 bg-gray-50/50">
+        
         {/* Logo */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-white font-bold text-xl tracking-tight">One82</span>
+        <div className="flex items-center gap-3">
+          <img 
+            src="/logos/one82-logo-white-centered-v2.png" 
+            alt="ONE82" 
+            className="h-16 w-16 object-contain"
+          />
+          <span className="text-gray-900 font-bold text-2xl tracking-tight">ONE82</span>
         </div>
 
         {/* Hero copy */}
-        <div className="relative z-10">
-          <h1 className="text-5xl font-bold text-white leading-tight mb-6">
-            The intelligence<br />
-            layer for <span className="text-indigo-400">ISOs</span>
+        <div>
+          <h1 className="text-5xl font-extrabold text-gray-900 leading-tight mb-6">
+            Intelligence<br />
+            at Speed
           </h1>
-          <p className="text-gray-400 text-lg mb-10 leading-relaxed">
+          <p className="text-gray-600 text-lg mb-10 leading-relaxed max-w-md">
             Real-time portfolio analytics, AI-powered statement analysis,
-            and per-rep profitability — all in one platform.
+            and operational clarity for payment ISOs.
           </p>
           <div className="space-y-4">
             {FEATURES.map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-indigo-600/20 border border-indigo-500/30 rounded-lg flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-indigo-400" />
+                <div className="w-9 h-9 bg-gray-900 rounded-lg flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-gray-300 text-sm">{text}</span>
+                <span className="text-gray-700 font-medium text-sm">{text}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="relative z-10">
-          <div className="flex gap-6">
+        {/* Footer stats */}
+        <div>
+          <div className="flex gap-8">
             {['5 ISOs', '240+ Merchants', '$2.4M Volume'].map(stat => (
               <div key={stat}>
-                <p className="text-white font-bold text-lg">{stat.split(' ')[0]}</p>
-                <p className="text-gray-500 text-xs">{stat.split(' ').slice(1).join(' ')}</p>
+                <p className="text-gray-900 font-bold text-xl">{stat.split(' ')[0]}</p>
+                <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">{stat.split(' ').slice(1).join(' ')}</p>
               </div>
             ))}
           </div>
@@ -107,29 +96,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       </div>
 
       {/* ── Right panel: form ── */}
-      <div className="flex-1 flex items-center justify-center p-8 relative">
-        {/* Mobile bg orb */}
-        <div className="absolute inset-0 lg:hidden pointer-events-none">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600/20 rounded-full blur-[100px]" />
-        </div>
-
-        <div className="w-full max-w-sm relative z-10">
+      <div className="flex-1 flex items-center justify-center p-8 bg-white">
+        
+        <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-white font-bold text-lg">One82</span>
+            <img 
+              src="/logos/one82-logo-white-centered-v2.png" 
+              alt="ONE82" 
+              className="h-12 w-12 object-contain"
+            />
+            <span className="text-gray-900 font-bold text-xl">ONE82</span>
           </div>
 
-          <h2 className="text-2xl font-bold text-white mb-1">Welcome back</h2>
-          <p className="text-gray-400 text-sm mb-8">Sign in to your dashboard</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h2>
+          <p className="text-gray-600 text-sm mb-8">Sign in to your dashboard</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email field */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                Username / Email
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">
+                Email
               </label>
               <input
                 type="text"
@@ -139,16 +126,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 onFocus={() => setFocused('email')}
                 onBlur={() => setFocused(null)}
                 placeholder="you@company.com"
-                className={`w-full px-4 py-3 rounded-xl border bg-white/5 text-white placeholder-gray-600 outline-none transition-all text-sm ${focused === 'email'
-                    ? 'border-indigo-500 bg-indigo-600/10 ring-2 ring-indigo-500/20'
-                    : 'border-white/10 hover:border-white/20'
+                className={`w-full px-4 py-3.5 rounded-lg border-2 bg-white text-gray-900 placeholder-gray-400 outline-none transition-all ${focused === 'email'
+                    ? 'border-gray-900 ring-4 ring-gray-100'
+                    : 'border-gray-200 hover:border-gray-300'
                   }`}
               />
             </div>
 
             {/* Password field */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">
                 Password
               </label>
               <input
@@ -159,9 +146,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 onFocus={() => setFocused('password')}
                 onBlur={() => setFocused(null)}
                 placeholder="••••••••"
-                className={`w-full px-4 py-3 rounded-xl border bg-white/5 text-white placeholder-gray-600 outline-none transition-all text-sm ${focused === 'password'
-                    ? 'border-indigo-500 bg-indigo-600/10 ring-2 ring-indigo-500/20'
-                    : 'border-white/10 hover:border-white/20'
+                className={`w-full px-4 py-3.5 rounded-lg border-2 bg-white text-gray-900 placeholder-gray-400 outline-none transition-all ${focused === 'password'
+                    ? 'border-gray-900 ring-4 ring-gray-100'
+                    : 'border-gray-200 hover:border-gray-300'
                   }`}
               />
             </div>
@@ -170,24 +157,24 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/40 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed mt-2"
             >
               {isLoading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>
+                <><Loader2 className="w-5 h-5 animate-spin" /> Signing in…</>
               ) : 'Sign In →'}
             </button>
           </form>
 
           <div className="mt-6 flex flex-col items-center gap-3">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-500">
               No account?{' '}
-              <a href="#" className="text-indigo-400 hover:text-indigo-300 font-semibold">
+              <a href="#" className="text-gray-900 hover:text-gray-700 font-semibold underline">
                 Start Free Trial
               </a>
             </p>
             <button
               onClick={fillDemo}
-              className="text-xs text-gray-600 hover:text-gray-400 underline underline-offset-2 transition-colors"
+              className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
             >
               Fill demo credentials
             </button>
@@ -196,10 +183,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* Simulation badge */}
           <div className="mt-8 flex items-center gap-2 justify-center">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
             </span>
-            <span className="text-xs text-gray-600">Simulation mode — no real data required</span>
+            <span className="text-xs text-gray-500 font-medium">Simulation mode — no real data required</span>
           </div>
         </div>
       </div>

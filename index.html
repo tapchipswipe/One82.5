@@ -22,13 +22,12 @@
       theme: {
         extend: {
           colors: {
-            // One82 Brand Primaries
+            // ONE82 Brand Colors
             brand: {
-              bg: '#0a0a14',   // Main dark background
-              surface: '#0f0f1a',   // Card / sidebar surface
-              elevated: '#131320',   // Elevated card (hover)
-              border: '#1e1e30',   // Default border
-              muted: '#2a2a40',   // Muted/divider
+              charcoal: '#1f2937',
+              white: '#ffffff',
+              lightgray: '#f3f4f6',
+              gray: '#374151',
             },
             primary: {
               50: 'rgb(var(--color-primary-50) / <alpha-value>)',
@@ -40,10 +39,10 @@
               900: 'rgb(var(--color-primary-900) / <alpha-value>)',
             },
             // Semantic colors
-            profit: '#22c55e',    // Green — money / growth
-            loss: '#ef4444',    // Red — churn / risk
-            warn: '#f59e0b',    // Amber — medium risk
-            info: '#6366f1',    // Indigo — primary brand
+            profit: '#22c55e',
+            loss: '#ef4444',
+            warn: '#f59e0b',
+            info: '#3b82f6',
           },
           fontFamily: {
             sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
@@ -62,7 +61,7 @@
     }
   </script>
   <style>
-    /* ─── One82 Brand Base ─────────────────────────── */
+    /* ─── ONE82 Brand Base ─────────────────────────── */
     *,
     *::before,
     *::after {
@@ -70,14 +69,14 @@
     }
 
     :root {
-      /* Default brand: Indigo */
-      --color-primary-50: 238 242 255;
-      --color-primary-100: 224 231 255;
-      --color-primary-500: 99 102 241;
-      --color-primary-600: 79 70 229;
-      --color-primary-700: 67 56 202;
-      --color-primary-800: 55 48 163;
-      --color-primary-900: 49 46 129;
+      /* Default brand: Charcoal (ONE82 Brand) */
+      --color-primary-50: 249 250 251;
+      --color-primary-100: 243 244 246;
+      --color-primary-500: 55 65 81;
+      --color-primary-600: 31 41 55;
+      --color-primary-700: 17 24 39;
+      --color-primary-800: 15 23 42;
+      --color-primary-900: 12 17 29;
 
       /* Brand spacing */
       --page-padding: 1.5rem;
@@ -85,19 +84,19 @@
       --transition: 150ms ease;
     }
 
-    /* Light mode base */
+    /* Light mode base — ONE82 clean white theme */
     body {
       font-family: 'Inter', sans-serif;
-      background-color: #f4f5f7;
+      background-color: #ffffff;
       color: #111827;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Dark mode base — One82 terminal theme */
+    /* Dark mode optional */
     .dark body {
-      background-color: #0a0a14;
-      color: #e2e8f0;
+      background-color: #f9fafb;
+      color: #111827;
     }
 
     /* Monospaced numbers — financial data */
@@ -107,23 +106,23 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* Smooth scrollbar in dark mode */
-    .dark ::-webkit-scrollbar {
+    /* Smooth scrollbar in light mode */
+    ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
     }
 
-    .dark ::-webkit-scrollbar-track {
-      background: #0f0f1a;
+    ::-webkit-scrollbar-track {
+      background: #f3f4f6;
     }
 
-    .dark ::-webkit-scrollbar-thumb {
-      background: #2a2a40;
+    ::-webkit-scrollbar-thumb {
+      background: #d1d5db;
       border-radius: 3px;
     }
 
-    .dark ::-webkit-scrollbar-thumb:hover {
-      background: #3a3a55;
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
     }
 
     /* Hide scrollbar utility */
@@ -136,9 +135,9 @@
     }
 
     /* Card base used throughout the app */
-    .dark .card {
-      background: #0f0f1a;
-      border: 1px solid #1e1e30;
+    .card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
     }
 
     /* Number glow effect for hero stats */
@@ -150,7 +149,7 @@
 
     /* Global focus ring */
     *:focus-visible {
-      outline: 2px solid #6366f1;
+      outline: 2px solid #1f2937;
       outline-offset: 2px;
       border-radius: 4px;
     }
