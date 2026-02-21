@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { StorageService } from '../services/storage';
 import { User } from '../types';
-import { Loader2, Zap, TrendingUp, Shield, BarChart2 } from 'lucide-react';
+import { Loader2, Zap, TrendingUp, Shield, BarChart2, Gift, ArrowLeft } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
+  showTrialMode?: boolean;
+  onBackToHome?: () => void;
 }
 
 const FEATURES = [
@@ -13,7 +15,7 @@ const FEATURES = [
   { icon: Shield, text: 'Churn risk & residual tracking' },
 ];
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToHome }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -99,6 +101,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         
         <div className="w-full max-w-sm">
+          {/* Back to Home button */}
+          {onBackToHome && (
+            <button
+              onClick={onBackToHome}
+              className="mb-6 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Home
+            </button>
+          )}
+
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <img 
@@ -109,8 +122,24 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <span className="text-gray-900 font-bold text-xl">ONE82</span>
           </div>
 
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h2>
-          <p className="text-gray-600 text-sm mb-8">Sign in to your dashboard</p>
+          {showTrialMode && (
+            <div className="mb-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <Gift className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-green-900 text-sm mb-1">14-Day Free Trial</h3>
+                  <p className="text-green-700 text-xs">
+                    No credit card required. Full access to all features. Start now!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">{showTrialMode ? 'Start Your Free Trial' : 'Welcome back'}</h2>
+          <p className="text-gray-600 text-sm mb-8">{showTrialMode ? 'Create your account to get started' : 'Sign in to your dashboard'}</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email field */}

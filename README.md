@@ -21,6 +21,11 @@ Access transaction intelligence and business insights in real-time.
 - **Transaction Analytics**: Revenue and transaction volume with Day/Week/Year toggles
 - **Credit Card Volume**: Live tracking of total card processing volume
 - **Performance Dashboard**: Interactive visualizations of growth patterns and trends
+- **AI Inventory Intelligence** (Transaction-Derived):
+  - Analyze purchase patterns from transaction data to identify stock trends
+  - "You sold 500 apples this week. Based on patterns, you have 2 days of stock left."
+  - Predict when to reorder based on transaction frequency and volume
+  - Identify peak purchase times for inventory planning
 - **Smart Tools**: Integrated To-Do lists and store-type personalization
 - **Live Assistant**: AI-powered data chat to answer questions about business performance
 

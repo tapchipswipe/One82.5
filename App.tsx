@@ -7,6 +7,7 @@ import StatementReader from './components/StatementReader';
 import Onboarding from './components/Onboarding';
 import ISODashboard from './components/ISODashboard';
 import InventoryManager from './components/InventoryManager';
+import InventoryIntelligence from './components/InventoryIntelligence';
 import Login from './components/Login';
 import Settings from './components/Settings';
 import DataChat from './components/DataChat';
@@ -15,6 +16,10 @@ import Customers from './components/Customers';
 import MerchantLedger from './components/MerchantLedger';
 import Integrations from './components/Integrations';
 import Profitability from './components/Profitability';
+import MarketingLayout from './components/marketing/MarketingLayout';
+import HomePage from './components/marketing/HomePage';
+import FeaturesPage from './components/marketing/FeaturesPage';
+import PricingPage from './components/marketing/PricingPage';
 import { StorageService } from './services/storage';
 import { detectAnomalies } from './services/geminiService';
 import { SimulationService } from './services/simulationService';
@@ -26,12 +31,19 @@ const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [marketingPage, setMarketingPage] = useState<'home' | 'features' | 'pricing' | null>('home');
+  const [showTrial, setShowTrial] = useState(false);
   const merchants = SimulationService.generatePortfolio();
 
   useEffect(() => {
     try {
       const storedUser = StorageService.getUser();
-      if (storedUser) setUser(storedUser);
+      if (storedUser) {
+        setUser(storedUser);
+        setMarketingPage(null); // Clear marketing page if user exists
+      } else {
+        setMarketingPage('home'); // Show home page for new visitors
+      }
       const settings = StorageService.getSettings();
       if (settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) setDarkMode(true);
       const root = document.documentElement;
@@ -73,6 +85,19 @@ const App: React.FC = () => {
   const handleLogin = (u: User) => setUser(u);
   const handleLogout = () => { StorageService.clearUser(); setUser(null); };
 
+  const handleMarketingNavigate = (page: 'home' | 'features' | 'pricing' | 'login' | 'trial') => {
+    if (page === 'login') {
+      setMarketingPage(null);
+      setShowTrial(false);
+    } else if (page === 'trial') {
+      setMarketingPage(null);
+      setShowTrial(true);
+    } else {
+      setMarketingPage(page);
+      setShowTrial(false);
+    }
+  };
+
   const handleOnboardingComplete = (role: UserRole, data: { businessType?: BusinessType, orgName?: string }) => {
     if (user) {
       const updated: User = {
@@ -88,7 +113,21 @@ const App: React.FC = () => {
   };
 
   if (loading) return null;
-  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} /></div>;
+  
+  // Marketing pages for non-logged-in users
+  if (!user && marketingPage) {
+    return (
+      <div className={darkMode ? 'dark' : ''}>
+        <MarketingLayout activePage={marketingPage} onNavigate={handleMarketingNavigate}>
+          {marketingPage === 'home' && <HomePage onNavigate={handleMarketingNavigate} />}
+          {marketingPage === 'features' && <FeaturesPage onNavigate={handleMarketingNavigate} />}
+          {marketingPage === 'pricing' && <PricingPage onNavigate={handleMarketingNavigate} />}
+        </MarketingLayout>
+      </div>
+    );
+  }
+  
+  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial} onBackToHome={() => setMarketingPage('home')} /></div>;
   if (!user.onboardingComplete) return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} /></div>;
 
   return (
@@ -105,6 +144,7 @@ const App: React.FC = () => {
         <>
           {activeView === 'dashboard' && <Dashboard businessType={user.businessType!} />}
           {activeView === 'transactions' && <Transactions />}
+          {activeView === 'inventory' && <InventoryIntelligence />}
           {activeView === 'settings' && <Settings />}
           {activeView === 'chat' && <DataChat />}
           {activeView === 'forecast' && <Forecast />}

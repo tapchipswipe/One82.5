@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, CreditCard, FileText, Settings, Menu, Moon, Sun,
   LogOut, MessageSquare, Briefcase, TrendingUp, Users, Mic, Plug2,
-  DollarSign, Zap, Bell, ChevronRight
+  DollarSign, Zap, Bell, ChevronRight, Package
 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { AppNotification, User, UserRole } from '../types';
@@ -103,6 +103,7 @@ const Layout: React.FC<LayoutProps> = ({
               <NavItem view="chat" icon={MessageSquare} label="Ask AI" />
               <NavItem view="transactions" icon={CreditCard} label="Transactions" />
               <NavItem view="customers" icon={Users} label="Customers" />
+              <NavItem view="inventory" icon={Package} label="Inventory AI" />
             </>
           )}
 
