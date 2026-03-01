@@ -1,5 +1,8 @@
-import { User, AppSettings, Transaction, DailyMetric, Review, AppNotification, CreditLog } from '../types';
+import { User, AppSettings, Transaction, DailyMetric, Review, AppNotification, CreditLog, ActionPlan } from '../types';
 import { MOCK_METRICS, MOCK_TRANSACTIONS, MOCK_REVIEWS } from '../constants';
+
+type DataMode = 'demo' | 'backend';
+const BACKEND_DATA_ENABLED = import.meta.env.VITE_ENABLE_BACKEND_DATA === 'true';
 
 // Simulated Database Keys
 const STORAGE_KEYS = {
@@ -10,7 +13,22 @@ const STORAGE_KEYS = {
   REVIEWS: 'one82_reviews',
   NOTIFICATIONS: 'one82_notifications',
   CREDIT_LOGS: 'one82_credit_logs',
-  AI_CACHE: 'one82_ai_cache'
+  AI_CACHE: 'one82_ai_cache',
+  DATA_MODE: 'one82_data_mode',
+  ACTION_PLANS: 'one82_action_plans'
+};
+
+const DATA_API_BASE = (import.meta.env.VITE_DATA_API_BASE || '').replace(/\/$/, '');
+
+const getDataApiUrl = (path: string): string => {
+  if (!DATA_API_BASE) return path;
+  return `${DATA_API_BASE}${path}`;
+};
+
+const isBackendMode = (mode: DataMode): boolean => mode === 'backend';
+const normalizeDataMode = (mode: DataMode): DataMode => {
+  if (!BACKEND_DATA_ENABLED) return 'demo';
+  return mode === 'backend' ? 'backend' : 'demo';
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -22,6 +40,15 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export const StorageService = {
+  getDataMode: (): DataMode => {
+    const mode = localStorage.getItem(STORAGE_KEYS.DATA_MODE);
+    return normalizeDataMode(mode === 'backend' ? 'backend' : 'demo');
+  },
+
+  setDataMode: (mode: DataMode): void => {
+    localStorage.setItem(STORAGE_KEYS.DATA_MODE, normalizeDataMode(mode));
+  },
+
   // User / Auth
   getUser: (): User | null => {
     const data = localStorage.getItem(STORAGE_KEYS.USER);
@@ -91,8 +118,44 @@ export const StorageService = {
     return data ? JSON.parse(data) : MOCK_TRANSACTIONS.map(t => ({...t, category: 'Uncategorized'}));
   },
 
+  getTransactionsResolved: async (): Promise<Transaction[]> => {
+    const mode = StorageService.getDataMode();
+    if (!BACKEND_DATA_ENABLED || !isBackendMode(mode)) return StorageService.getTransactions();
+
+    try {
+      const response = await fetch(getDataApiUrl('/api/data/transactions'));
+      if (!response.ok) {
+        return StorageService.getTransactions();
+      }
+
+      const payload = await response.json();
+      const transactions = (payload.transactions || []) as Transaction[];
+      StorageService.saveTransactions(transactions);
+      return transactions;
+    } catch {
+      return StorageService.getTransactions();
+    }
+  },
+
   saveTransactions: (transactions: Transaction[]): void => {
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+  },
+
+  saveTransactionsResolved: async (transactions: Transaction[]): Promise<void> => {
+    StorageService.saveTransactions(transactions);
+
+    const mode = StorageService.getDataMode();
+    if (!BACKEND_DATA_ENABLED || !isBackendMode(mode)) return;
+
+    try {
+      await fetch(getDataApiUrl('/api/data/transactions'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactions })
+      });
+    } catch {
+      // Preserve local state as fallback in backend mode.
+    }
   },
 
   addTransaction: (transaction: Transaction): void => {
@@ -104,6 +167,25 @@ export const StorageService = {
   getMetrics: (): DailyMetric[] => {
     const data = localStorage.getItem(STORAGE_KEYS.METRICS);
     return data ? JSON.parse(data) : MOCK_METRICS;
+  },
+
+  getMetricsResolved: async (): Promise<DailyMetric[]> => {
+    const mode = StorageService.getDataMode();
+    if (!BACKEND_DATA_ENABLED || !isBackendMode(mode)) return StorageService.getMetrics();
+
+    try {
+      const response = await fetch(getDataApiUrl('/api/data/metrics'));
+      if (!response.ok) {
+        return StorageService.getMetrics();
+      }
+
+      const payload = await response.json();
+      const metrics = (payload.metrics || []) as DailyMetric[];
+      localStorage.setItem(STORAGE_KEYS.METRICS, JSON.stringify(metrics));
+      return metrics;
+    } catch {
+      return StorageService.getMetrics();
+    }
   },
 
   // Reviews
@@ -125,9 +207,43 @@ export const StorageService = {
     return JSON.parse(data);
   },
 
+  getNotificationsResolved: async (): Promise<AppNotification[]> => {
+    const mode = StorageService.getDataMode();
+    if (!BACKEND_DATA_ENABLED || !isBackendMode(mode)) return StorageService.getNotifications();
+
+    try {
+      const response = await fetch(getDataApiUrl('/api/data/notifications'));
+      if (!response.ok) {
+        return StorageService.getNotifications();
+      }
+
+      const payload = await response.json();
+      const notifications = (payload.notifications || []) as AppNotification[];
+      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifications));
+      return notifications;
+    } catch {
+      return StorageService.getNotifications();
+    }
+  },
+
   markNotificationsRead: (): void => {
      const notifs = StorageService.getNotifications().map(n => ({...n, read: true}));
      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifs));
+  },
+
+  markNotificationsReadResolved: async (): Promise<void> => {
+    StorageService.markNotificationsRead();
+
+    const mode = StorageService.getDataMode();
+    if (!BACKEND_DATA_ENABLED || !isBackendMode(mode)) return;
+
+    try {
+      await fetch(getDataApiUrl('/api/data/notifications/read'), {
+        method: 'POST'
+      });
+    } catch {
+      // Preserve local read state as fallback in backend mode.
+    }
   },
 
   // AI Cache Management
@@ -151,5 +267,16 @@ export const StorageService = {
     const parsed = JSON.parse(cache);
     delete parsed[key];
     localStorage.setItem(STORAGE_KEYS.AI_CACHE, JSON.stringify(parsed));
+  },
+
+  // Shared Action Plans (Experimental)
+  getActionPlans: (): ActionPlan[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.ACTION_PLANS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveActionPlans: (plans: ActionPlan[]): void => {
+    localStorage.setItem(STORAGE_KEYS.ACTION_PLANS, JSON.stringify(plans));
+    window.dispatchEvent(new Event('one82_action_plans_update'));
   }
 };

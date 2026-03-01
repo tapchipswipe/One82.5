@@ -109,6 +109,25 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
                 </div>
               </div>
 
+              {/* Strategy Positioning */}
+              <div className="bg-white/10 rounded-xl p-6 mb-8 border border-white/20">
+                <h3 className="text-lg font-semibold mb-2">Built-In Pricing Strategy Simulator</h3>
+                <p className="text-gray-300 text-sm mb-4">
+                  ONE82 includes a strategy simulator designed for your own growth model: test ONE82 subscription pricing
+                  and CRM engagement intensity before rolling changes out to your team.
+                </p>
+                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <p className="font-semibold text-white mb-1">Subscription Price Lever</p>
+                    <p className="text-gray-300">Model how plan pricing adjustments affect conversion, retention, and net MRR.</p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <p className="font-semibold text-white mb-1">CRM Engagement Lever</p>
+                    <p className="text-gray-300">Model how account-touch intensity impacts onboarding success and churn reduction.</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Feature List */}
               <div className="grid md:grid-cols-2 gap-3 mb-8">
                 {isoFeatures.map((feature) => (

@@ -71,6 +71,23 @@ Built with a modern, high-performance stack:
 - **Styling**: Clean white theme with dark/light mode support
 - **Components**: Modular architecture including `ISODashboard`, `MerchantLedger`, `StatementReader`, `Profitability`, and more
 
+### Capability Status (February 2026)
+
+| Capability | Status | Notes |
+|---|---|---|
+| Role-based app shell, dashboards, and navigation | **Live** | Available in current front-end experience |
+| Statement upload + AI-assisted analysis UX | **Live (AI-Assisted)** | Analysis quality depends on model response and input quality |
+| Portfolio/merchant metrics in demo mode | **Simulated** | Seeded/generated data for product walkthroughs |
+| Processor integrations (Stripe/Square/Clover/TSYS/Fiserv/etc.) | **Roadmap** | UI scaffolds exist; full live ingestion path is in progress |
+| Per-rep profitability from live processor data | **Roadmap** | End-to-end live source-of-truth still being implemented |
+| Churn detection and health scoring on live portfolio streams | **Roadmap** | Current alerts are demo/simulation-driven |
+| Merchant inventory intelligence from live POS data | **Roadmap** | Current experience is prototype intelligence UX |
+
+### First Production Workflow (Current Build Target)
+**ISO user can sign in, connect one processor, and view persisted portfolio metrics after refresh/re-login.**
+
+This is the primary implementation focus before expanding additional feature surfaces.
+
 ---
 
 ## 🛠 Getting Started
@@ -90,14 +107,69 @@ Built with a modern, high-performance stack:
     npm install
     ```
 3.  **Configure Environment**:
-    Create a `.env.local` file in the root and add your Gemini API key:
+  Copy `.env.example` to `.env.local` and configure values:
     ```env
-    VITE_GEMINI_API_KEY=your_api_key_here
+  VITE_GEMINI_API_KEY=your_api_key_here
+  VITE_ENABLE_BACKEND_AUTH=false
+  VITE_ENABLE_BACKEND_DATA=false
+  VITE_ENABLE_LIVE_INTEGRATIONS=false
+  VITE_ENABLE_EXPERIMENTAL=false
+  VITE_OVERSEER_EMAIL=owner@one82.io
+  VITE_AUTH_API_BASE=http://localhost:3000
+  VITE_DATA_API_BASE=http://localhost:3000
     ```
+  Demo Phase defaults should remain `false` for all three feature flags.
+  Set `VITE_ENABLE_EXPERIMENTAL=true` to expose the Experimental tab for merchant/ISO users.
+  `VITE_OVERSEER_EMAIL` is reserved for owner-only Overseer login access.
+
+  ### Phase Flag Profiles
+
+  | Profile | Flag Values |
+  |---|---|
+  | Demo | `VITE_ENABLE_BACKEND_AUTH=false`, `VITE_ENABLE_BACKEND_DATA=false`, `VITE_ENABLE_LIVE_INTEGRATIONS=false`, `VITE_ENABLE_EXPERIMENTAL=false` |
+  | Trial | `VITE_ENABLE_BACKEND_AUTH=true`, `VITE_ENABLE_BACKEND_DATA=true`, `VITE_ENABLE_LIVE_INTEGRATIONS=true`, `VITE_ENABLE_EXPERIMENTAL=true` |
+
+  Trial should use staging credentials and tenant-isolated data.
 4.  **Run Development Server**:
     ```bash
     npm run dev
     ```
+
+### Local Backend Mode (Dev)
+The dev server now includes in-memory API routes for backend mode:
+- `POST /api/auth/login`
+- `GET /api/auth/session`
+- `POST /api/auth/logout`
+- `GET/PUT /api/data/transactions`
+- `GET /api/data/metrics`
+- `GET /api/data/notifications`
+- `POST /api/data/notifications/read`
+
+Supabase-backed persistence is automatically enabled when all of these are present in `.env.local`:
+
+```env
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+```
+
+If any variable is missing (or Supabase has a recoverable runtime error), local in-memory demo persistence is used as fallback.
+
+To test end-to-end backend mode locally:
+1. Start `npm run dev`
+2. On Login, switch to **Backend Auth**
+3. Sign in with any email (use an email containing `iso` to auto-map ISO role)
+
+No separate backend process is required for this local dev flow.
+
+### Backend Implementation Artifacts (Supabase)
+- API contract: [docs/backend/API_CONTRACT.md](docs/backend/API_CONTRACT.md)
+- Supabase migration: [supabase/migrations/0001_initial_schema.sql](supabase/migrations/0001_initial_schema.sql)
+- Setup guide: [docs/backend/SUPABASE_SETUP.md](docs/backend/SUPABASE_SETUP.md)
+
+### Role Hierarchy Source of Truth
+- Role hierarchy and permissions: [HIERARCHY_STRUCTURE.md](HIERARCHY_STRUCTURE.md)
+- Future role-related development must align with this file.
 
 ---
 
@@ -115,6 +187,11 @@ Built with a modern, high-performance stack:
 - [ ] **Phase 4**: Full Processor API Integrations (TSYS, Fiserv, WorldPay)
 - [ ] **Phase 5**: Terminal API Integration
 - [ ] **Phase 6**: Advanced Predictive Analytics & Churn Detection
+
+### Simulation Mode Policy
+- Simulation mode is used for demo/onboarding and product walkthroughs.
+- Core portfolio metrics must not silently fall back to simulated values in live workflows.
+- Any simulated or AI-generated output should be explicitly labeled in the UI.
 
 ---
 

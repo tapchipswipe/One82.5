@@ -13,6 +13,8 @@ import {
 
 const CARD_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#3b82f6'];
 
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
 const RiskBadge = ({ level }: { level: 'Low' | 'Medium' | 'High' }) => {
   const styles = {
     Low: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -97,6 +99,72 @@ const StatementReader: React.FC = () => {
       : volumeToggle === 'monthly' ? data.monthlyVolume
         : data.yearlyVolume
     : 0;
+
+  const attritionScore = data
+    ? data.attritionRisk === 'High'
+      ? 1
+      : data.attritionRisk === 'Medium'
+        ? 0.6
+        : 0.3
+    : 0;
+
+  const negotiatorModel = data
+    ? (() => {
+      const keyedRatio = data.keyedPercent / 100;
+      const volumeScore = clamp((Math.log10(Math.max(data.monthlyVolume, 1000)) - 3) / 3, 0, 1);
+      const rateScore = clamp((data.blendedRate - 2.0) / 1.5, 0, 1);
+
+      const closeProbability = Math.round(clamp(20 + 35 * volumeScore + 25 * attritionScore + 20 * rateScore - 15 * keyedRatio, 0, 95));
+      const concessionBps = clamp(8 + 12 * volumeScore + 10 * attritionScore + 8 * rateScore - 6 * keyedRatio, 2, 30);
+      const estimatedSavingsMonthly = Math.round(data.monthlyVolume * concessionBps / 10000);
+
+      const offerTiers = [
+        {
+          id: 'aggressive',
+          label: 'Aggressive Offer',
+          bps: Math.round(clamp(concessionBps * 1.3, 4, 40)),
+          winChance: Math.round(clamp(closeProbability - 18, 5, 85)),
+          note: 'Maximum savings ask; lower close probability.'
+        },
+        {
+          id: 'balanced',
+          label: 'Balanced Offer',
+          bps: Math.round(concessionBps),
+          winChance: Math.round(clamp(closeProbability, 10, 95)),
+          note: 'Best-fit offer to move this forward.'
+        },
+        {
+          id: 'retention',
+          label: 'Retention Offer',
+          bps: Math.round(clamp(concessionBps * 0.7, 1, 20)),
+          winChance: Math.round(clamp(closeProbability + 15, 20, 95)),
+          note: 'Smaller concession to protect margin and close quickly.'
+        }
+      ];
+
+      const objectionPlaybook = [
+        {
+          objection: '"Your rate is higher than my current processor."',
+          response: `Lead with total-cost framing: "You are currently paying ${data.blendedRate.toFixed(2)}% blended. Our balanced proposal reduces effective cost and includes ongoing risk monitoring to protect long-term margin."`
+        },
+        {
+          objection: '"Switching sounds disruptive."',
+          response: 'Use migration certainty: "No downtime, no terminal replacement requirement, and onboarding is staged so your team continues normal processing while we handle cutover."'
+        },
+        {
+          objection: '"I need to think about it."',
+          response: `Anchor urgency with economics: "Waiting one more month at the current profile is estimated to cost about $${estimatedSavingsMonthly.toLocaleString()} in avoidable fees. Let’s secure the balanced offer now and review in 30 days."`
+        }
+      ];
+
+      return {
+        closeProbability,
+        estimatedSavingsMonthly,
+        offerTiers,
+        objectionPlaybook
+      };
+    })()
+    : null;
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-6">
@@ -319,6 +387,67 @@ const StatementReader: React.FC = () => {
               {data.attritionRisk === 'High' && ' ⚠️ Immediate outreach recommended — high attrition risk detected.'}
             </p>
           </div>
+
+          {negotiatorModel && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-indigo-500" /> Statement Negotiator
+                </h4>
+                <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  Likelihood to Close: {negotiatorModel.closeProbability}%
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard
+                  label="Best-Fit Offer"
+                  value={`${negotiatorModel.offerTiers[1].bps} bps reduction`}
+                  sub={negotiatorModel.offerTiers[1].note}
+                  icon={<TrendingDown className="w-4 h-4" />}
+                />
+                <StatCard
+                  label="Est. Monthly Savings"
+                  value={`$${negotiatorModel.estimatedSavingsMonthly.toLocaleString()}`}
+                  sub="Projected savings vs current profile"
+                  icon={<DollarSign className="w-4 h-4" />}
+                />
+                <StatCard
+                  label="Expected Win Chance"
+                  value={`${negotiatorModel.offerTiers[1].winChance}%`}
+                  sub="Balanced proposal close probability"
+                  icon={<ShieldCheck className="w-4 h-4" />}
+                />
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Fallback Offers by Margin & Win Chance</p>
+                <div className="space-y-2">
+                  {negotiatorModel.offerTiers.map((tier, index) => (
+                    <div key={tier.id} className="bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700 rounded-lg p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{index + 1}. {tier.label}</p>
+                        <p className="text-xs text-gray-500">{tier.bps} bps · Win chance {tier.winChance}%</p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{tier.note}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Recommended Response for This Objection</p>
+                <div className="space-y-2">
+                  {negotiatorModel.objectionPlaybook.map((item) => (
+                    <div key={item.objection} className="bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700 rounded-lg p-3">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.objection}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{item.response}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

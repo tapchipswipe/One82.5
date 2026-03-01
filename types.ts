@@ -1,7 +1,7 @@
 
 export type BusinessType = 'Retail' | 'Restaurant' | 'Service' | 'E-Commerce' | 'Convenience Store';
 
-export type UserRole = 'merchant' | 'iso';
+export type UserRole = 'merchant' | 'iso' | 'overseer';
 
 export interface User {
   id: string;
@@ -153,4 +153,81 @@ export interface MerchantStatementAnalysis {
   attritionRisk: 'Low' | 'Medium' | 'High';
   growthPattern: 'Growing' | 'Stable' | 'Shrinking';
   fluctuationRate: number; // % swings month over month
+}
+
+export type CapabilityStatus = 'live' | 'roadmap' | 'simulated' | 'ai-generated';
+export type AuthMode = 'demo' | 'backend';
+
+export interface ActionPlan {
+  id: string;
+  title: string;
+  ownerRole: 'iso' | 'merchant';
+  visibleTo: Array<'iso' | 'merchant'>;
+  status: 'todo' | 'in_progress' | 'done';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  kind: 'iso' | 'merchant';
+  createdAt: string;
+}
+
+export interface AuthSession {
+  sessionId: string;
+  userId: string;
+  tenantId: string;
+  role: UserRole;
+  issuedAt: string;
+  expiresAt: string;
+}
+
+export interface AuthLoginInput {
+  email: string;
+  password: string;
+  mode: AuthMode;
+}
+
+export interface AuthLoginResult {
+  user: User;
+  session: AuthSession;
+  mode: AuthMode;
+}
+
+export interface ProcessorAccount {
+  id: string;
+  tenantId: string;
+  provider: 'Stripe' | 'Square' | 'Clover' | 'TSYS' | 'Fiserv' | 'Worldpay' | 'Global Payments' | 'Elavon' | 'Payroc';
+  status: 'connected' | 'disconnected' | 'error' | 'pending';
+  externalAccountId?: string;
+  connectedAt?: string;
+  lastSyncAt?: string;
+}
+
+export interface NormalizedTransaction {
+  id: string;
+  tenantId: string;
+  processorAccountId: string;
+  occurredAt: string;
+  amount: number;
+  currency: string;
+  status: 'approved' | 'declined' | 'refunded' | 'voided' | 'pending';
+  cardBrand?: 'visa' | 'mastercard' | 'amex' | 'discover' | 'other';
+  entryMethod?: 'swiped' | 'chip' | 'contactless' | 'keyed' | 'ecommerce' | 'other';
+  merchantId?: string;
+  merchantName?: string;
+}
+
+export interface PortfolioMetric {
+  tenantId: string;
+  rangeStart: string;
+  rangeEnd: string;
+  totalVolume: number;
+  transactionCount: number;
+  approvedRate: number;
+  averageTicket: number;
+  sourceStatus: CapabilityStatus;
+  generatedAt: string;
 }

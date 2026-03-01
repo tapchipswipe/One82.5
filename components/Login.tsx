@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { StorageService } from '../services/storage';
-import { User } from '../types';
+import { AuthService } from '../services/authService';
+import { AuthMode, User } from '../types';
 import { Loader2, Zap, TrendingUp, Shield, BarChart2, Gift, ArrowLeft } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: (user: User) => void;
+  onLogin: (user: User, mode: AuthMode) => void;
   showTrialMode?: boolean;
   onBackToHome?: () => void;
+  initialAuthMode?: AuthMode;
 }
 
 const FEATURES = [
@@ -15,36 +16,46 @@ const FEATURES = [
   { icon: Shield, text: 'Churn risk & residual tracking' },
 ];
 
-const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToHome }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToHome, initialAuthMode = 'demo' }) => {
+  const isBackendAuthEnabled = AuthService.isBackendEnabled();
+  const overseerEmail = AuthService.getOverseerEmail();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>(isBackendAuthEnabled ? initialAuthMode : 'demo');
+  const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState<'email' | 'password' | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
-    setTimeout(() => {
-      let user = StorageService.getUser();
-      if (!user || user.email !== email) {
-        user = {
-          id: 'u_' + Date.now(),
-          email,
-          name: email.split('@')[0] || 'User',
-          role: 'merchant',
-          businessType: undefined,
-          onboardingComplete: false,
-          credits: 50,
-          plan: 'Free'
-        };
-        StorageService.saveUser(user);
-      }
+    try {
+      const result = await AuthService.login({
+        email,
+        password,
+        mode: authMode
+      });
+
       setIsLoading(false);
-      onLogin(user);
-    }, 1000);
+      onLogin(result.user, result.mode);
+    } catch (loginError) {
+      setIsLoading(false);
+      setError(loginError instanceof Error ? loginError.message : 'Sign-in failed. Please try again.');
+    }
   };
 
-  const fillDemo = () => { setEmail('demo@one82.io'); setPassword('admin'); };
+  const fillDemo = () => {
+    setEmail('demo@one82.io');
+    setPassword('admin');
+    setAuthMode('demo');
+  };
+
+  const fillOverseer = () => {
+    setEmail(overseerEmail);
+    setPassword('owner');
+    setAuthMode('demo');
+  };
 
   return (
     <div className="min-h-screen flex bg-white overflow-hidden">
@@ -141,6 +152,54 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
           <h2 className="text-3xl font-bold text-gray-900 mb-2">{showTrialMode ? 'Start Your Free Trial' : 'Welcome back'}</h2>
           <p className="text-gray-600 text-sm mb-8">{showTrialMode ? 'Create your account to get started' : 'Sign in to your dashboard'}</p>
 
+          <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+            <p className="text-xs font-semibold text-indigo-700">
+              Owner Demo Access: use <span className="font-bold">{overseerEmail}</span> to open the Overseer dashboard.
+            </p>
+          </div>
+
+          <div className="mb-6 rounded-lg border-2 border-gray-200 p-3 bg-gray-50">
+            <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Sign-in Mode</p>
+            {isBackendAuthEnabled ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('demo')}
+                  className={`px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors ${authMode === 'demo' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}
+                >
+                  Demo Mode
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('backend')}
+                  className={`px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors ${authMode === 'backend' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}
+                >
+                  Backend Auth
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('demo')}
+                  className="px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors bg-gray-900 text-white border-gray-900"
+                >
+                  Demo Mode
+                </button>
+              </div>
+            )}
+            <p className="mt-2 text-xs text-gray-500">
+              {!isBackendAuthEnabled
+                ? 'Demo phase: backend auth is currently locked. Use demo mode for access.'
+                : authMode === 'demo'
+                  ? 'Uses local demo data and simulated session.'
+                  : 'Requires a reachable auth API endpoint.'}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500">
+              Owner-only overseer access is reserved for <span className="font-semibold">{overseerEmail}</span>.
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email field */}
             <div>
@@ -190,8 +249,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
             >
               {isLoading ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Signing in…</>
-              ) : 'Sign In →'}
+              ) : authMode === 'demo' ? 'Enter Demo →' : 'Sign In →'}
             </button>
+
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
           </form>
 
           <div className="mt-6 flex flex-col items-center gap-3">
@@ -201,22 +266,32 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                 Start Free Trial
               </a>
             </p>
-            <button
-              onClick={fillDemo}
-              className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
-            >
-              Fill demo credentials
-            </button>
+            <div className="flex items-center gap-4 text-xs">
+              <button
+                onClick={fillDemo}
+                className="text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+              >
+                Fill demo credentials
+              </button>
+              <button
+                onClick={fillOverseer}
+                className="text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+              >
+                Fill owner credentials
+              </button>
+            </div>
           </div>
 
           {/* Simulation badge */}
-          <div className="mt-8 flex items-center gap-2 justify-center">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
-            </span>
-            <span className="text-xs text-gray-500 font-medium">Simulation mode — no real data required</span>
-          </div>
+          {authMode === 'demo' && (
+            <div className="mt-8 flex items-center gap-2 justify-center">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
+              </span>
+              <span className="text-xs text-gray-500 font-medium">Simulation mode — no real data required</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

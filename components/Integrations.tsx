@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, Eye, EyeOff
 import {
     INTEGRATIONS,
     IntegrationCategory,
+    LIVE_INTEGRATIONS_ENABLED,
     isIntegrationConnected,
     saveIntegrationKey,
     getIntegrationKey,
@@ -74,8 +75,9 @@ const IntegrationCard = ({ integration, onSave }: {
                         <ExternalLink className="w-4 h-4" />
                     </a>
                     <button
+                        disabled={!LIVE_INTEGRATIONS_ENABLED}
                         onClick={() => setExpanded(!expanded)}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1"
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                     >
                         {connected ? 'Manage' : 'Connect'}
                         {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -91,6 +93,7 @@ const IntegrationCard = ({ integration, onSave }: {
                     <div className="flex gap-2">
                         <div className="relative flex-1">
                             <input
+                                disabled={!LIVE_INTEGRATIONS_ENABLED}
                                 type={showKey ? 'text' : 'password'}
                                 value={apiKeyValue}
                                 onChange={(e) => setApiKeyValue(e.target.value)}
@@ -98,22 +101,25 @@ const IntegrationCard = ({ integration, onSave }: {
                                 className="w-full px-3 py-2 pr-10 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-gray-50 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
                             />
                             <button
+                                disabled={!LIVE_INTEGRATIONS_ENABLED}
                                 onClick={() => setShowKey(!showKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                         </div>
                         <button
+                            disabled={!LIVE_INTEGRATIONS_ENABLED}
                             onClick={handleSave}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition-colors"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600"
                         >
                             Save & Connect
                         </button>
                         {connected && (
                             <button
+                                disabled={!LIVE_INTEGRATIONS_ENABLED}
                                 onClick={handleDisconnect}
-                                className="px-4 py-2 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 text-sm font-bold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                                className="px-4 py-2 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 text-sm font-bold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                             >
                                 Disconnect
                             </button>
@@ -143,7 +149,9 @@ const Integrations: React.FC = () => {
                     Integrations
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Plug in your API keys to go live. Without keys, all data runs in simulation mode.
+                    {LIVE_INTEGRATIONS_ENABLED
+                        ? 'Plug in your API keys to go live. Without keys, all data runs in simulation mode.'
+                        : 'Demo phase lock: live integrations are disabled and the app runs in simulation mode.'}
                 </p>
             </div>
 
@@ -154,12 +162,16 @@ const Integrations: React.FC = () => {
                 }`}>
                 <div>
                     <p className="font-semibold text-sm text-gray-900 dark:text-white">
-                        {connectedCount > 0
+                        {!LIVE_INTEGRATIONS_ENABLED
+                            ? 'Demo phase lock active'
+                            : connectedCount > 0
                             ? `${connectedCount} integration${connectedCount > 1 ? 's' : ''} connected`
                             : 'Running in simulation mode'}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                        {connectedCount > 0
+                        {!LIVE_INTEGRATIONS_ENABLED
+                            ? 'Live integrations are disabled for this phase. Connect/manage actions are unavailable.'
+                            : connectedCount > 0
                             ? 'Live data is now flowing into your dashboard.'
                             : 'The app is fully functional. Connect a key below to switch to live data.'}
                     </p>
@@ -196,8 +208,9 @@ const Integrations: React.FC = () => {
 
             {/* Footer note */}
             <div className="text-xs text-gray-400 dark:text-gray-600 text-center pb-4">
-                All API keys are stored locally in your browser and are never transmitted to One82 servers.
-                Keys are only used to call the respective integration's own API directly.
+                {LIVE_INTEGRATIONS_ENABLED
+                    ? 'All API keys are stored locally in your browser and are never transmitted to One82 servers. Keys are only used to call the respective integration\'s own API directly.'
+                    : 'Demo phase lock is enabled. Live integration connections are unavailable in this environment.'}
             </div>
         </div>
     );

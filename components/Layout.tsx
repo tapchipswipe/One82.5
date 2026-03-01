@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, CreditCard, FileText, Settings, Menu, Moon, Sun,
-  LogOut, MessageSquare, Briefcase, TrendingUp, Users, Mic, Plug2,
-  DollarSign, Zap, Bell, ChevronRight, Package
+  LogOut, MessageSquare, Briefcase, TrendingUp, Users, Plug2,
+  DollarSign, Bell, ChevronRight, Package, Shield, FlaskConical, CalendarDays
 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { AppNotification, User, UserRole } from '../types';
-import LiveAssistant from './LiveAssistant';
+import { ENABLE_EXPERIMENTAL } from '../constants';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,7 +24,6 @@ const Layout: React.FC<LayoutProps> = ({
   children, activeView, onNavigate, darkMode, toggleTheme, role, businessType, onLogout
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showLive, setShowLive] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [user, setUser] = useState<User | null>(StorageService.getUser());
 
@@ -60,8 +59,6 @@ const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className={`flex h-screen overflow-hidden ${darkMode ? 'dark' : ''}`}>
-      {showLive && <LiveAssistant onClose={() => setShowLive(false)} />}
-
       {/* Mobile backdrop */}
       {isSidebarOpen && (
         <div
@@ -87,7 +84,7 @@ const Layout: React.FC<LayoutProps> = ({
           />
           <span className="ml-3 text-gray-900 font-bold text-lg tracking-tight">ONE82</span>
           <span className="ml-2 text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded uppercase tracking-wide">
-            {role === 'iso' ? 'ISO' : 'Pro'}
+            {role === 'iso' ? 'ISO' : role === 'overseer' ? 'OWNER' : 'Pro'}
           </span>
         </div>
 
@@ -113,8 +110,24 @@ const Layout: React.FC<LayoutProps> = ({
               <NavItem view="statements" icon={FileText} label="Statement Analysis" />
               <NavItem view="portfolio" icon={Briefcase} label="Merchants" />
               <NavItem view="profitability" icon={DollarSign} label="Profitability" />
+              <NavItem view="team" icon={Users} label="Team" />
               <NavSection label="Settings" />
               <NavItem view="integrations" icon={Plug2} label="Integrations" />
+            </>
+          )}
+
+          {role === 'overseer' && (
+            <>
+              <NavSection label="Owner" />
+              <NavItem view="dashboard" icon={Shield} label="Overseer Center" />
+            </>
+          )}
+
+          {ENABLE_EXPERIMENTAL && (role === 'merchant' || role === 'iso') && (
+            <>
+              <NavSection label="Labs" />
+              {role === 'merchant' && <NavItem view="exp-cashflow" icon={CalendarDays} label="Cash Forecast" />}
+              <NavItem view="experimental" icon={FlaskConical} label="Experimental" />
             </>
           )}
 
@@ -123,14 +136,6 @@ const Layout: React.FC<LayoutProps> = ({
 
         {/* Bottom panel */}
         <div className="p-3 border-t border-gray-200 space-y-2">
-          {/* Voice assistant button */}
-          <button
-            onClick={() => setShowLive(true)}
-            className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-bold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors gap-2"
-          >
-            <Mic className="w-4 h-4" /> Voice Assistant
-          </button>
-
           {/* User card */}
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors cursor-default">
             <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
