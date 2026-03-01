@@ -130,6 +130,7 @@ This is the primary implementation focus before expanding additional feature sur
   | Trial | `VITE_ENABLE_BACKEND_AUTH=true`, `VITE_ENABLE_BACKEND_DATA=true`, `VITE_ENABLE_LIVE_INTEGRATIONS=true`, `VITE_ENABLE_EXPERIMENTAL=true` |
 
   Trial should use staging credentials and tenant-isolated data.
+  For trial phase bootstrap, you can copy `.env.trial.example` to `.env.local` and fill the Supabase values.
 4.  **Run Development Server**:
     ```bash
     npm run dev
@@ -144,6 +145,7 @@ The dev server now includes in-memory API routes for backend mode:
 - `GET /api/data/metrics`
 - `GET /api/data/notifications`
 - `POST /api/data/notifications/read`
+- `GET /api/health`
 
 Supabase-backed persistence is automatically enabled when all of these are present in `.env.local`:
 
@@ -163,9 +165,47 @@ To test end-to-end backend mode locally:
 No separate backend process is required for this local dev flow.
 
 ### Backend Implementation Artifacts (Supabase)
-- API contract: [docs/backend/API_CONTRACT.md](docs/backend/API_CONTRACT.md)
-- Supabase migration: [supabase/migrations/0001_initial_schema.sql](supabase/migrations/0001_initial_schema.sql)
-- Setup guide: [docs/backend/SUPABASE_SETUP.md](docs/backend/SUPABASE_SETUP.md)
+- Supabase migration: [supabase/migrations/0001_one82_state.sql](supabase/migrations/0001_one82_state.sql)
+- Runtime API implementation: [api/_lib/backend.ts](api/_lib/backend.ts)
+
+### Vercel + Supabase Test Flow (Current)
+You can test backend auth/data on Vercel using the included serverless routes under `api/`:
+
+- `POST /api/auth/login`
+- `GET /api/auth/session`
+- `POST /api/auth/logout`
+- `GET/PUT /api/data/transactions`
+- `GET /api/data/metrics`
+- `GET /api/data/notifications`
+- `POST /api/data/notifications/read`
+
+1. Create a Supabase project.
+2. Run SQL from `supabase/migrations/0001_one82_state.sql` in Supabase SQL Editor.
+3. In Vercel → Project Settings → Environment Variables, set:
+  - `VITE_ENABLE_BACKEND_AUTH=true`
+  - `VITE_ENABLE_BACKEND_DATA=true`
+  - `VITE_AUTH_API_BASE=` (empty)
+  - `VITE_DATA_API_BASE=` (empty)
+  - `VITE_OVERSEER_EMAIL=owner@one82.io` (or your owner email)
+  - `SUPABASE_URL=<your-project-url>`
+  - `SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>`
+  - `ONE82_SUPABASE_STATE_TABLE=one82_state`
+4. Deploy to Vercel.
+5. In app login, select **Backend Auth** and sign in.
+6. Add/edit transactions, refresh, and re-login to confirm data persists.
+7. Visit `/api/health` to verify API runtime and Supabase connectivity status.
+
+If Supabase env vars are missing or invalid, API routes fall back to in-memory state for temporary testing.
+
+### Switch To Trial Phase (One-Step Profile)
+Use `.env.trial.example` as the source of truth for trial mode:
+
+1. Copy `.env.trial.example` to `.env.local` (local) or mirror the same keys in Vercel env vars.
+2. Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+3. Keep `VITE_AUTH_API_BASE` and `VITE_DATA_API_BASE` empty on Vercel to use same-origin `/api/*`.
+4. Redeploy (or restart local dev server).
+
+With this profile, backend auth/data and live integrations are enabled by default.
 
 ### Role Hierarchy Source of Truth
 - Role hierarchy and permissions: [HIERARCHY_STRUCTURE.md](HIERARCHY_STRUCTURE.md)

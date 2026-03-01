@@ -117,6 +117,9 @@ const loginWithBackend = async (email: string, password: string): Promise<AuthLo
 
 const getPreferredMode = (): AuthMode => {
   const mode = localStorage.getItem(AUTH_MODE_KEY);
+  if (!mode && BACKEND_AUTH_ENABLED) {
+    return 'backend';
+  }
   return normalizeAuthMode(mode === 'backend' ? 'backend' : 'demo');
 };
 
