@@ -154,8 +154,38 @@ const parseCookies = (cookieHeader?: string): Record<string, string> => {
   }, {});
 };
 
-const base64UrlEncode = (value: string): string => Buffer.from(value, 'utf8').toString('base64url');
-const base64UrlDecode = (value: string): string => Buffer.from(value, 'base64url').toString('utf8');
+const toBase64 = (value: string): string => {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(value, 'utf8').toString('base64');
+  }
+
+  if (typeof btoa !== 'undefined') {
+    return btoa(unescape(encodeURIComponent(value)));
+  }
+
+  throw new Error('No base64 encoder available in current runtime.');
+};
+
+const fromBase64 = (value: string): string => {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(value, 'base64').toString('utf8');
+  }
+
+  if (typeof atob !== 'undefined') {
+    return decodeURIComponent(escape(atob(value)));
+  }
+
+  throw new Error('No base64 decoder available in current runtime.');
+};
+
+const base64UrlEncode = (value: string): string =>
+  toBase64(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+const base64UrlDecode = (value: string): string => {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+  return fromBase64(padded);
+};
 
 const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();

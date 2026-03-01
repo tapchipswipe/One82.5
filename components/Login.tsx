@@ -51,6 +51,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
     setAuthMode('demo');
   };
 
+  const switchToTrial = () => {
+    if (!isBackendAuthEnabled) return;
+    setAuthMode('backend');
+  };
+
   const fillOverseer = () => {
     setEmail(overseerEmail);
     setPassword('owner');
@@ -174,7 +179,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                   onClick={() => setAuthMode('backend')}
                   className={`px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors ${authMode === 'backend' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}
                 >
-                  Backend Auth
+                  Trial
                 </button>
               </div>
             ) : (
@@ -193,7 +198,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                 ? 'Demo phase: backend auth is currently locked. Use demo mode for access.'
                 : authMode === 'demo'
                   ? 'Uses local demo data and simulated session.'
-                  : 'Requires a reachable auth API endpoint.'}
+                  : 'Uses trial sign-in through the auth API endpoint.'}
             </p>
             <p className="mt-1 text-[11px] text-gray-500">
               Owner-only overseer access is reserved for <span className="font-semibold">{overseerEmail}</span>.
@@ -249,7 +254,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
             >
               {isLoading ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Signing in…</>
-              ) : authMode === 'demo' ? 'Enter Demo →' : 'Sign In →'}
+              ) : authMode === 'demo' ? 'Enter Demo →' : 'Start Trial →'}
             </button>
 
             {error && (
@@ -262,9 +267,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
           <div className="mt-6 flex flex-col items-center gap-3">
             <p className="text-sm text-gray-500">
               No account?{' '}
-              <a href="#" className="text-gray-900 hover:text-gray-700 font-semibold underline">
+              <button
+                type="button"
+                onClick={switchToTrial}
+                disabled={!isBackendAuthEnabled}
+                className="text-gray-900 hover:text-gray-700 font-semibold underline disabled:text-gray-400 disabled:no-underline"
+              >
                 Start Free Trial
-              </a>
+              </button>
             </p>
             <div className="flex items-center gap-4 text-xs">
               <button

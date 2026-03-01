@@ -40,13 +40,17 @@ const App: React.FC = () => {
   const [marketingPage, setMarketingPage] = useState<'home' | 'features' | 'pricing' | null>('home');
   const [showTrial, setShowTrial] = useState(false);
   const merchants = SimulationService.generatePortfolio();
+  const resolveDataMode = (mode: AuthMode): 'backend' | 'demo' => {
+    if (StorageService.isBackendDataEnabled()) return 'backend';
+    return mode === 'backend' ? 'backend' : 'demo';
+  };
 
   useEffect(() => {
     const initialize = async () => {
       try {
         const { user: bootstrappedUser, mode } = await AuthService.bootstrap();
         setAuthMode(mode);
-        StorageService.setDataMode(mode === 'backend' ? 'backend' : 'demo');
+        StorageService.setDataMode(resolveDataMode(mode));
 
         if (bootstrappedUser) {
           setUser(bootstrappedUser);
@@ -98,12 +102,12 @@ const App: React.FC = () => {
   const toggleTheme = () => setDarkMode(!darkMode);
   const handleLogin = (u: User, mode: AuthMode) => {
     setAuthMode(mode);
-    StorageService.setDataMode(mode === 'backend' ? 'backend' : 'demo');
+    StorageService.setDataMode(resolveDataMode(mode));
     setUser(u);
   };
   const handleLogout = () => {
     void AuthService.logout(authMode);
-    StorageService.setDataMode('demo');
+    StorageService.setDataMode(resolveDataMode(authMode));
     setUser(null);
   };
 
@@ -149,7 +153,7 @@ const App: React.FC = () => {
     );
   }
   
-  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial} onBackToHome={() => setMarketingPage('home')} initialAuthMode={authMode} /></div>;
+  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial} onBackToHome={() => setMarketingPage('home')} initialAuthMode={showTrial ? 'backend' : authMode} /></div>;
   if (!user.onboardingComplete && user.role !== 'overseer') return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} /></div>;
 
   return (

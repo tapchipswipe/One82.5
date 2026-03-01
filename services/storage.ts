@@ -40,6 +40,8 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export const StorageService = {
+  isBackendDataEnabled: (): boolean => BACKEND_DATA_ENABLED,
+
   getDataMode: (): DataMode => {
     const mode = localStorage.getItem(STORAGE_KEYS.DATA_MODE);
     return normalizeDataMode(mode === 'backend' ? 'backend' : 'demo');
