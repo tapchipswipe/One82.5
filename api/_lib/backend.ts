@@ -160,7 +160,15 @@ const toBase64 = (value: string): string => {
   }
 
   if (typeof btoa !== 'undefined') {
-    return btoa(unescape(encodeURIComponent(value)));
+    if (typeof TextEncoder !== 'undefined') {
+      const bytes = new TextEncoder().encode(value);
+      let binary = '';
+      for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+      }
+      return btoa(binary);
+    }
+    return btoa(value);
   }
 
   throw new Error('No base64 encoder available in current runtime.');
@@ -172,7 +180,12 @@ const fromBase64 = (value: string): string => {
   }
 
   if (typeof atob !== 'undefined') {
-    return decodeURIComponent(escape(atob(value)));
+    const binary = atob(value);
+    if (typeof TextDecoder !== 'undefined') {
+      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    }
+    return binary;
   }
 
   throw new Error('No base64 decoder available in current runtime.');
