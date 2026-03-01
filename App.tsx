@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Transactions from './components/Transactions';
@@ -145,12 +146,13 @@ const App: React.FC = () => {
           {marketingPage === 'features' && <FeaturesPage onNavigate={handleMarketingNavigate} />}
           {marketingPage === 'pricing' && <PricingPage onNavigate={handleMarketingNavigate} />}
         </MarketingLayout>
+        <SpeedInsights />
       </div>
     );
   }
   
-  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial} onBackToHome={() => setMarketingPage('home')} initialAuthMode={authMode} /></div>;
-  if (!user.onboardingComplete && user.role !== 'overseer') return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} /></div>;
+  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial} onBackToHome={() => setMarketingPage('home')} initialAuthMode={authMode} /><SpeedInsights /></div>;
+  if (!user.onboardingComplete && user.role !== 'overseer') return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} /><SpeedInsights /></div>;
 
   return (
     <Layout
@@ -198,6 +200,7 @@ const App: React.FC = () => {
           {!['dashboard', 'settings'].includes(activeView) && <OverseerDashboard />}
         </>
       )}
+      <SpeedInsights />
     </Layout>
   );
 };
