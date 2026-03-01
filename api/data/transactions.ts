@@ -7,6 +7,8 @@ import {
   sendUnauthorized
 } from '../_lib/backend';
 
+export const config = { runtime: 'nodejs' };
+
 type Body = {
   transactions?: unknown[];
 };

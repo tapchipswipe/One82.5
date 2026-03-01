@@ -1,5 +1,7 @@
 import { clearSessionCookie, sendMethodNotAllowed } from '../_lib/backend';
 
+export const config = { runtime: 'nodejs' };
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     sendMethodNotAllowed(res, ['POST']);

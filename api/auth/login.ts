@@ -1,5 +1,7 @@
 import { getOrCreateLogin, parseBody, sendMethodNotAllowed, setSessionCookie } from '../_lib/backend';
 
+export const config = { runtime: 'nodejs' };
+
 type LoginBody = {
   email?: string;
   password?: string;
