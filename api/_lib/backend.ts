@@ -21,6 +21,8 @@ type AuthSession = {
   expiresAt: string;
 };
 
+type AuthMode = 'demo' | 'backend';
+
 type AppNotification = {
   id: string;
   title: string;
@@ -49,9 +51,23 @@ type Transaction = {
     | 'Uncategorized';
 };
 
+type CalendarEvent = {
+  id: string;
+  title: string;
+  date: string;
+  note?: string;
+  impactDirection: 'up' | 'down' | 'neutral';
+  impactPercent: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
 type TenantState = {
   transactions: Transaction[];
   notifications: AppNotification[];
+  calendarEvents: CalendarEvent[];
+  importedMerchants: Array<Record<string, string>>;
+  importedTeam: Array<Record<string, string>>;
 };
 
 type DailyMetric = {
@@ -73,63 +89,25 @@ type ResponseLike = {
   end: (body?: string) => void;
 };
 
-const DEFAULT_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'n1',
-    title: 'Goal Update',
-    message: 'You reached 42% of your monthly goal!',
-    type: 'info',
-    read: false,
-    timestamp: Date.now()
-  },
-  {
-    id: 'n2',
-    title: 'Anomaly Detected',
-    message: 'Unusual transaction volume on Tuesday.',
-    type: 'alert',
-    read: false,
-    timestamp: Date.now() - 86_400_000
-  }
-];
+type CachePolicy = 'no-store' | 'public-short';
 
-const DEFAULT_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'seed_tx_1',
-    date: new Date(Date.now() - 2 * 86_400_000).toISOString(),
-    amount: 125.5,
-    status: 'Completed',
-    customer: 'Demo Customer A',
-    items: ['Service Plan'],
-    method: 'Visa',
-    category: 'Uncategorized'
-  },
-  {
-    id: 'seed_tx_2',
-    date: new Date(Date.now() - 86_400_000).toISOString(),
-    amount: 89.99,
-    status: 'Completed',
-    customer: 'Demo Customer B',
-    items: ['Inventory Item'],
-    method: 'MasterCard',
-    category: 'Uncategorized'
-  },
-  {
-    id: 'seed_tx_3',
-    date: new Date().toISOString(),
-    amount: 45,
-    status: 'Pending',
-    customer: 'Demo Customer C',
-    items: ['Deposit'],
-    method: 'Square',
-    category: 'Uncategorized'
-  }
-];
+const DEFAULT_NOTIFICATIONS: AppNotification[] = [];
+
+const DEFAULT_TRANSACTIONS: Transaction[] = [];
 
 const OVERSEER_EMAIL = (process.env.VITE_OVERSEER_EMAIL || 'owner@one82.io').toLowerCase();
 const SESSION_COOKIE = 'one82_backend_session';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const STATE_TABLE = process.env.ONE82_SUPABASE_STATE_TABLE || 'one82_state';
+const LOGIN_USERS_TABLE = process.env.ONE82_SUPABASE_LOGIN_USERS_TABLE || 'one82_login_users';
+const LOGIN_SESSIONS_TABLE = process.env.ONE82_SUPABASE_LOGIN_SESSIONS_TABLE || 'one82_login_sessions';
+const TENANTS_TABLE = process.env.ONE82_SUPABASE_TENANTS_TABLE || 'one82_tenants';
+const MERCHANTS_TABLE = process.env.ONE82_SUPABASE_MERCHANTS_TABLE || 'one82_merchants';
+const TEAM_MEMBERS_TABLE = process.env.ONE82_SUPABASE_TEAM_MEMBERS_TABLE || 'one82_team_members';
+const PROCESSOR_TRANSACTIONS_TABLE = process.env.ONE82_SUPABASE_PROCESSOR_TRANSACTIONS_TABLE || 'one82_processor_transactions';
+const IMPORT_JOBS_TABLE = process.env.ONE82_SUPABASE_IMPORT_JOBS_TABLE || 'one82_import_jobs';
 
 const getMemoryStore = (): Map<string, TenantState> => {
   const globalValue = globalThis as typeof globalThis & { __one82MemStore?: Map<string, TenantState> };
@@ -141,7 +119,10 @@ const getMemoryStore = (): Map<string, TenantState> => {
 
 const defaultState = (): TenantState => ({
   transactions: DEFAULT_TRANSACTIONS,
-  notifications: DEFAULT_NOTIFICATIONS
+  notifications: DEFAULT_NOTIFICATIONS,
+  calendarEvents: [],
+  importedMerchants: [],
+  importedTeam: []
 });
 
 const parseCookies = (cookieHeader?: string): Record<string, string> => {
@@ -152,52 +133,6 @@ const parseCookies = (cookieHeader?: string): Record<string, string> => {
     acc[key] = decodeURIComponent(rest.join('='));
     return acc;
   }, {});
-};
-
-const toBase64 = (value: string): string => {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(value, 'utf8').toString('base64');
-  }
-
-  if (typeof btoa !== 'undefined') {
-    if (typeof TextEncoder !== 'undefined') {
-      const bytes = new TextEncoder().encode(value);
-      let binary = '';
-      for (const byte of bytes) {
-        binary += String.fromCharCode(byte);
-      }
-      return btoa(binary);
-    }
-    return btoa(value);
-  }
-
-  throw new Error('No base64 encoder available in current runtime.');
-};
-
-const fromBase64 = (value: string): string => {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(value, 'base64').toString('utf8');
-  }
-
-  if (typeof atob !== 'undefined') {
-    const binary = atob(value);
-    if (typeof TextDecoder !== 'undefined') {
-      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-      return new TextDecoder().decode(bytes);
-    }
-    return binary;
-  }
-
-  throw new Error('No base64 decoder available in current runtime.');
-};
-
-const base64UrlEncode = (value: string): string =>
-  toBase64(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-
-const base64UrlDecode = (value: string): string => {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  return fromBase64(padded);
 };
 
 const createCookieSession = (user: User): AuthSession => {
@@ -213,21 +148,12 @@ const createCookieSession = (user: User): AuthSession => {
   };
 };
 
-const sessionCookieValue = (user: User, session: AuthSession): string => {
-  const payload = JSON.stringify({ user, session });
-  return base64UrlEncode(payload);
-};
-
-const parseSessionCookie = (encoded: string): { user: User; session: AuthSession } | null => {
-  try {
-    const decoded = base64UrlDecode(encoded);
-    const parsed = JSON.parse(decoded) as { user: User; session: AuthSession };
-    if (!parsed?.user || !parsed?.session) return null;
-    if (new Date(parsed.session.expiresAt).getTime() < Date.now()) return null;
-    return parsed;
-  } catch {
-    return null;
+const createSessionToken = (): string => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
+
+  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
 };
 
 const roleFromEmail = (email: string): UserRole => {
@@ -291,6 +217,224 @@ const getSupabaseHeaders = (): Record<string, string> => ({
 });
 
 const canUseSupabase = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const canUseSupabaseAuth = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+export const verifySupabaseCredentials = async (email: string, password: string): Promise<boolean> => {
+  if (!canUseSupabaseAuth) {
+    throw new Error('Supabase auth verification is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.');
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY || '',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email, password })
+  });
+
+  if (!response.ok) {
+    return false;
+  }
+
+  const payload = (await response.json()) as { user?: { email?: string } };
+  const verifiedEmail = payload?.user?.email?.trim().toLowerCase();
+  return Boolean(verifiedEmail && verifiedEmail === email.trim().toLowerCase());
+};
+
+type LoginUserRow = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  business_type?: string | null;
+  organization_name?: string | null;
+  onboarding_complete: boolean;
+  credits: number;
+  plan: User['plan'];
+  last_auth_mode?: AuthMode;
+};
+
+type LoginSessionRow = {
+  session_id: string;
+  session_token: string;
+  user_id: string;
+  tenant_id: string;
+  role: UserRole;
+  auth_mode: AuthMode;
+  issued_at: string;
+  expires_at: string;
+  revoked_at?: string | null;
+};
+
+const requireSupabase = (): void => {
+  if (!canUseSupabase) {
+    throw new Error('Supabase auth storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  }
+};
+
+const toLoginUserRow = (user: User, mode: AuthMode): LoginUserRow => ({
+  id: user.id,
+  email: user.email,
+  name: user.name,
+  role: user.role,
+  business_type: user.businessType ?? null,
+  organization_name: user.organizationName ?? null,
+  onboarding_complete: user.onboardingComplete,
+  credits: user.credits,
+  plan: user.plan,
+  last_auth_mode: mode
+});
+
+const toUserFromRow = (row: LoginUserRow): User => ({
+  id: row.id,
+  email: row.email,
+  name: row.name,
+  role: row.role,
+  businessType: row.business_type ?? undefined,
+  organizationName: row.organization_name ?? undefined,
+  onboardingComplete: Boolean(row.onboarding_complete),
+  credits: Number(row.credits) || 0,
+  plan: row.plan
+});
+
+const upsertLoginUser = async (user: User, mode: AuthMode): Promise<User> => {
+  requireSupabase();
+
+  const upsertUrl = `${SUPABASE_URL}/rest/v1/${LOGIN_USERS_TABLE}?on_conflict=email&select=id,email,name,role,business_type,organization_name,onboarding_complete,credits,plan,last_auth_mode`;
+  const payload = {
+    ...toLoginUserRow(user, mode),
+    last_login_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const response = await fetch(upsertUrl, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'resolution=merge-duplicates,return=representation'
+    },
+    body: JSON.stringify([payload])
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to persist login user in Supabase.');
+  }
+
+  const rows = (await response.json()) as LoginUserRow[];
+  const row = rows?.[0];
+  if (!row) {
+    throw new Error('Supabase did not return persisted login user.');
+  }
+
+  return toUserFromRow(row);
+};
+
+const createLoginSession = async (user: User, mode: AuthMode): Promise<{ session: AuthSession; sessionToken: string }> => {
+  requireSupabase();
+
+  const session = createCookieSession(user);
+  const sessionToken = createSessionToken();
+  const row: LoginSessionRow = {
+    session_id: session.sessionId,
+    session_token: sessionToken,
+    user_id: session.userId,
+    tenant_id: session.tenantId,
+    role: session.role,
+    auth_mode: mode,
+    issued_at: session.issuedAt,
+    expires_at: session.expiresAt,
+    revoked_at: null
+  };
+
+  const insertUrl = `${SUPABASE_URL}/rest/v1/${LOGIN_SESSIONS_TABLE}`;
+  const response = await fetch(insertUrl, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify([row])
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to persist login session in Supabase.');
+  }
+
+  return { session, sessionToken };
+};
+
+const getSessionByToken = async (sessionToken: string): Promise<LoginSessionRow | null> => {
+  requireSupabase();
+
+  const nowIso = new Date().toISOString();
+  const query = `${SUPABASE_URL}/rest/v1/${LOGIN_SESSIONS_TABLE}?session_token=eq.${encodeURIComponent(sessionToken)}&revoked_at=is.null&expires_at=gte.${encodeURIComponent(nowIso)}&select=session_id,session_token,user_id,tenant_id,role,auth_mode,issued_at,expires_at,revoked_at&limit=1`;
+  const response = await fetch(query, {
+    method: 'GET',
+    headers: getSupabaseHeaders()
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as LoginSessionRow[];
+  const row = rows?.[0] || null;
+  if (!row) return null;
+  if (row.revoked_at) return null;
+  if (new Date(row.expires_at).getTime() < Date.now()) return null;
+  return row;
+};
+
+const getUserById = async (userId: string): Promise<User | null> => {
+  requireSupabase();
+
+  const query = `${SUPABASE_URL}/rest/v1/${LOGIN_USERS_TABLE}?id=eq.${encodeURIComponent(userId)}&select=id,email,name,role,business_type,organization_name,onboarding_complete,credits,plan,last_auth_mode&limit=1`;
+  const response = await fetch(query, {
+    method: 'GET',
+    headers: getSupabaseHeaders()
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as LoginUserRow[];
+  const row = rows?.[0];
+  return row ? toUserFromRow(row) : null;
+};
+
+const getUserByEmail = async (email: string): Promise<User | null> => {
+  requireSupabase();
+
+  const query = `${SUPABASE_URL}/rest/v1/${LOGIN_USERS_TABLE}?email=eq.${encodeURIComponent(email.trim().toLowerCase())}&select=id,email,name,role,business_type,organization_name,onboarding_complete,credits,plan,last_auth_mode&limit=1`;
+  const response = await fetch(query, {
+    method: 'GET',
+    headers: getSupabaseHeaders()
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as LoginUserRow[];
+  const row = rows?.[0];
+  return row ? toUserFromRow(row) : null;
+};
+
+const revokeSessionByToken = async (sessionToken: string): Promise<void> => {
+  requireSupabase();
+
+  const updateUrl = `${SUPABASE_URL}/rest/v1/${LOGIN_SESSIONS_TABLE}?session_token=eq.${encodeURIComponent(sessionToken)}&revoked_at=is.null`;
+  await fetch(updateUrl, {
+    method: 'PATCH',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify({ revoked_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+  });
+};
 
 const loadStateFromSupabase = async (tenantId: string): Promise<TenantState | null> => {
   if (!canUseSupabase) return null;
@@ -311,7 +455,9 @@ const loadStateFromSupabase = async (tenantId: string): Promise<TenantState | nu
 
   return {
     transactions: Array.isArray(payload.transactions) ? payload.transactions : [],
-    notifications: Array.isArray(payload.notifications) ? payload.notifications : []
+    notifications: Array.isArray(payload.notifications) ? payload.notifications : [],
+    importedMerchants: Array.isArray(payload.importedMerchants) ? payload.importedMerchants : [],
+    importedTeam: Array.isArray(payload.importedTeam) ? payload.importedTeam : []
   };
 };
 
@@ -337,6 +483,222 @@ const saveStateToSupabase = async (tenantId: string, state: TenantState): Promis
   return response.ok;
 };
 
+const ensureTenantExists = async (tenantId: string): Promise<void> => {
+  if (!canUseSupabase) return;
+
+  const rpcUrl = `${SUPABASE_URL}/rest/v1/rpc/one82_ensure_tenant`;
+  await fetch(rpcUrl, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify({ p_tenant_id: tenantId })
+  });
+
+  const upsertUrl = `${SUPABASE_URL}/rest/v1/${TENANTS_TABLE}?on_conflict=tenant_id`;
+  await fetch(upsertUrl, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify([
+      {
+        tenant_id: tenantId,
+        updated_at: new Date().toISOString()
+      }
+    ])
+  });
+};
+
+const normalizeKey = (value: string): string => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+
+const getRowField = (row: Record<string, string>, keys: string[]): string => {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return '';
+};
+
+const toMerchantRows = (tenantId: string, rows: Array<Record<string, string>>) => {
+  return rows
+    .map((row, index) => {
+      const name = getRowField(row, ['name', 'merchantname', 'company', 'businessname']);
+      if (!name) return null;
+
+      const email = getRowField(row, ['email', 'owneremail', 'contactemail']) || null;
+      const phone = getRowField(row, ['phone', 'contactphone']) || null;
+      const externalKeyField = getRowField(row, ['externalkey', 'merchantid', 'id']);
+      const externalKey = externalKeyField || `imp_m_${normalizeKey(name)}_${index}`;
+
+      return {
+        tenant_id: tenantId,
+        external_key: externalKey,
+        name,
+        owner_name: getRowField(row, ['owner', 'ownername', 'contactname']) || null,
+        email,
+        phone,
+        business_type: getRowField(row, ['businesstype', 'industry', 'type']) || null,
+        status: getRowField(row, ['status']) || 'Active',
+        monthly_volume: Number(getRowField(row, ['monthlyvolume', 'volume', 'amount'])) || 0,
+        churn_risk: getRowField(row, ['churnrisk', 'risk']) || null,
+        trend: getRowField(row, ['trend']) || null,
+        updated_at: new Date().toISOString(),
+        attributes: row
+      };
+    })
+    .filter((value): value is NonNullable<typeof value> => Boolean(value));
+};
+
+const toTeamMemberRows = (tenantId: string, rows: Array<Record<string, string>>) => {
+  return rows
+    .map((row, index) => {
+      const name = getRowField(row, ['name', 'repname', 'membername']);
+      if (!name) return null;
+
+      const email = getRowField(row, ['email', 'repemail']) || null;
+      const externalKeyField = getRowField(row, ['externalkey', 'memberid', 'repid', 'id']);
+      const externalKey = externalKeyField || `imp_t_${normalizeKey(name)}_${index}`;
+
+      return {
+        tenant_id: tenantId,
+        external_key: externalKey,
+        name,
+        email,
+        member_role: getRowField(row, ['role', 'memberrole']) || 'rep',
+        region: getRowField(row, ['region', 'territory']) || null,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+        metrics: row
+      };
+    })
+    .filter((value): value is NonNullable<typeof value> => Boolean(value));
+};
+
+const toProcessorTransactionRows = (tenantId: string, transactions: Transaction[], ingestedFrom: string) => {
+  return transactions.map((transaction) => ({
+    tenant_id: tenantId,
+    source_transaction_id: transaction.id || null,
+    occurred_at: new Date(transaction.date).toISOString(),
+    amount: Number(transaction.amount) || 0,
+    currency: 'USD',
+    status: transaction.status,
+    customer: transaction.customer || null,
+    items: Array.isArray(transaction.items) ? transaction.items : [],
+    method: transaction.method || null,
+    category: transaction.category || null,
+    processor: null,
+    ingested_from: ingestedFrom,
+    raw_payload: transaction,
+    updated_at: new Date().toISOString()
+  }));
+};
+
+const insertImportJob = async (
+  tenantId: string,
+  datasetType: 'transactions' | 'merchants' | 'team',
+  rowCount: number,
+  userId?: string,
+  summary?: Record<string, unknown>
+): Promise<void> => {
+  if (!canUseSupabase) return;
+
+  const url = `${SUPABASE_URL}/rest/v1/${IMPORT_JOBS_TABLE}`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify([
+      {
+        tenant_id: tenantId,
+        dataset_type: datasetType,
+        row_count: rowCount,
+        status: 'completed',
+        created_by_user_id: userId || null,
+        summary: summary || {},
+        updated_at: new Date().toISOString()
+      }
+    ])
+  });
+};
+
+export const syncImportedRowsToDomain = async (
+  tenantId: string,
+  merchants: Array<Record<string, string>>,
+  team: Array<Record<string, string>>,
+  userId?: string
+): Promise<void> => {
+  if (!canUseSupabase) return;
+
+  await ensureTenantExists(tenantId);
+
+  const merchantRows = toMerchantRows(tenantId, merchants);
+  if (merchantRows.length > 0) {
+    const url = `${SUPABASE_URL}/rest/v1/${MERCHANTS_TABLE}?on_conflict=tenant_id,external_key`;
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...getSupabaseHeaders(),
+        Prefer: 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(merchantRows)
+    });
+  }
+
+  const teamRows = toTeamMemberRows(tenantId, team);
+  if (teamRows.length > 0) {
+    const url = `${SUPABASE_URL}/rest/v1/${TEAM_MEMBERS_TABLE}?on_conflict=tenant_id,external_key`;
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...getSupabaseHeaders(),
+        Prefer: 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(teamRows)
+    });
+  }
+
+  if (merchants.length > 0) {
+    await insertImportJob(tenantId, 'merchants', merchants.length, userId, { synced: merchantRows.length });
+  }
+
+  if (team.length > 0) {
+    await insertImportJob(tenantId, 'team', team.length, userId, { synced: teamRows.length });
+  }
+};
+
+export const syncTransactionsToDomain = async (
+  tenantId: string,
+  transactions: Transaction[],
+  userId?: string,
+  ingestedFrom = 'import'
+): Promise<void> => {
+  if (!canUseSupabase) return;
+  if (!Array.isArray(transactions) || transactions.length === 0) return;
+
+  await ensureTenantExists(tenantId);
+
+  const txRows = toProcessorTransactionRows(tenantId, transactions, ingestedFrom);
+  const url = `${SUPABASE_URL}/rest/v1/${PROCESSOR_TRANSACTIONS_TABLE}?on_conflict=tenant_id,source_transaction_id`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify(txRows)
+  });
+
+  await insertImportJob(tenantId, 'transactions', transactions.length, userId, { ingestedFrom });
+};
+
 const loadStateFromMemory = (tenantId: string): TenantState | null => {
   const store = getMemoryStore();
   return store.get(tenantId) || null;
@@ -351,7 +713,10 @@ const normalizeState = (state: TenantState | null): TenantState => {
   if (!state) return defaultState();
   return {
     transactions: Array.isArray(state.transactions) ? state.transactions : [],
-    notifications: Array.isArray(state.notifications) ? state.notifications : []
+    notifications: Array.isArray(state.notifications) ? state.notifications : [],
+    calendarEvents: Array.isArray(state.calendarEvents) ? state.calendarEvents : [],
+    importedMerchants: Array.isArray(state.importedMerchants) ? state.importedMerchants : [],
+    importedTeam: Array.isArray(state.importedTeam) ? state.importedTeam : []
   };
 };
 
@@ -371,9 +736,8 @@ export const saveStateForTenant = async (tenantId: string, state: TenantState): 
   }
 };
 
-export const setSessionCookie = (res: ResponseLike, user: User, session: AuthSession): void => {
-  const encoded = sessionCookieValue(user, session);
-  const cookie = `${SESSION_COOKIE}=${encodeURIComponent(encoded)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`;
+export const setSessionCookie = (res: ResponseLike, sessionToken: string): void => {
+  const cookie = `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`;
   res.setHeader('Set-Cookie', cookie);
 };
 
@@ -381,21 +745,56 @@ export const clearSessionCookie = (res: ResponseLike): void => {
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 };
 
-export const getAuthFromRequest = (req: RequestLike): { user: User; session: AuthSession } | null => {
+export const getAuthFromRequest = async (req: RequestLike): Promise<{ user: User; session: AuthSession } | null> => {
+  if (!canUseSupabase) return null;
+
   const cookieHeader = Array.isArray(req.headers.cookie) ? req.headers.cookie.join('; ') : req.headers.cookie;
   const cookies = parseCookies(cookieHeader);
-  const raw = cookies[SESSION_COOKIE];
-  if (!raw) return null;
-  return parseSessionCookie(raw);
+  const sessionToken = cookies[SESSION_COOKIE];
+  if (!sessionToken) return null;
+
+  const sessionRow = await getSessionByToken(sessionToken);
+  if (!sessionRow) return null;
+
+  const user = await getUserById(sessionRow.user_id);
+  if (!user) return null;
+
+  const session: AuthSession = {
+    sessionId: sessionRow.session_id,
+    userId: sessionRow.user_id,
+    tenantId: sessionRow.tenant_id,
+    role: sessionRow.role,
+    issuedAt: sessionRow.issued_at,
+    expiresAt: sessionRow.expires_at
+  };
+
+  return { user, session };
 };
 
-export const getOrCreateLogin = async (email: string): Promise<{ user: User; session: AuthSession }> => {
-  const user = createUser(email);
-  const session = createCookieSession(user);
+export const revokeAuthFromRequest = async (req: RequestLike): Promise<void> => {
+  if (!canUseSupabase) return;
+
+  const cookieHeader = Array.isArray(req.headers.cookie) ? req.headers.cookie.join('; ') : req.headers.cookie;
+  const cookies = parseCookies(cookieHeader);
+  const sessionToken = cookies[SESSION_COOKIE];
+  if (!sessionToken) return;
+
+  await revokeSessionByToken(sessionToken);
+};
+
+export const getOrCreateLogin = async (email: string, mode: AuthMode): Promise<{ user: User; session: AuthSession; sessionToken: string }> => {
+  const existingUser = await getUserByEmail(email);
+  const sourceUser = existingUser || createUser(email);
+  const user = await upsertLoginUser(sourceUser, mode);
+  const { session, sessionToken } = await createLoginSession(user, mode);
   const tenantId = session.tenantId;
   const existing = await getStateForTenant(tenantId);
   await saveStateForTenant(tenantId, existing);
-  return { user, session };
+  return { user, session, sessionToken };
+};
+
+export const saveLoginUser = async (user: User, mode: AuthMode): Promise<User> => {
+  return upsertLoginUser(user, mode);
 };
 
 export const parseBody = async <T>(req: RequestLike): Promise<T | null> => {
@@ -411,6 +810,19 @@ export const parseBody = async <T>(req: RequestLike): Promise<T | null> => {
     }
   }
   return null;
+};
+
+export const setApiResponseHeaders = (res: ResponseLike, cachePolicy: CachePolicy = 'no-store'): void => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  if (cachePolicy === 'public-short') {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=120');
+    return;
+  }
+
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
 };
 
 export const sendMethodNotAllowed = (res: ResponseLike, allowed: string[]): void => {

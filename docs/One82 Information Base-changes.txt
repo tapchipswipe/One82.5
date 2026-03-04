@@ -1,0 +1,36 @@
+MERCHANT PROFILE
+* When selecting business type, either add one more business type or move the convenience store tab to the bottom middle of the screen
+* Add a search bar for items on the merchant inventory tab. Just give customers the ability to check the one item they're looking for instead of having to scroll down and find it
+* Change some things in the setting tab for the merchant page
+        - You don’t need a monthly revenue goal under the settings page
+- Production Readiness Checklist can’t even be read, nor do I really understand what it means.
+- The interface color doesn’t change anything, maybe just bc its a demo
+
+
+* The real time analysis doesn’t really show any data, it just says “hours” or “earlier” in the two times I’ve logged in through a demo. I either need to understand what that tab means or we need to change it because I don’t see it having any value to the merchant when it comes to their own personal data analysis.
+* Change up the overall dark vs light instead of both (just writing it down ik you know u need to do this.
+* Need to change the color of the inner title after clicking the tab ur in, when you click the revenue forecast tab, the title within that tab is practically invisible, it’s just extremely white on a white background.
+   * The tab beneath that (AI outlook tab) is also extremely opaque, just need to give it some more aggressive colors.
+   * This is the same on every tab within the merchant page
+
+
+* Under the transaction history tab, the search bar does not work when searching anything
+* The ask AI tab also doesn’t work, but I know we haven't integrated AI so that’s likely why, it's also a demo mode.
+* The refresh analysis button under the forecast tab changes the forecast pretty aggressively every time you refresh it. A couple times it would make 1000 dollar jumps and that’s probably not what we want fluctuating that much every time you refresh the page. Again, all this could be just because of demo mode, but, just wanted to mention it.
+* The AI categorize button in the customer profile is extremely opaque as well. Same color and what not as the other opaque text boxes.
+* Unable to add smart tasks on the main dashboard.
+* Also I think I just figured out the real time analysis shit, it’s only showing the last word of the AI analysis, when you refresh it, it speeds through all the words and only shows the last one. Like right now, I have the word “Checkout” on my real time analysis tab in the dashboard.
+
+
+
+
+RANDOM IDEAS 
+* Include a calendar within the merchant page 
+   * This would allow i.e. a T4 to calendar their race events and when certain major events are happening, further allowing our AI to project sales and optimize data analysis
+
+
+
+
+QUESTIONS 
+* Would it be smarter to take out the ai credit system and just base it on their subscription
+* What is expense distribution (merchant profile)

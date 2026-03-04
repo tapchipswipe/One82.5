@@ -1,0 +1,51 @@
+﻿PRODUCT
+ONE82 Product Brief — Quick Fill (10 min)
+Date: 3/2/26
+Owner: Lucas and Landon
+1) One-line product promise
+ONE82 helps ISO’s and merchants gather quicker data by showing them real time transaction data to help them plan price points, navigate sales, and price merchants.
+2) Top users (pick 1 primary)
+[ ] Merchant
+[x] ISO
+[ ] Overseer
+Primary: ISO
+* Sell the product to ISO’s which hold x amount of merchants under them
+3) Top 3 must-solve problems
+1. API Integration
+2. Cyber security 
+3. Accurate data
+4) Mode rules (simple)
+Demo mode = simulated data only; this is our proof for sales to show the concept of our idea
+Auth/Trial mode = this is a “work in progress” or WIP phase as we work out the kinks and figure out the best way to run the program
+Auth/Trial must NOT show simulated data ANYWHERE
+5) Data truth (one line each) 
+Auth/session source: Login credentials provided by sales team to establish user role (ISO/Merchant/Rep)
+Transactions source: Hybrid of direct Processor API Integration or CSV import of transaction history
+Dashboard source: AI-analyanalyzed, real-time transaction data from the Transactions Source turning data and numbers into invaluable ai powered insight
+6) Import strategy
+Primary import path: [ ] Integrations [ ] CSV [X] Hybrid
+MVP import first: [x] Transactions [ ] Merchants [ ] Team
+7) Must-work flows (check)
+[x] Login works
+[x] Onboarding saves role
+[x] CSV import shows in dashboard
+[x] Session restores after refresh
+8) Success metrics (quick targets)
+Time to first value: (if this means translating data into insight) then this should be as fast as possible, without sacrificing the effectiveness of the data translates
+Import success rate: This metric needs to be 100% accurate and successful 100% of the time.
+Weekly active teams: starting at one and Scaling up consistently 
+
+
+9) Next 2 weeks priorities
+P0:
+- Integrated/imported data is used properly and effectively for the outcome of our program; ie turning transaction data into invaluable assets for ISO/MERCH
+- Having secure data for our ISO’s and merchants and making sure we utilize effective cyber security so that no data is lost or stolen.
+P1:
+- Having a clean and modernized look to our program so that our merchants feel comfortable with the data being shown to them.
+- Giving ISO’s a true reason to NEED our program, and or, creating an edge over other programs such as SalesForce.
+10) Done =
+This plan is ready when we can say:
+- [x] Scope is clear
+- [ ] Owners are assigned
+- [ ] First release date is set
+Release target date: summer-fall 2026

@@ -8,8 +8,70 @@ import { SimulationService, PortfolioMerchant } from '../services/simulationServ
 import { analyzePortfolio } from '../services/geminiService';
 import TodoList from './TodoList';
 import MerchantLedger from './MerchantLedger';
+import { StorageService } from '../services/storage';
+import { Transaction } from '../types';
+
+const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioMerchant[] => {
+    const grouped = new Map<string, Transaction[]>();
+
+    transactions.forEach((transaction) => {
+        const customer = transaction.customer || 'Imported Merchant';
+        const current = grouped.get(customer) || [];
+        current.push(transaction);
+        grouped.set(customer, current);
+    });
+
+    return Array.from(grouped.entries()).map(([name, records], index) => {
+        const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+        const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
+        const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+        const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+        const trend: PortfolioMerchant['trend'] = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
+        const riskLevel: PortfolioMerchant['riskLevel'] = trend === 'down' ? 'Medium' : 'Low';
+        const churnRisk: PortfolioMerchant['churnRisk'] = trend === 'down' ? 'Medium' : 'Low';
+        const volumeHistory = Array.from({ length: 6 }, (_, offset) => {
+            const start = Math.floor((offset * records.length) / 6);
+            const end = Math.floor(((offset + 1) * records.length) / 6);
+            const slice = records.slice(start, Math.max(end, start + 1));
+            return Math.round(slice.reduce((sum, record) => sum + record.amount, 0));
+        });
+
+        return {
+            id: `imported_${index}_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+            name,
+            businessType: 'Service',
+            monthlyVolume: Math.round(monthlyVolume),
+            churnRisk,
+            trend,
+            lastTransaction,
+            bps: 35,
+            perTxFee: 0.1,
+            status: 'Active',
+            mccCode: '0000',
+            mccDescription: 'Imported Merchant',
+            riskLevel,
+            volumeHistory,
+            ownerName: `${name} Owner`,
+            email: `owner+${index}@imported.one82`,
+            phone: '(000) 000-0000',
+            address: 'Imported via CSV',
+            since: new Date().toISOString().slice(0, 10),
+            notes: [
+                {
+                    id: `note_${index}`,
+                    date: new Date().toISOString().slice(0, 10),
+                    author: 'Import Hub',
+                    text: 'Generated from imported transactions.'
+                }
+            ],
+            healthScore: trend === 'down' ? 58 : 78
+        };
+    });
+};
 
 const ISODashboard: React.FC = () => {
+    const isDemoMode = StorageService.getDataMode() === 'demo';
     const [merchants, setMerchants] = useState<PortfolioMerchant[]>([]);
     const [totalVolume, setTotalVolume] = useState(0);
     const [ccVolume, setCcVolume] = useState(243817.50);
@@ -19,15 +81,33 @@ const ISODashboard: React.FC = () => {
     const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY') || '');
 
     useEffect(() => {
-        const data = SimulationService.generatePortfolio();
-        setMerchants(data);
-        setTotalVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+        const load = async () => {
+            const data = isDemoMode
+                ? SimulationService.generatePortfolio()
+                : buildPortfolioFromTransactions(await StorageService.getTransactionsResolved());
+
+            setMerchants(data);
+            setTotalVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+            if (!isDemoMode) {
+                setCcVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+            }
+        };
+
+        void load();
+
+        if (!isDemoMode) {
+            const onUpdate = () => {
+                void load();
+            };
+            window.addEventListener('user-update', onUpdate);
+            return () => window.removeEventListener('user-update', onUpdate);
+        }
 
         const portfolioTicker = setInterval(() => setTotalVolume(p => p + Math.random() * 100), 3000);
         const ccTicker = setInterval(() => setCcVolume(p => p + Math.random() * 250 + 50), 1500);
 
         return () => { clearInterval(portfolioTicker); clearInterval(ccTicker); };
-    }, []);
+    }, [isDemoMode]);
 
     const handleSaveApiKey = () => { localStorage.setItem('GEMINI_API_KEY', apiKey); setShowApiKeyInput(false); };
 
@@ -63,7 +143,7 @@ const ISODashboard: React.FC = () => {
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
                                 </span>
-                                <span className="text-xs font-mono text-green-400 tracking-widest">LIVE · SIMULATION MODE</span>
+                                <span className="text-xs font-mono text-green-400 tracking-widest">{isDemoMode ? 'LIVE · SIMULATION MODE' : 'LIVE · AUTH MODE'}</span>
                             </div>
                             <h1 className="text-3xl font-bold text-white">Portfolio Dashboard</h1>
                             <p className="text-indigo-300 text-sm mt-1">

@@ -27,6 +27,7 @@ const Settings: React.FC = () => {
   };
 
   if (!user) return null;
+    const isMerchant = user.role === 'merchant';
 
   const getAIStyleLabel = (val: number) => {
       if (val < 30) return "Simplified & Concise";
@@ -38,7 +39,7 @@ const Settings: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-8">
       <div>
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h2>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage your preferences, billing, and business goals.</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage your preferences, notifications, and account experience.</p>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 space-y-6">
@@ -59,18 +60,20 @@ const Settings: React.FC = () => {
                         className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
                     />
                 </div>
-                <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Business Type</label>
-                    <select 
-                        value={user.businessType}
-                        onChange={(e) => setUser({...user, businessType: e.target.value as any})}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                        {BUSINESS_TYPES.map(t => (
-                            <option key={t.id} value={t.id}>{t.label}</option>
-                        ))}
-                    </select>
-                </div>
+                {isMerchant && (
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Business Type</label>
+                        <select 
+                            value={user.businessType}
+                            onChange={(e) => setUser({...user, businessType: e.target.value as any})}
+                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                            {BUSINESS_TYPES.map(t => (
+                                <option key={t.id} value={t.id}>{t.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
         </div>
 
@@ -110,26 +113,30 @@ const Settings: React.FC = () => {
 
         <hr className="border-slate-200 dark:border-slate-800" />
 
-        {/* Architecture Checklist Section */}
+        {/* System Status Section */}
         <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center">
                 <Server className="w-4 h-4 mr-2" />
-                Production Readiness Checklist
+                System Trust Status
             </h3>
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-xs">
                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
                     <div className="p-3 flex items-start gap-3">
-                        <Database className="w-4 h-4 text-yellow-600 mt-0.5" />
+                        <Database className="w-4 h-4 text-green-600 mt-0.5" />
                         <div>
-                            <span className="font-bold">Persistence:</span> Browser Storage. 
-                            <span className="opacity-70 ml-1">Recommend moving to Postgres.</span>
+                            <span className="font-bold">Data Source:</span> Your current workspace mode controls whether dashboards use demo or auth/imported data.
                         </div>
                     </div>
                     <div className="p-3 flex items-start gap-3">
-                        <ShieldAlert className="w-4 h-4 text-red-600 mt-0.5" />
+                        <ShieldAlert className="w-4 h-4 text-indigo-600 mt-0.5" />
                         <div>
-                            <span className="font-bold">API Security:</span> Client-side Calls. 
-                            <span className="opacity-70 ml-1">Recommend backend proxy.</span>
+                            <span className="font-bold">Security:</span> Integration keys are stored locally and used only for explicit integration actions.
+                        </div>
+                    </div>
+                    <div className="p-3 flex items-start gap-3">
+                        <Lock className="w-4 h-4 text-slate-600 dark:text-slate-300 mt-0.5" />
+                        <div>
+                            <span className="font-bold">Reliability:</span> If a live service is unavailable, One82 keeps core UX responsive with fallback behavior.
                         </div>
                     </div>
                 </div>
@@ -162,22 +169,23 @@ const Settings: React.FC = () => {
 
         <hr className="border-slate-200 dark:border-slate-800" />
 
-        {/* Revenue Goal */}
-        <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
-                <DollarSign className="w-4 h-4 mr-2" />
-                Monthly Revenue Goal
-            </label>
-            <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                <input 
-                    type="number" 
-                    value={settings.revenueGoal}
-                    onChange={(e) => setSettings({...settings, revenueGoal: Number(e.target.value)})}
-                    className="w-full pl-8 pr-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                />
+        {isMerchant && (
+            <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Monthly Revenue Goal
+                </label>
+                <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                    <input 
+                        type="number" 
+                        value={settings.revenueGoal}
+                        onChange={(e) => setSettings({...settings, revenueGoal: Number(e.target.value)})}
+                        className="w-full pl-8 pr-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+                    />
+                </div>
             </div>
-        </div>
+        )}
 
         {/* Notifications */}
         <div className="flex items-center justify-between">

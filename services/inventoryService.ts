@@ -1,4 +1,7 @@
 import { InventoryItem, Order, Supplier, Transaction } from '../types';
+import { StorageService } from './storage';
+
+const isAuthTrialMode = (): boolean => StorageService.getDataMode() === 'backend';
 
 // Mock Suppliers
 const SUPPLIERS: Supplier[] = [
@@ -17,11 +20,21 @@ let ORDERS: Order[] = [];
 
 export const InventoryService = {
     getInventory: (): InventoryItem[] => {
+        if (isAuthTrialMode()) {
+            return [];
+        }
+
         // In a real app, we would recalculate daysRemaining based on live transaction volume here
         return INVENTORY;
     },
 
-    getSuppliers: (): Supplier[] => SUPPLIERS,
+    getSuppliers: (): Supplier[] => {
+        if (isAuthTrialMode()) {
+            return [];
+        }
+
+        return SUPPLIERS;
+    },
 
     placeOrder: async (itemId: string, quantity: number): Promise<boolean> => {
         console.log(`Placing order for item ${itemId}, qty: ${quantity}`);

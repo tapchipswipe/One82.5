@@ -9,6 +9,7 @@ import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid
 } from 'recharts';
+import { StorageService } from '../services/storage';
 
 const LoyaltyBar = ({ score }: { score: number }) => {
     const color = score >= 75 ? 'bg-green-500' : score >= 45 ? 'bg-yellow-500' : 'bg-red-500';
@@ -69,12 +70,12 @@ const CustomerCard = ({ customer: c }: { customer: CustomerProfile }) => {
                                 <RiskBadge level={c.retentionRisk} />
                                 <FrequencyBadge freq={c.visitFrequency} />
                             </div>
-                            <p className="text-xs text-gray-400 mt-0.5">{c.email}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{c.email}</p>
 
                             {/* Loyalty bar */}
                             <div className="mt-2 flex items-center gap-2">
                                 <LoyaltyBar score={c.loyaltyScore} />
-                                <span className="text-[10px] font-bold text-gray-500 whitespace-nowrap">
+                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                     {c.loyaltyScore}/100
                                 </span>
                             </div>
@@ -83,7 +84,7 @@ const CustomerCard = ({ customer: c }: { customer: CustomerProfile }) => {
 
                     <div className="flex-shrink-0 text-right">
                         <p className="text-lg font-bold text-gray-900 dark:text-white font-mono">${c.totalSpend.toLocaleString()}</p>
-                        <p className="text-[10px] text-gray-400">lifetime spend</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500">lifetime spend</p>
                         {c.rating && (
                             <div className="flex items-center gap-0.5 justify-end mt-1">
                                 {[...Array(5)].map((_, i) => (
@@ -93,7 +94,7 @@ const CustomerCard = ({ customer: c }: { customer: CustomerProfile }) => {
                         )}
                     </div>
 
-                    <div className="text-gray-400 ml-1">
+                    <div className="text-gray-400 dark:text-gray-500 ml-1">
                         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </div>
                 </div>
@@ -101,15 +102,15 @@ const CustomerCard = ({ customer: c }: { customer: CustomerProfile }) => {
                 {/* Quick stats */}
                 <div className="mt-4 grid grid-cols-3 gap-3">
                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 text-center">
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wide">Avg Ticket</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Avg Ticket</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white font-mono">${c.avgTicket.toFixed(0)}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 text-center">
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wide">Visits</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Visits</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{c.visitCount}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 text-center">
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wide">Top</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">Top</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{c.topCategory}</p>
                     </div>
                 </div>
@@ -128,11 +129,11 @@ const CustomerCard = ({ customer: c }: { customer: CustomerProfile }) => {
                             <div className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400">
                                 <Mail className="w-3.5 h-3.5" /> {c.email}
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                                 <Clock className="w-3.5 h-3.5" />
                                 Customer since {new Date(c.since).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                                 <User className="w-3.5 h-3.5" />
                                 Last seen {new Date(c.lastSeen).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </div>
@@ -140,7 +141,7 @@ const CustomerCard = ({ customer: c }: { customer: CustomerProfile }) => {
 
                         {/* Recent Transactions Chart */}
                         <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Recent Spend</p>
+                            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Recent Spend</p>
                             <ResponsiveContainer width="100%" height={90}>
                                 <BarChart data={txChartData} barSize={20}>
                                     <XAxis dataKey="date" tick={{ fontSize: 9 }} />
@@ -153,17 +154,17 @@ const CustomerCard = ({ customer: c }: { customer: CustomerProfile }) => {
 
                     {/* Transaction Log */}
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Transaction Log</p>
+                        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Transaction Log</p>
                         <div className="space-y-2">
                             {c.recentTransactions.map((t, i) => (
                                 <div key={i} className="flex justify-between items-center text-sm bg-gray-50 dark:bg-gray-700/40 rounded-lg px-3 py-2">
                                     <div className="flex items-center gap-2">
-                                        <ShoppingBag className="w-3.5 h-3.5 text-gray-400" />
+                                        <ShoppingBag className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
                                         <span className="text-gray-700 dark:text-gray-300">{t.description}</span>
                                     </div>
                                     <div className="text-right">
                                         <p className="font-mono font-bold text-gray-900 dark:text-white">${t.amount.toFixed(2)}</p>
-                                        <p className="text-[10px] text-gray-400">{t.date}</p>
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-500">{t.date}</p>
                                     </div>
                                 </div>
                             ))}
@@ -184,7 +185,9 @@ const CustomerCard = ({ customer: c }: { customer: CustomerProfile }) => {
 };
 
 const Customers: React.FC = () => {
-    const customers = generateCustomers();
+    const isDemoMode = StorageService.getDataMode() === 'demo';
+    const customers = isDemoMode ? generateCustomers() : [];
+    const hasCustomerData = customers.length > 0;
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'All' | 'Low' | 'Medium' | 'High'>('All');
 
@@ -198,7 +201,9 @@ const Customers: React.FC = () => {
     });
 
     const totalSpend = customers.reduce((a, c) => a + c.totalSpend, 0);
-    const avgLoyalty = Math.round(customers.reduce((a, c) => a + c.loyaltyScore, 0) / customers.length);
+    const avgLoyalty = customers.length > 0
+        ? Math.round(customers.reduce((a, c) => a + c.loyaltyScore, 0) / customers.length)
+        : 0;
     const atRisk = customers.filter(c => c.retentionRisk === 'High').length;
 
     return (
@@ -214,7 +219,7 @@ const Customers: React.FC = () => {
                     </p>
                 </div>
                 <span className="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/30 font-medium">
-                    <Sparkles className="w-3 h-3 inline mr-1" />Simulation Mode
+                    <Sparkles className="w-3 h-3 inline mr-1" />{isDemoMode ? 'Simulation Mode' : 'Auth Mode'}
                 </span>
             </div>
 
@@ -272,7 +277,11 @@ const Customers: React.FC = () => {
                     </div>
                 ))}
                 {filtered.length === 0 && (
-                    <div className="text-center py-12 text-gray-400">No customers match your search.</div>
+                    <div className="text-center py-12 text-gray-400 dark:text-gray-500">
+                        {hasCustomerData
+                            ? 'No customers match your search.'
+                            : 'No customer profiles yet in Auth/Trial mode. Import transactions to generate live customer profiles.'}
+                    </div>
                 )}
             </div>
         </div>

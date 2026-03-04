@@ -25,6 +25,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
   const [authMode, setAuthMode] = useState<AuthMode>(isBackendAuthEnabled ? initialAuthMode : 'demo');
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState<'email' | 'password' | null>(null);
+  const isAuthLoginSelected = isBackendAuthEnabled && authMode === 'backend';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +52,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
     setAuthMode('demo');
   };
 
-  const switchToTrial = () => {
+  const switchToAuthLogin = () => {
     if (!isBackendAuthEnabled) return;
     setAuthMode('backend');
   };
@@ -59,7 +60,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
   const fillOverseer = () => {
     setEmail(overseerEmail);
     setPassword('owner');
-    setAuthMode('demo');
   };
 
   return (
@@ -145,17 +145,17 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                   <Gift className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-green-900 text-sm mb-1">14-Day Free Trial</h3>
+                  <h3 className="font-semibold text-green-900 text-sm mb-1">Auth Login Access</h3>
                   <p className="text-green-700 text-xs">
-                    No credit card required. Full access to all features. Start now!
+                    Sign in with your account to access full platform features.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">{showTrialMode ? 'Start Your Free Trial' : 'Welcome back'}</h2>
-          <p className="text-gray-600 text-sm mb-8">{showTrialMode ? 'Create your account to get started' : 'Sign in to your dashboard'}</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">{showTrialMode ? 'Use Auth Login' : 'Welcome back'}</h2>
+          <p className="text-gray-600 text-sm mb-8">{showTrialMode ? 'Sign in with your account to get started' : 'Sign in to your dashboard'}</p>
 
           <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
             <p className="text-xs font-semibold text-indigo-700">
@@ -164,7 +164,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
           </div>
 
           <div className="mb-6 rounded-lg border-2 border-gray-200 p-3 bg-gray-50">
-            <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Sign-in Mode</p>
+            <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Login Type</p>
             {isBackendAuthEnabled ? (
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -172,14 +172,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                   onClick={() => setAuthMode('demo')}
                   className={`px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors ${authMode === 'demo' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}
                 >
-                  Demo Mode
+                  Demo Login
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuthMode('backend')}
                   className={`px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors ${authMode === 'backend' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}
                 >
-                  Trial
+                  Auth Login
                 </button>
               </div>
             ) : (
@@ -189,16 +189,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                   onClick={() => setAuthMode('demo')}
                   className="px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors bg-gray-900 text-white border-gray-900"
                 >
-                  Demo Mode
+                  Demo Login
                 </button>
               </div>
             )}
             <p className="mt-2 text-xs text-gray-500">
               {!isBackendAuthEnabled
-                ? 'Demo phase: backend auth is currently locked. Use demo mode for access.'
+                ? 'Auth Login is currently unavailable. Use Demo Login for access.'
                 : authMode === 'demo'
-                  ? 'Uses local demo data and simulated session.'
-                  : 'Uses trial sign-in through the auth API endpoint.'}
+                  ? 'Uses local demo data and a simulated session.'
+                  : 'Uses real authentication and real/imported data only (no simulated records).'}
             </p>
             <p className="mt-1 text-[11px] text-gray-500">
               Owner-only overseer access is reserved for <span className="font-semibold">{overseerEmail}</span>.
@@ -254,7 +254,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
             >
               {isLoading ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Signing in…</>
-              ) : authMode === 'demo' ? 'Enter Demo →' : 'Start Trial →'}
+              ) : isAuthLoginSelected ? 'Sign in with Auth →' : 'Enter Demo →'}
             </button>
 
             {error && (
@@ -269,11 +269,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
               No account?{' '}
               <button
                 type="button"
-                onClick={switchToTrial}
+                onClick={switchToAuthLogin}
                 disabled={!isBackendAuthEnabled}
                 className="text-gray-900 hover:text-gray-700 font-semibold underline disabled:text-gray-400 disabled:no-underline"
               >
-                Start Free Trial
+                Use Auth Login
               </button>
             </p>
             <div className="flex items-center gap-4 text-xs">

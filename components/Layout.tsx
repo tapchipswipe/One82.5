@@ -97,6 +97,7 @@ const Layout: React.FC<LayoutProps> = ({
             <>
               <NavSection label="Business" />
               <NavItem view="forecast" icon={TrendingUp} label="Forecast" />
+              <NavItem view="calendar" icon={CalendarDays} label="Calendar" />
               <NavItem view="chat" icon={MessageSquare} label="Ask AI" />
               <NavItem view="transactions" icon={CreditCard} label="Transactions" />
               <NavItem view="customers" icon={Users} label="Customers" />
@@ -137,7 +138,10 @@ const Layout: React.FC<LayoutProps> = ({
         {/* Bottom panel */}
         <div className="p-3 border-t border-gray-200 space-y-2">
           {/* User card */}
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors cursor-default">
+          <div
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            onClick={() => { onNavigate('profile'); setIsSidebarOpen(false); }}
+          >
             <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
               {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
@@ -145,7 +149,14 @@ const Layout: React.FC<LayoutProps> = ({
               <p className="text-xs font-semibold text-gray-900 truncate">{user?.name}</p>
               <p className="text-[10px] text-gray-500 uppercase tracking-wide">{user?.plan} · {user?.credits} credits</p>
             </div>
-            <button onClick={onLogout} className="text-gray-400 hover:text-gray-600 transition-colors" title="Sign out">
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onLogout();
+              }}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Sign out"
+            >
               <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -178,7 +189,11 @@ const Layout: React.FC<LayoutProps> = ({
               </button>
             )}
 
-            <div className="flex items-center gap-2 pl-2 border-l border-gray-200 ml-1">
+            <button
+              type="button"
+              onClick={() => onNavigate('profile')}
+              className="flex items-center gap-2 pl-2 border-l border-gray-200 ml-1 hover:bg-gray-100 rounded-lg pr-2 py-1 transition-colors"
+            >
               <div className="hidden sm:block text-right">
                 <p className="text-xs font-semibold text-gray-900">{user?.name}</p>
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">{role || 'User'}</p>
@@ -186,7 +201,7 @@ const Layout: React.FC<LayoutProps> = ({
               <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
-            </div>
+            </button>
           </div>
         </header>
 

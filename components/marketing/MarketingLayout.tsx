@@ -70,7 +70,7 @@ const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children, activePage,
                 onClick={() => onNavigate('trial')}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors"
               >
-                Start Free Trial
+                Auth Login
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

@@ -6,6 +6,36 @@ const getApiKey = () => {
   return localStorage.getItem('GEMINI_API_KEY') || '';
 };
 
+const isTrialMode = () => localStorage.getItem('one82_data_mode') === 'backend';
+
+const getTrialUnavailableMessage = (feature: string) =>
+  `${feature} is unavailable in Auth Login until a Gemini API key is configured.`;
+
+const getUnavailableStatementAnalysis = (): import('../types').MerchantStatementAnalysis => ({
+  merchantName: 'Unavailable in Auth Login',
+  mccCode: 'N/A',
+  mccDescription: 'Live statement analysis requires a Gemini API key.',
+  riskLevel: 'Low',
+  dailyVolume: 0,
+  monthlyVolume: 0,
+  yearlyVolume: 0,
+  avgTicketSize: 0,
+  txnCount: 0,
+  blendedRate: 0,
+  cardBrandMix: { visa: 0, mastercard: 0, amex: 0, discover: 0 },
+  interchangeByBrand: { visa: 0, mastercard: 0, amex: 0, discover: 0 },
+  swipedPercent: 0,
+  keyedPercent: 0,
+  debitPercent: 0,
+  creditPercent: 0,
+  totalResidual: 0,
+  supportCost: 0,
+  netProfit: 0,
+  attritionRisk: 'Low',
+  growthPattern: 'Stable',
+  fluctuationRate: 0,
+});
+
 /**
  * SIMULATION FALLBACKS
  * These constants provide realistic simulated data when the API key is missing.
@@ -34,6 +64,11 @@ export const streamDashboardInsights = async (
   const apiKey = getApiKey();
 
   if (!apiKey) {
+    if (isTrialMode()) {
+      onChunk(getTrialUnavailableMessage('AI dashboard insights'));
+      return;
+    }
+
     // Simulated live typing effect for "Offline Mode"
     const randomInsight = SIMULATED_INSIGHTS[Math.floor(Math.random() * SIMULATED_INSIGHTS.length)];
     const chunks = randomInsight.split(' ');
@@ -58,6 +93,11 @@ export const streamDashboardInsights = async (
     }
   } catch (error) {
     console.error("Gemini Service Error:", error);
+    if (isTrialMode()) {
+      onChunk(getTrialUnavailableMessage('AI dashboard insights'));
+      return;
+    }
+
     onChunk("AI analysis failed. Reverting to automated local insights...");
   }
 };
@@ -73,6 +113,11 @@ export const chatWithDataStream = async (
   const apiKey = getApiKey();
 
   if (!apiKey) {
+    if (isTrialMode()) {
+      onChunk(getTrialUnavailableMessage('Data Chat'));
+      return;
+    }
+
     onChunk("I am currently in **Offline Simulation Mode**. Once you provide a Gemini API key in Settings, I can analyze your live data with full reasoning capabilities. \n\nBased on your local system: Everything looks stable!");
     return;
   }
@@ -91,7 +136,9 @@ export const chatWithDataStream = async (
       if (chunk.text) onChunk(chunk.text);
     }
   } catch (error) {
-    onChunk("Data Assistant is temporarily unavailable. Please check your connection.");
+    onChunk(isTrialMode()
+      ? getTrialUnavailableMessage('Data Chat')
+      : "Data Assistant is temporarily unavailable. Please check your connection.");
   }
 };
 
@@ -105,6 +152,10 @@ export const analyzeStatementDocument = async (
   const apiKey = getApiKey();
 
   if (!apiKey) {
+    if (isTrialMode()) {
+      return getTrialUnavailableMessage('Statement analysis');
+    }
+
     return "### 📄 Simulated Statement Analysis\n\n- **Total Volume**: $42,500.00\n- **Total Fees**: $935.00 (2.2%)\n- **Potential Savings**: $150/mo with One82 Zero-Cost processing.\n\n*Connect your API key for a deep forensic analysis.*";
   }
 
@@ -154,6 +205,7 @@ export const detectAnomalies = async (transactions: Transaction[]): Promise<{ ti
  */
 export const explainDataPoint = async (point: any, businessType: string): Promise<string> => {
   const apiKey = getApiKey();
+  if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Data point analysis');
   if (!apiKey) return `This data point shows $${point.revenue.toLocaleString()} in revenue. In a ${businessType} business, this typically represents a standard operational cycle.`;
 
   const ai = new GoogleGenAI({ apiKey });
@@ -166,6 +218,7 @@ export const explainDataPoint = async (point: any, businessType: string): Promis
 
 export const generateForecastInsights = async (historical: DailyMetric[]) => {
   const apiKey = getApiKey();
+  if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Forecast insights');
   if (!apiKey) return SIMULATED_FORECASTS[Math.floor(Math.random() * SIMULATED_FORECASTS.length)];
 
   const ai = new GoogleGenAI({ apiKey });
@@ -180,6 +233,7 @@ export const generateForecastInsights = async (historical: DailyMetric[]) => {
 
 export const analyzeSentiment = async (reviews: Review[]) => {
   const apiKey = getApiKey();
+  if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Sentiment analysis');
   if (!apiKey) return "Overall sentiment is **Positive (85%)**. Customers frequently mention 'Great service' and 'Clean environment'.";
 
   const ai = new GoogleGenAI({ apiKey });
@@ -194,6 +248,7 @@ export const analyzeSentiment = async (reviews: Review[]) => {
 
 export const categorizeTransaction = async (transaction: Transaction) => {
   const apiKey = getApiKey();
+  if (!apiKey && isTrialMode()) return "Uncategorized";
   if (!apiKey) return transaction.amount > 500 ? "Inventory" : "Miscellaneous";
 
   const ai = new GoogleGenAI({ apiKey });
@@ -208,6 +263,7 @@ export const categorizeTransaction = async (transaction: Transaction) => {
 
 export const analyzeTransactionRisk = async (transaction: Transaction) => {
   const apiKey = getApiKey();
+  if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Transaction risk analysis');
   if (!apiKey) return "Low Risk (Simulated)";
 
   const ai = new GoogleGenAI({ apiKey });
@@ -235,6 +291,7 @@ export const analyzePortfolio = async (merchants: any[]): Promise<string> => {
 3. **Growth Engine**: Your top 10% of merchants are eligible for Inventory Autopilot. Reach out to **Tech Gadgets** for early access.`;
   };
 
+  if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Portfolio AI analysis');
   if (!apiKey) return generateSimulatedAnalysis();
 
   const ai = new GoogleGenAI({ apiKey });
@@ -251,6 +308,10 @@ export const analyzePortfolio = async (merchants: any[]): Promise<string> => {
     });
     return res.text || generateSimulatedAnalysis();
   } catch (error) {
+    if (isTrialMode()) {
+      return getTrialUnavailableMessage('Portfolio AI analysis');
+    }
+
     return generateSimulatedAnalysis();
   }
 };
@@ -279,6 +340,12 @@ export const connectLiveAssistant = async ({ onopen, onmessage, onerror, onclose
 }) => {
   const apiKey = getApiKey();
   if (!apiKey) {
+    if (isTrialMode()) {
+      onerror(new Error(getTrialUnavailableMessage('Live Assistant')));
+      onclose();
+      return { sendRealtimeInput: () => { }, close: onclose };
+    }
+
     // Simulate connection
     onopen();
     setTimeout(() => {
@@ -361,6 +428,7 @@ export const analyzeStatementFull = async (
     fluctuationRate: 8.4,
   };
 
+  if (!apiKey && isTrialMode()) return getUnavailableStatementAnalysis();
   if (!apiKey) return simulatedResult;
 
   const ai = new GoogleGenAI({ apiKey });
@@ -403,9 +471,11 @@ export const analyzeStatementFull = async (
     const text = response.text || '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) return JSON.parse(jsonMatch[0]) as import('../types').MerchantStatementAnalysis;
+    if (isTrialMode()) return getUnavailableStatementAnalysis();
     return simulatedResult;
   } catch (e) {
     console.error("Statement analysis failed, using simulation.", e);
+    if (isTrialMode()) return getUnavailableStatementAnalysis();
     return simulatedResult;
   }
 };

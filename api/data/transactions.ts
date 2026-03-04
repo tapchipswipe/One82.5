@@ -3,9 +3,11 @@ import {
   getStateForTenant,
   parseBody,
   saveStateForTenant,
+  syncTransactionsToDomain,
+  setApiResponseHeaders,
   sendMethodNotAllowed,
   sendUnauthorized
-} from '../_lib/backend';
+} from '../_lib/backend.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -14,12 +16,14 @@ type Body = {
 };
 
 export default async function handler(req: any, res: any) {
+  setApiResponseHeaders(res);
+
   if (req.method !== 'GET' && req.method !== 'PUT') {
     sendMethodNotAllowed(res, ['GET', 'PUT']);
     return;
   }
 
-  const auth = getAuthFromRequest(req);
+  const auth = await getAuthFromRequest(req);
   if (!auth) {
     sendUnauthorized(res);
     return;
@@ -40,5 +44,11 @@ export default async function handler(req: any, res: any) {
   };
 
   await saveStateForTenant(auth.session.tenantId, updated as any);
+
+  try {
+    await syncTransactionsToDomain(auth.session.tenantId, updated.transactions as any[], auth.user.id, 'app');
+  } catch {
+  }
+
   res.status(200).json({ ok: true });
 }

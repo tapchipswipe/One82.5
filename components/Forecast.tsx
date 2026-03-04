@@ -3,17 +3,28 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Sparkles, RotateCw } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { generateForecastInsights } from '../services/geminiService';
+import { CalendarEvent } from '../types';
 
 const Forecast: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [insight, setInsight] = useState('Analyzing trends...');
   const [loading, setLoading] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
 
   const settings = StorageService.getSettings();
   const cacheKey = useMemo(() => `forecast_insight_${settings.aiResponseStyle}`, [settings.aiResponseStyle]);
 
   const fetchForecast = useCallback(async (force: boolean = false) => {
     const historical = StorageService.getMetrics();
+    const calendarEvents = await StorageService.getCalendarEventsResolved('merchant');
+    const now = new Date();
+    const horizon = new Date();
+    horizon.setDate(horizon.getDate() + 14);
+    const nearTermEvents = calendarEvents.filter((event) => {
+      const eventDate = new Date(`${event.date}T00:00:00`);
+      return eventDate >= now && eventDate <= horizon;
+    });
+    setUpcomingEvents(nearTermEvents);
     
     // Simple mock projection logic
     const lastDay = historical[historical.length - 1];
@@ -22,7 +33,20 @@ const Forecast: React.FC = () => {
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     for(let i=0; i<7; i++) {
-        baseRevenue = baseRevenue * (1 + (Math.random() * 0.2 - 0.05));
+        const randomDelta = Math.random() * 0.2 - 0.05;
+        const projectionDate = new Date();
+        projectionDate.setDate(projectionDate.getDate() + i + 1);
+        const projectionDateKey = projectionDate.toISOString().slice(0, 10);
+
+        const eventImpact = nearTermEvents
+          .filter((event) => event.date === projectionDateKey)
+          .reduce((sum, event) => {
+            if (event.impactDirection === 'neutral') return sum;
+            const directionalImpact = event.impactDirection === 'up' ? event.impactPercent : -event.impactPercent;
+            return sum + directionalImpact / 100;
+          }, 0);
+
+        baseRevenue = baseRevenue * (1 + randomDelta + eventImpact);
         projected.push({
             date: `Next ${days[i]}`,
             revenue: Math.round(baseRevenue),
@@ -63,7 +87,7 @@ const Forecast: React.FC = () => {
         <button 
             onClick={() => fetchForecast(true)}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
         >
             <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh Analysis
@@ -75,8 +99,29 @@ const Forecast: React.FC = () => {
         <div>
             <h4 className="font-semibold text-indigo-900 dark:text-indigo-200 text-sm">AI Outlook</h4>
             <p className="text-sm text-indigo-800 dark:text-indigo-300">{insight}</p>
+            {upcomingEvents.length > 0 && (
+              <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-2">
+                Forecast adjusted using {upcomingEvents.length} upcoming calendar event{upcomingEvents.length === 1 ? '' : 's'}.
+              </p>
+            )}
         </div>
       </div>
+
+      {upcomingEvents.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Upcoming Calendar Signals</h4>
+          <div className="space-y-1">
+            {upcomingEvents.slice(0, 5).map((event) => (
+              <div key={event.id} className="text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between gap-3">
+                <span>{event.date} · {event.title}</span>
+                <span className={`font-semibold ${event.impactDirection === 'up' ? 'text-green-600 dark:text-green-400' : event.impactDirection === 'down' ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {event.impactDirection === 'neutral' ? 'neutral' : `${event.impactDirection === 'up' ? '+' : '-'}${event.impactPercent}%`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 h-96">
         <ResponsiveContainer width="100%" height="100%">

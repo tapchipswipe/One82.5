@@ -12,6 +12,7 @@ import Login from './components/Login';
 import Settings from './components/Settings';
 import DataChat from './components/DataChat';
 import Forecast from './components/Forecast';
+import CalendarPlanner from './components/CalendarPlanner';
 import Customers from './components/Customers';
 import MerchantLedger from './components/MerchantLedger';
 import Integrations from './components/Integrations';
@@ -24,12 +25,72 @@ import HomePage from './components/marketing/HomePage';
 import FeaturesPage from './components/marketing/FeaturesPage';
 import PricingPage from './components/marketing/PricingPage';
 import OverseerDashboard from './components/OverseerDashboard';
+import Profile from './components/Profile';
 import { StorageService } from './services/storage';
 import { AuthService } from './services/authService';
 import { detectAnomalies } from './services/geminiService';
 import { SimulationService } from './services/simulationService';
-import { User, BusinessType, UserRole, AuthMode } from './types';
+import { User, BusinessType, UserRole, AuthMode, Transaction } from './types';
 import { ENABLE_EXPERIMENTAL, THEME_COLORS } from './constants';
+
+const buildPortfolioFromTransactions = (transactions: Transaction[]) => {
+  const grouped = new Map<string, Transaction[]>();
+
+  transactions.forEach((transaction) => {
+    const customer = transaction.customer || 'Imported Merchant';
+    const current = grouped.get(customer) || [];
+    current.push(transaction);
+    grouped.set(customer, current);
+  });
+
+  return Array.from(grouped.entries()).map(([name, records], index) => {
+    const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+    const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
+    const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+    const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+    const trend = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
+    const riskLevel = trend === 'down' ? 'Medium' : 'Low';
+    const churnRisk = trend === 'down' ? 'Medium' : 'Low';
+    const volumeHistory = Array.from({ length: 6 }, (_, offset) => {
+      const start = Math.floor((offset * records.length) / 6);
+      const end = Math.floor(((offset + 1) * records.length) / 6);
+      const slice = records.slice(start, Math.max(end, start + 1));
+      return Math.round(slice.reduce((sum, record) => sum + record.amount, 0));
+    });
+
+    return {
+      id: `imported_${index}_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+      name,
+      businessType: 'Service' as BusinessType,
+      monthlyVolume: Math.round(monthlyVolume),
+      churnRisk,
+      trend,
+      lastTransaction,
+      bps: 35,
+      perTxFee: 0.1,
+      status: 'Active' as const,
+      mccCode: '0000',
+      mccDescription: 'Imported Merchant',
+      riskLevel,
+      volumeHistory,
+      ownerName: `${name} Owner`,
+      email: `owner+${index}@imported.one82`,
+      phone: '(000) 000-0000',
+      address: 'Imported via CSV',
+      since: new Date().toISOString().slice(0, 10),
+      notes: [
+        {
+          id: `note_${index}`,
+          date: new Date().toISOString().slice(0, 10),
+          author: 'Import Hub',
+          text: 'Generated from imported transactions.'
+        }
+      ],
+      healthScore: trend === 'down' ? 58 : 78
+    };
+  });
+};
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState('dashboard');
@@ -39,9 +100,11 @@ const App: React.FC = () => {
   const [authMode, setAuthMode] = useState<AuthMode>('demo');
   const [marketingPage, setMarketingPage] = useState<'home' | 'features' | 'pricing' | null>('home');
   const [showTrial, setShowTrial] = useState(false);
-  const merchants = SimulationService.generatePortfolio();
+  const merchants = authMode === 'demo'
+    ? SimulationService.generatePortfolio()
+    : buildPortfolioFromTransactions(StorageService.getTransactions());
   const resolveDataMode = (mode: AuthMode): 'backend' | 'demo' => {
-    if (StorageService.isBackendDataEnabled()) return 'backend';
+    if (!StorageService.isBackendDataEnabled()) return 'demo';
     return mode === 'backend' ? 'backend' : 'demo';
   };
 
@@ -135,7 +198,19 @@ const App: React.FC = () => {
       };
       setUser(updated);
       StorageService.saveUser(updated);
+      void AuthService.saveUserProfile(updated, authMode).catch((error) => {
+        console.error('Failed to persist onboarding profile:', error);
+      });
     }
+  };
+
+  const handleSaveProfile = (updatedUser: User) => {
+    setUser(updatedUser);
+    StorageService.saveUser(updatedUser);
+    window.dispatchEvent(new Event('user-update'));
+    void AuthService.saveUserProfile(updatedUser, authMode).catch((error) => {
+      console.error('Failed to persist profile update:', error);
+    });
   };
 
   if (loading) return null;
@@ -174,7 +249,9 @@ const App: React.FC = () => {
           {activeView === 'settings' && <Settings />}
           {activeView === 'chat' && <DataChat />}
           {activeView === 'forecast' && <Forecast />}
+          {activeView === 'calendar' && <CalendarPlanner />}
           {activeView === 'customers' && <Customers />}
+          {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
           {ENABLE_EXPERIMENTAL && activeView === 'exp-cashflow' && <div className="p-6"><CashFlowForecastDemo /></div>}
           {ENABLE_EXPERIMENTAL && activeView === 'experimental' && <Experimental role={user.role} />}
         </>
@@ -188,18 +265,20 @@ const App: React.FC = () => {
           {activeView === 'profitability' && <Profitability />}
           {activeView === 'team' && <Team onNavigate={setActiveView} />}
           {activeView === 'integrations' && <Integrations />}
+          {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
           {ENABLE_EXPERIMENTAL && activeView === 'experimental' && <Experimental role={user.role} />}
           {activeView === 'settings' && <Settings />}
           {/* Fallback */}
-          {!['dashboard', 'statements', 'portfolio', 'profitability', 'team', 'integrations', 'experimental', 'settings'].includes(activeView) && <ISODashboard />}
+          {!['dashboard', 'statements', 'portfolio', 'profitability', 'team', 'integrations', 'experimental', 'settings', 'profile'].includes(activeView) && <ISODashboard />}
         </>
       )}
 
       {user.role === 'overseer' && (
         <>
           {activeView === 'dashboard' && <OverseerDashboard />}
+          {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
           {activeView === 'settings' && <Settings />}
-          {!['dashboard', 'settings'].includes(activeView) && <OverseerDashboard />}
+          {!['dashboard', 'settings', 'profile'].includes(activeView) && <OverseerDashboard />}
         </>
       )}
     </Layout>

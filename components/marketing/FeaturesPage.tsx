@@ -203,7 +203,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ onNavigate }) => {
                 onClick={() => onNavigate('trial')}
                 className="inline-flex items-center gap-2 px-8 py-4 text-lg font-semibold text-gray-900 bg-white hover:bg-gray-100 rounded-lg transition-colors"
               >
-                Start Free Trial
+                Use Auth Login
               </button>
               <button
                 onClick={() => onNavigate('pricing')}

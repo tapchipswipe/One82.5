@@ -9,28 +9,28 @@ const InventoryIntelligence: React.FC = () => {
 
   const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) => {
     if (trend === 'up') return <TrendingUp className="w-4 h-4 text-green-600" />;
-    if (trend === 'down') return <TrendingDown className="w-4 h-4 text-red-600" />;
-    return <Minus className="w-4 h-4 text-gray-400" />;
+    if (trend === 'down') return <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />;
+    return <Minus className="w-4 h-4 text-gray-400 dark:text-gray-500" />;
   };
 
   const StockBadge = ({ days }: { days: number }) => {
     if (days < 2) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-md">
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-md">
           <AlertTriangle className="w-3 h-3" />
           Critical
         </span>
       );
     } else if (days < 3) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-700 rounded-md">
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded-md">
           <AlertTriangle className="w-3 h-3" />
           Low
         </span>
       );
     } else {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-md">
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-md">
           <Package className="w-3 h-3" />
           Good
         </span>
@@ -39,10 +39,10 @@ const InventoryIntelligence: React.FC = () => {
   };
 
   const ItemRow = ({ item }: { item: InventoryItem; key?: string | number }) => (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+    <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-gray-900">{item.name}</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-white">{item.name}</h3>
           <TrendIcon trend={item.trend} />
         </div>
         <StockBadge days={item.daysOfStockLeft} />
@@ -50,39 +50,39 @@ const InventoryIntelligence: React.FC = () => {
 
       <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
         <div>
-          <p className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">Total Sold</p>
-          <p className="font-semibold text-gray-900">{item.totalSold}</p>
+          <p className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Total Sold</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{item.totalSold}</p>
         </div>
         <div>
-          <p className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">Daily Rate</p>
-          <p className="font-semibold text-gray-900">{item.avgDailyRate}/day</p>
+          <p className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Daily Rate</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{item.avgDailyRate}/day</p>
         </div>
         <div>
-          <p className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">Stock Left</p>
-          <p className="font-semibold text-gray-900">{item.daysOfStockLeft.toFixed(1)} days</p>
+          <p className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Stock Left</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{item.daysOfStockLeft.toFixed(1)} days</p>
         </div>
         <div>
-          <p className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">Confidence</p>
+          <p className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Confidence</p>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-gray-200 rounded-full h-2">
+            <div className="flex-1 bg-gray-200 dark:bg-slate-700 rounded-full h-2">
               <div
-                className="bg-gray-900 h-2 rounded-full transition-all"
+                className="bg-gray-900 dark:bg-gray-100 h-2 rounded-full transition-all"
                 style={{ width: `${item.confidence}%` }}
               />
             </div>
-            <span className="text-xs font-semibold text-gray-600">{item.confidence}%</span>
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{item.confidence}%</span>
           </div>
         </div>
       </div>
 
       {item.peakHours.length > 0 && (
-        <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
-          <Clock className="w-4 h-4" />
+        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 mb-2">
+          <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           <span>Peak hours: {item.peakHours.map(h => `${h}:00`).join(', ')}</span>
         </div>
       )}
 
-      <p className="text-sm text-gray-700 bg-gray-50 rounded px-3 py-2 border border-gray-100">
+      <p className="text-sm text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-slate-800 rounded px-3 py-2 border border-gray-100 dark:border-slate-700">
         {item.reorderRecommendation}
       </p>
     </div>
@@ -92,16 +92,16 @@ const InventoryIntelligence: React.FC = () => {
     <div className="p-6">
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="w-6 h-6 text-gray-900" />
-          <h1 className="text-2xl font-bold text-gray-900">AI Inventory Intelligence</h1>
+          <Sparkles className="w-6 h-6 text-gray-900 dark:text-white" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Inventory Intelligence</h1>
         </div>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-300">
           Transaction-derived stock insights powered by AI pattern analysis
         </p>
       </div>
 
       {/* Summary Card */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-lg p-6 mb-6">
+      <div className="bg-gradient-to-r from-gray-900 to-gray-700 dark:from-slate-800 dark:to-slate-700 text-white rounded-lg p-6 mb-6">
         <h2 className="text-lg font-bold mb-2">Summary</h2>
         <p className="text-gray-100">{insight.summary}</p>
         {insight.lowStock.length > 0 && (
@@ -115,7 +115,7 @@ const InventoryIntelligence: React.FC = () => {
       {/* Low Stock Alert Section */}
       {insight.lowStock.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-red-600" />
             Low Stock Alerts
           </h2>
@@ -130,7 +130,7 @@ const InventoryIntelligence: React.FC = () => {
       {/* Top Movers */}
       {insight.topMovers.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-green-600" />
             Top Movers
           </h2>
@@ -145,8 +145,8 @@ const InventoryIntelligence: React.FC = () => {
       {/* All Items */}
       {insight.items.length > 0 && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-            <Package className="w-5 h-5 text-gray-600" />
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <Package className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             All Items
           </h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -159,9 +159,9 @@ const InventoryIntelligence: React.FC = () => {
 
       {insight.items.length === 0 && (
         <div className="text-center py-12">
-          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Inventory Data</h3>
-          <p className="text-gray-600">
+          <Package className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Inventory Data</h3>
+          <p className="text-gray-600 dark:text-gray-300">
             Start processing transactions with item-level data to see AI-powered inventory insights.
           </p>
         </div>

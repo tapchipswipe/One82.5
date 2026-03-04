@@ -49,7 +49,7 @@ const DataChat: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
-        <h2 className="font-bold flex items-center gap-2"><Bot className="w-5 h-5 text-primary-600" /> AI Streaming Assistant</h2>
+        <h2 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Bot className="w-5 h-5 text-primary-600" /> AI Streaming Assistant</h2>
       </div>
       
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -70,7 +70,7 @@ const DataChat: React.FC = () => {
 
       <div className="p-4 border-t border-slate-200 dark:border-slate-800">
         <form onSubmit={handleSend} className="relative">
-            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a message..." className="w-full pl-4 pr-12 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 outline-none" />
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a message..." className="w-full pl-4 pr-12 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none" />
             <button type="submit" disabled={!input.trim() || isTyping} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary-600 text-white rounded-lg disabled:opacity-50"><Send className="w-4 h-4" /></button>
         </form>
       </div>

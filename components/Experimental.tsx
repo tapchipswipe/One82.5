@@ -4,6 +4,7 @@ import { UserRole } from '../types';
 import { ProvenanceBadges, SourceStatusText } from './ProvenanceIndicators';
 import { PortfolioMerchant, SimulationService } from '../services/simulationService';
 import SharedActionPlansDemo from './experimental/SharedActionPlansDemo';
+import { StorageService } from '../services/storage';
 
 interface ExperimentalProps {
   role: UserRole;
@@ -106,7 +107,7 @@ const buildRescueQueue = (merchants: PortfolioMerchant[]): RescueAction[] => {
 };
 
 const Experimental: React.FC<ExperimentalProps> = ({ role }) => {
-  const merchants = useMemo(() => SimulationService.generatePortfolio(), []);
+  const merchants = useMemo(() => StorageService.getDataMode() === 'demo' ? SimulationService.generatePortfolio() : [], []);
   const [activeFeature, setActiveFeature] = useState<FeatureId | null>(null);
 
   const rescueQueue = useMemo(() => buildRescueQueue(merchants), [merchants]);

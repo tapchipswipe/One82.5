@@ -1,6 +1,3 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-
 # ONE82
 ### Transaction Intelligence & ISO Portfolio Platform
 </div>
@@ -145,6 +142,7 @@ The dev server now includes in-memory API routes for backend mode:
 - `GET /api/data/metrics`
 - `GET /api/data/notifications`
 - `POST /api/data/notifications/read`
+- `GET /api/data/ops`
 - `GET /api/health`
 
 Supabase-backed persistence is automatically enabled when all of these are present in `.env.local`:
@@ -155,18 +153,49 @@ SUPABASE_ANON_KEY=<your-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 ```
 
-If any variable is missing (or Supabase has a recoverable runtime error), local in-memory demo persistence is used as fallback.
+If auth env vars are missing, backend auth login will fail fast so login data is not silently stored outside Supabase.
 
 To test end-to-end backend mode locally:
 1. Start `npm run dev`
-2. On Login, switch to **Backend Auth**
+2. On Login, choose **Auth Login** or **Demo Login** (both persist login records in Supabase when backend auth is enabled)
 3. Sign in with any email (use an email containing `iso` to auto-map ISO role)
 
 No separate backend process is required for this local dev flow.
 
 ### Backend Implementation Artifacts (Supabase)
 - Supabase migration: [supabase/migrations/0001_one82_state.sql](supabase/migrations/0001_one82_state.sql)
+- Supabase migration: [supabase/migrations/0002_one82_auth.sql](supabase/migrations/0002_one82_auth.sql)
+- Supabase migration: [supabase/migrations/0003_one82_performance.sql](supabase/migrations/0003_one82_performance.sql)
+- Supabase migration: [supabase/migrations/0004_one82_domain_foundation.sql](supabase/migrations/0004_one82_domain_foundation.sql)
+- Supabase migration: [supabase/migrations/0005_one82_operational_hardening.sql](supabase/migrations/0005_one82_operational_hardening.sql)
 - Runtime API implementation: [api/_lib/backend.ts](api/_lib/backend.ts)
+
+### Ops Hardening (Vercel + Supabase)
+Use these commands before production deploys:
+
+```bash
+npm run ops:env
+npm run build
+npm run ops:health
+```
+
+- `ops:env` validates required backend auth/data env vars are present.
+- `ops:health` checks `/api/health` and fails fast if API/Supabase connectivity is unhealthy.
+- `supabase/migrations/0003_one82_performance.sql` adds query indexes and a session-pruning function for long-running auth performance.
+- `supabase/migrations/0004_one82_domain_foundation.sql` creates normalized domain tables (tenants, merchants, team members, processor transactions, import jobs, rep assignments, residual snapshots) for the trial/production data model.
+- `supabase/migrations/0005_one82_operational_hardening.sql` adds operational tables (processor connections, sync runs, events), consistency triggers, `updated_at` automation, analytics views, and backfill from existing tenant state.
+
+When backend data mode is enabled, transaction writes and CSV import writes now sync to normalized domain tables in addition to tenant state payload storage:
+- `one82_processor_transactions`
+- `one82_merchants`
+- `one82_team_members`
+- `one82_import_jobs`
+
+For hosted checks, point health probe to Vercel:
+
+```bash
+ONE82_HEALTH_URL=https://<your-deployment-domain> npm run ops:health
+```
 
 ### Vercel + Supabase Test Flow (Current)
 You can test backend auth/data on Vercel using the included serverless routes under `api/`:
@@ -178,9 +207,12 @@ You can test backend auth/data on Vercel using the included serverless routes un
 - `GET /api/data/metrics`
 - `GET /api/data/notifications`
 - `POST /api/data/notifications/read`
+- `GET /api/data/ops`
+
+`GET /api/data/ops` returns both raw streams (`syncRuns`, `events`) and a `summary` object for quick operations status cards (latest sync status/time, failed/running sync counts, events in the last 24 hours, latest event details).
 
 1. Create a Supabase project.
-2. Run SQL from `supabase/migrations/0001_one82_state.sql` in Supabase SQL Editor.
+2. Run SQL from both `supabase/migrations/0001_one82_state.sql` and `supabase/migrations/0002_one82_auth.sql` in Supabase SQL Editor.
 3. In Vercel → Project Settings → Environment Variables, set:
   - `VITE_ENABLE_BACKEND_AUTH=true`
   - `VITE_ENABLE_BACKEND_DATA=true`
@@ -190,12 +222,16 @@ You can test backend auth/data on Vercel using the included serverless routes un
   - `SUPABASE_URL=<your-project-url>`
   - `SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>`
   - `ONE82_SUPABASE_STATE_TABLE=one82_state`
+  - `ONE82_SUPABASE_LOGIN_USERS_TABLE=one82_login_users`
+  - `ONE82_SUPABASE_LOGIN_SESSIONS_TABLE=one82_login_sessions`
+  - `ONE82_SUPABASE_SYNC_RUNS_TABLE=one82_sync_runs` (optional)
+  - `ONE82_SUPABASE_EVENTS_TABLE=one82_events` (optional)
 4. Deploy to Vercel.
-5. In app login, select **Backend Auth** and sign in.
+5. In app login, select **Auth Login** or **Demo Login** and sign in.
 6. Add/edit transactions, refresh, and re-login to confirm data persists.
 7. Visit `/api/health` to verify API runtime and Supabase connectivity status.
 
-If Supabase env vars are missing or invalid, API routes fall back to in-memory state for temporary testing.
+Data routes can still use in-memory fallback for state if Supabase is temporarily unavailable, but login/session persistence requires Supabase.
 
 ### Switch To Trial Phase (One-Step Profile)
 Use `.env.trial.example` as the source of truth for trial mode:

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Building2, Link2, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { generateSalesReps, SalesRep, SimulationService, PortfolioMerchant } from '../services/simulationService';
+import { StorageService } from '../services/storage';
 
 type RepAssignment = {
   rep: SalesRep;
@@ -16,7 +17,7 @@ const formatCurrency = (value: number): string =>
 
 const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   const reps = useMemo(() => generateSalesReps(), []);
-  const merchants = useMemo(() => SimulationService.generatePortfolio(), []);
+  const merchants = useMemo(() => StorageService.getDataMode() === 'demo' ? SimulationService.generatePortfolio() : [], []);
 
   const assignments = useMemo<RepAssignment[]>(() => {
     if (merchants.length === 0) {
@@ -137,7 +138,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                     onClick={() => onNavigate?.('profitability')}
                     className="inline-flex items-center rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
-                    View Rep Performance
+                    View Merchant Profitability
                   </button>
                   <button
                     type="button"

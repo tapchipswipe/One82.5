@@ -45,6 +45,36 @@ const createDemoSession = (user: User): AuthSession => {
   };
 };
 
+const loginViaBackendApi = async (email: string, password: string, mode: AuthMode): Promise<AuthLoginResult> => {
+  const response = await fetch(getApiUrl('/api/auth/login'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, mode })
+  });
+
+  if (!response.ok) {
+    try {
+      const errorPayload = await response.json() as { error?: string };
+      throw new Error(errorPayload.error || 'Auth login failed. Verify Supabase auth backend configuration.');
+    } catch {
+      throw new Error('Auth login failed. Verify Supabase auth backend configuration.');
+    }
+  }
+
+  const payload = await response.json();
+  const user = payload.user as User;
+  const session = payload.session as AuthSession;
+
+  if (!user || !session) {
+    throw new Error('Invalid auth response from backend.');
+  }
+
+  StorageService.saveUser(user);
+  sessionStorage.save(session);
+
+  return { user, session, mode };
+};
+
 const loginWithDemo = (email: string): AuthLoginResult => {
   const normalizedEmail = email.trim().toLowerCase();
   let user = StorageService.getUser();
@@ -91,28 +121,7 @@ const loginWithDemo = (email: string): AuthLoginResult => {
 };
 
 const loginWithBackend = async (email: string, password: string): Promise<AuthLoginResult> => {
-  const response = await fetch(getApiUrl('/api/auth/login'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-
-  if (!response.ok) {
-    throw new Error('Backend sign-in failed. Use Demo Mode or verify auth API availability.');
-  }
-
-  const payload = await response.json();
-  const user = payload.user as User;
-  const session = payload.session as AuthSession;
-
-  if (!user || !session) {
-    throw new Error('Invalid auth response from backend.');
-  }
-
-  StorageService.saveUser(user);
-  sessionStorage.save(session);
-
-  return { user, session, mode: 'backend' };
+  return loginViaBackendApi(email, password, 'backend');
 };
 
 const getPreferredMode = (): AuthMode => {
@@ -139,7 +148,7 @@ export const AuthService = {
   bootstrap: async (): Promise<{ user: User | null; session: AuthSession | null; mode: AuthMode }> => {
     const mode = normalizeAuthMode(getPreferredMode());
 
-    if (mode === 'backend') {
+    if (BACKEND_AUTH_ENABLED && mode === 'backend') {
       try {
         const response = await fetch(getApiUrl('/api/auth/session'));
         if (!response.ok) {
@@ -175,11 +184,34 @@ export const AuthService = {
     const normalizedMode = normalizeAuthMode(mode);
     setPreferredMode(normalizedMode);
 
-    if (normalizedMode === 'backend') {
+    if (BACKEND_AUTH_ENABLED && normalizedMode === 'backend') {
       return loginWithBackend(email, password);
     }
 
     return loginWithDemo(email);
+  },
+
+  saveUserProfile: async (user: User, mode: AuthMode): Promise<User> => {
+    const normalizedMode = normalizeAuthMode(mode);
+    if (normalizedMode !== 'backend') {
+      StorageService.saveUser(user);
+      return user;
+    }
+
+    const response = await fetch(getApiUrl('/api/auth/profile'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to persist user profile.');
+    }
+
+    const payload = await response.json() as { user?: User };
+    const savedUser = payload.user || user;
+    StorageService.saveUser(savedUser);
+    return savedUser;
   },
 
   logout: async (mode: AuthMode): Promise<void> => {

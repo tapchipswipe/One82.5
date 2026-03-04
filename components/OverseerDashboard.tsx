@@ -37,7 +37,18 @@ interface IsoScorecard {
   profitIndex: number;
 }
 
+interface OpsSummary {
+  latestSyncStatus: string;
+  latestSyncAt: string | null;
+  failedSyncRuns: number;
+  runningSyncRuns: number;
+  events24h: number;
+  latestEventType: string | null;
+  latestEventAt: string | null;
+}
+
 const OverseerDashboard: React.FC = () => {
+  const isDemoMode = StorageService.getDataMode() === 'demo';
   const [portfolioVolume, setPortfolioVolume] = useState(0);
   const [liveVolume, setLiveVolume] = useState(0);
   const [focusedMerchantId, setFocusedMerchantId] = useState<string | null>(null);
@@ -80,8 +91,18 @@ const OverseerDashboard: React.FC = () => {
       status: 'open'
     }
   ]);
+  const [opsSummary, setOpsSummary] = useState<OpsSummary>({
+    latestSyncStatus: 'none',
+    latestSyncAt: null,
+    failedSyncRuns: 0,
+    runningSyncRuns: 0,
+    events24h: 0,
+    latestEventType: null,
+    latestEventAt: null
+  });
+  const [opsAvailable, setOpsAvailable] = useState(false);
 
-  const merchants = useMemo(() => SimulationService.generatePortfolio(), []);
+  const merchants = useMemo(() => isDemoMode ? SimulationService.generatePortfolio() : [], [isDemoMode]);
   const transactions = StorageService.getTransactions();
   const notifications = StorageService.getNotifications();
 
@@ -90,20 +111,69 @@ const OverseerDashboard: React.FC = () => {
     setPortfolioVolume(basePortfolioVolume);
     setLiveVolume(basePortfolioVolume * 0.42);
 
+    if (!isDemoMode) {
+      return;
+    }
+
     const ticker = setInterval(() => {
       setPortfolioVolume((current) => current + Math.random() * 120);
       setLiveVolume((current) => current + Math.random() * 90 + 20);
     }, 2200);
 
     return () => clearInterval(ticker);
-  }, [merchants]);
+  }, [isDemoMode, merchants]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadOpsSummary = async () => {
+      try {
+        const response = await fetch('/api/data/ops?limit=25');
+        if (!response.ok) {
+          if (mounted) {
+            setOpsAvailable(false);
+          }
+          return;
+        }
+
+        const payload = await response.json() as { summary?: OpsSummary };
+        if (!mounted) return;
+
+        if (payload?.summary) {
+          setOpsSummary(payload.summary);
+          setOpsAvailable(true);
+          return;
+        }
+
+        setOpsAvailable(false);
+      } catch {
+        if (mounted) {
+          setOpsAvailable(false);
+        }
+      }
+    };
+
+    void loadOpsSummary();
+    const interval = window.setInterval(() => {
+      void loadOpsSummary();
+    }, 60000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const atRiskMerchants = merchants.filter((merchant) => merchant.churnRisk === 'High');
   const activeMerchants = merchants.filter((merchant) => merchant.status === 'Active').length;
-  const isoCount = 3;
+  const isoCount = isDemoMode ? 3 : 0;
   const openAlerts = notifications.filter((notification) => !notification.read).length;
 
   const riskRadar = useMemo(() => {
+    if (!isDemoMode || merchants.length === 0) {
+      return [];
+    }
+
     const grouped = [
       {
         isoName: 'ISO East',
@@ -137,7 +207,7 @@ const OverseerDashboard: React.FC = () => {
         };
       })
       .sort((a, b) => b.riskScore - a.riskScore);
-  }, [merchants]);
+  }, [isDemoMode, merchants]);
 
   const integrationHealth = useMemo(() => {
     return INTEGRATIONS.map((integration) => {
@@ -149,10 +219,10 @@ const OverseerDashboard: React.FC = () => {
         name: integration.name,
         connected,
         freshnessMinutes,
-        modeLabel: LIVE_INTEGRATIONS_ENABLED && connected ? 'Live' : 'Simulated'
+          modeLabel: LIVE_INTEGRATIONS_ENABLED && connected ? 'Live' : (isDemoMode ? 'Simulated' : 'Not Connected')
       };
     });
-  }, []);
+  }, [isDemoMode]);
 
   const scorecards = useMemo<IsoScorecard[]>(() => {
     return riskRadar.map((entry, index) => {
@@ -181,12 +251,12 @@ const OverseerDashboard: React.FC = () => {
         ? `${topRisk.isoName} is currently the highest-risk portfolio (${topRisk.riskScore}) with ${topRisk.highRisk} high-risk merchants.`
         : 'Risk radar is stable with no critical outliers.',
       `${openInterventions} interventions are active; prioritize the lowest-SLA queue before end of day.`,
-      `${connectedCount} of ${integrationHealth.length} integrations are live; remaining sources are in simulated mode.`,
+      `${connectedCount} of ${integrationHealth.length} integrations are live; remaining sources are ${isDemoMode ? 'in simulated mode' : 'not connected yet'}.`,
       bestIso
         ? `${bestIso.name} leads performance with a profit index of ${bestIso.profitIndex} and retention at ${bestIso.retentionRate}%.`
         : 'ISO scorecards are collecting baseline metrics.'
     ];
-  }, [integrationHealth, interventions, riskRadar, scorecards]);
+  }, [integrationHealth, interventions, isDemoMode, riskRadar, scorecards]);
 
   const updateInterventionStatus = (id: string, status: InterventionStatus): void => {
     setInterventions((current) => current.map((item) => item.id === id ? { ...item, status } : item));
@@ -303,11 +373,40 @@ const OverseerDashboard: React.FC = () => {
 
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-indigo-600" />
+          <h2 className="font-semibold text-gray-900">Ops Health</h2>
+        </div>
+        <div className="p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Latest Sync</p>
+            <p className="text-lg font-bold text-gray-900 mt-1">{opsAvailable ? opsSummary.latestSyncStatus : 'N/A'}</p>
+            <p className="text-xs text-gray-500 mt-1">{opsSummary.latestSyncAt ? new Date(opsSummary.latestSyncAt).toLocaleString() : 'No sync data yet'}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Failed Sync Runs</p>
+            <p className="text-lg font-bold text-gray-900 mt-1">{opsAvailable ? opsSummary.failedSyncRuns : 0}</p>
+            <p className="text-xs text-gray-500 mt-1">Last 25 runs sample</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Running Syncs</p>
+            <p className="text-lg font-bold text-gray-900 mt-1">{opsAvailable ? opsSummary.runningSyncRuns : 0}</p>
+            <p className="text-xs text-gray-500 mt-1">In-progress pipelines</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Events (24h)</p>
+            <p className="text-lg font-bold text-gray-900 mt-1">{opsAvailable ? opsSummary.events24h : 0}</p>
+            <p className="text-xs text-gray-500 mt-1">Latest: {opsSummary.latestEventType || 'none'}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
           <Shield className="w-4 h-4 text-indigo-600" />
           <h2 className="font-semibold text-gray-900">Global Risk Radar</h2>
         </div>
         <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-          {riskRadar.map((entry) => (
+          {riskRadar.length > 0 ? riskRadar.map((entry) => (
             <div key={entry.isoName} className={`rounded-xl border p-4 ${entry.riskScore >= policy.alertRiskThreshold ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
               <div className="flex items-center justify-between gap-2">
                 <p className="font-semibold text-gray-900">{entry.isoName}</p>
@@ -318,7 +417,11 @@ const OverseerDashboard: React.FC = () => {
               <p className="text-xs text-gray-500 mt-2">Merchants: {entry.merchantCount} · High risk: {entry.highRisk} · Downward trends: {entry.downward}</p>
               <p className="text-xs text-gray-500 mt-1">Average health: {entry.avgHealth}/100</p>
             </div>
-          ))}
+          )) : (
+            <div className="md:col-span-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+              No live portfolio risk data yet in Auth/Trial mode. Import transactions or connect integrations to activate risk radar.
+            </div>
+          )}
         </div>
       </div>
 
@@ -329,7 +432,7 @@ const OverseerDashboard: React.FC = () => {
             <h2 className="font-semibold text-gray-900">High-Risk Merchants</h2>
           </div>
           <div className="divide-y divide-gray-100">
-            {atRiskMerchants.map((merchant) => (
+            {atRiskMerchants.length > 0 ? atRiskMerchants.map((merchant) => (
               <div
                 id={`overseer-merchant-${merchant.id}`}
                 key={merchant.id}
@@ -341,7 +444,11 @@ const OverseerDashboard: React.FC = () => {
                 </div>
                 <span className="text-xs font-bold text-red-600 bg-red-50 rounded-full px-2 py-1">High Risk</span>
               </div>
-            ))}
+            )) : (
+              <div className="px-5 py-6 text-sm text-gray-500">
+                No high-risk merchant signals yet.
+              </div>
+            )}
           </div>
         </div>
 
@@ -403,7 +510,7 @@ const OverseerDashboard: React.FC = () => {
                       <p className="text-xs text-gray-500">Mode: {integration.modeLabel}</p>
                     </div>
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${integration.connected ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
-                      {integration.connected ? `${integration.freshnessMinutes}m fresh` : 'Simulated'}
+                      {integration.connected ? `${integration.freshnessMinutes}m fresh` : (isDemoMode ? 'Simulated' : 'Not Connected')}
                     </span>
                   </div>
                 ))}

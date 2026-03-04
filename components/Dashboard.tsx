@@ -59,12 +59,18 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
     if (StorageService.hasCredits(1)) {
       setHasCredits(true);
       setLoading(true);
+      setInsight('');
       StorageService.updateCredits(1, 'Dashboard Insights');
+      let fullText = '';
       await streamDashboardInsights(filtered, businessType, timeRange, (text) => {
-        setInsight(text);
-        StorageService.setCachedInsight(cacheKey, text);
-        setLoading(false);
+        fullText += text;
+        setInsight(fullText);
       });
+      const finalInsight = fullText.trim();
+      if (finalInsight) {
+        StorageService.setCachedInsight(cacheKey, finalInsight);
+      }
+      setLoading(false);
     } else {
       setHasCredits(false);
       setInsight("Insufficient credits.");

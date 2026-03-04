@@ -11,9 +11,9 @@ interface SourceStatusTextProps {
   className?: string;
 }
 
-const modeLabel = (mode: 'backend' | 'demo', compact: boolean): string => {
+const modeLabel = (mode: 'backend' | 'demo'): string => {
   if (mode === 'backend') {
-    return 'Live';
+    return 'Live (Auth/Trial)';
   }
   return 'Simulated (Demo)';
 };
@@ -24,7 +24,7 @@ export const ProvenanceBadges: React.FC<ProvenanceBadgesProps> = ({
   className = ''
 }) => {
   const mode = StorageService.getDataMode();
-  const compactLabel = modeLabel(mode, true);
+  const compactLabel = modeLabel(mode);
   const textSize = size === 'sm' ? 'text-xs' : 'text-[10px]';
 
   return (
@@ -44,7 +44,7 @@ export const SourceStatusText: React.FC<SourceStatusTextProps> = ({ className = 
 
   return (
     <p className={className}>
-      Source: {modeLabel(mode, false)}
+      Source: {modeLabel(mode)}
     </p>
   );
 };

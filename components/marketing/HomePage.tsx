@@ -27,7 +27,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                 onClick={() => onNavigate('trial')}
                 className="inline-flex items-center gap-2 px-8 py-4 text-lg font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors shadow-lg hover:shadow-xl"
               >
-                Start Free Trial
+                Use Auth Login
                 <ArrowRight className="w-5 h-5" />
               </button>
               <button
@@ -237,7 +237,7 @@ const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               onClick={() => onNavigate('trial')}
               className="inline-flex items-center gap-2 px-8 py-4 text-lg font-semibold text-gray-900 bg-white hover:bg-gray-100 rounded-lg transition-colors shadow-lg"
             >
-              Start Free Trial
+              Use Auth Login
               <ArrowRight className="w-5 h-5" />
             </button>
             <button

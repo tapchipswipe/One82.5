@@ -1,0 +1,55 @@
+﻿QUICK SURVEY
+Long Questions
+1. What exact business outcome must ONE82 produce for each role (Merchant, ISO, Overseer), and what decisions should each role make measurably better because of the product?
+(Define outcomes, not features; include how success is recognized in real operations.)
+
+(LUCAS) as a ISO I would use 182 as a way to turn data from MY MERCHANTS INTO valuable insight into how their company is doing for example, I could use it to analyze their merchant statement when I am on boarding the client otherwise known as the merchant to see the risk that I am on taking if I on board them another way, I can use the data of their transactions is by having AI processor take the transactions and give a forecast an analysis and a summary of what these transactions mean i.e. we turn transactions into valuable insight with the power of artificial intelligence. Now as an ISO REP I would be under the influence of the iso owner so therefore I would only be able to see that the merchants that I am tied to, for example if I am iso rep, X and I only have three merchants under the iso that has 50 merchants then I can only see the three merchants and their data. I can’t see everybody else’s. Finally if I am a merchant, I am only using this in the case that the iso that processes my payments has bought the subscription for me to be able to turn my data into valuable insights with the power of artificial intelligence I would get such things as but not limited too turn risk of my clients cast revenue forecast. What item is gonna run out of stock forecast how changing prices might affect my income, etc..
+(LANDON) ISO’s would use 182 as a clear database platform to plan, price, and prepare their company for the right direction. Using data provided from our program, ISO’s will have the ability to look at concise data and produce more efficient results that take less time. The goal here is to give each ISO data that will help them speed up the onboarding process. With the merchant statement AI reader, ISO’s will be able to look at the major data points that they normally would be searching for through an entire statement. This speeds up the merchant statement process and allows ISO’s to price merchants quicker and more effectively. For merchants, each transaction is a piece of data that will help AI forecast upcoming developments in the market. Being able to take transaction data and then establish inventory data is a key aspect of the merchant dashboard. We want AI to be able to analyze when things are bought, how much is left, and when would be a good time to buy more stock based on previous transactions and time frames. Merchants need to be able to ask AI anything about their business analytics, and AI needs to be able to produce accurate results. When store X asks AI “How many coffees were bought in the last month, AI needs to be able to produce accurate results based on the transactions that come through the door. Each role will be better able to establish clear insights into company analytics, and produce better results because they spend less time gathering the data themselves. 
+
+
+
+
+   2. What is your final source-of-truth policy for data across Demo vs Auth/Trial, including what may be simulated, what must be real/imported, and how provenance must be shown everywhere?
+(This prevents future confusion and rework around trust.)
+
+(A) think of the trial phase as the deployment phase in a small test group everything must be from its own data. There is no simulated data simulated anything in the trial or deployment phase. That is the reason why I’ve connected super base and Verel to allow for data integration to work from now on I want you to think of it like this this would be the structure in which a company on board with us the iso would contact our sales team and then from there our sales team would give them a login. This login data would include, but not limited to if they are an iso or merchant and how many reps they have if they are an iso this intern would take out the questionnaire when you first sign up let’s say an iso on boarded with us, they would login with the credentials that we gave them. Then they would create their team of reps by either creating the manually or importing a CSV document then they would either integrate their payment software such as TSYS stripe or square with an API integration automatically pulling up their data from previous transactions or they could import a CSV document of all their transactions. However, this should be a pop-up the first time they login. It should say welcome to 182 then give a checklist of things that they should do import/in a great transactions and import team reps now if I was a merchant when I first login, I should get the same pop-up, but I wouldn’t need to import a team of reps as I would be by myself. I would just need to import/in a great transactions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      3. What is the required onboarding-to-activation path from first login to “I trust this and will use it daily,” including mandatory checkpoints and visible proof at each step?
+(This defines your real conversion engine.)
+
+(A)
+
+
+         4. What is the scope boundary for the next 90 days: what must be perfected, what is acceptable-but-not-perfect, and what is explicitly out of scope?
+(This protects focus and prevents roadmap drift.)
+
+(LUCAS) I want to think about this as I need to sell this idea and concept, features and ui must be perfect, and the trial phase must be perfect, I need to be able to integrate at least one payment solution, upload data and have it translated properly, have ai translate data,
+(LANDON) Over the next 90 days, perfecting the UI and integrating AI solutions within the program is going to be key to our success. We currently have the body frame of the program built, but we have yet to install the heart, i.e AI and API integrations. Once installed, we must be able to test our program effectively with one ISO to see what needs to be changed, added, ect. As of right now, perfecting the UI and creating a friendly design is what needs to be done. It is acceptable right now, but not perfect. Integrating accurate data is the next and most important piece of our program. 
+
+
+
+            5.  How do you want to run the team and make product decisions each week?
+            * Explain who is responsible for what, what numbers you will check every week, how often you want to release updates, and what rules you will use to decide whether to keep improving a feature, change it, or remove it.
+
+(LUCAS) the app was built by two people, and so far it has been divided up between the two people concepts and ideas being written down in notes and then integrated into the program
+(LANDON) A roadmap of how the business is going to be run has yet to be established, however, at an overall glance, two people have built this company off an idea to help ISO’s efficiently produce results, and help the merchants of those ISOs have insight into business analytics. Each idea for the program has been written down and each idea is implemented after writing it down. Daily tasks have gotten done when free time is available to each of the two creators as both creators are still in school and sports. Nonetheless, what needs to get done, gets done. Something else worth mentioning is both creators have extremely different skill sets within this business. Lucas is extremely talented behind a computer and knows how to code extremely well. He built the program from the ground up utilizing coding softwares and AI. Landon knows the business. He’s very well versed within the payments world and knows everything about how an ISO thinks, acts, and presents themselves within a business setting. These two differing skill sets have helped the creators come together to build a software for ISO’s and the merchants of those ISO’s. Landon is able to provide Lucas with what the industry needs within a software program, and Lucas is able to effectively implement those things within the program. Those skills sets have gotten the creators thus far into the program.

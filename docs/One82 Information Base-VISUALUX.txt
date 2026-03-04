@@ -1,0 +1,54 @@
+﻿VISUAL UX
+ONE82 Visual + UX Brief — Quick Fill (10 min)
+Date: 3/1/26
+Owners: Lucas, Landon
+1) Desired look & feel (3 words)
+1. Minimal
+2. Modern
+3.  Financial Luxury
+2) Visual direction (choose one)
+[] Clean enterprise
+[x] Premium modern
+[] Data-dense operator
+[] Hybrid
+Notes:
+Users should feel like they have entered a minimal modern luxury experience as they are trusting us with millions of dollars worth of data this is keep that the feel of the experience in the app is everything
+3) UI quality bar (must haves)
+[x] Consistent buttons/forms/tables
+[x] Clear empty states
+[x] Clear error states
+[x] Mobile usable at minimum breakpoint
+4) Motion style
+[x] Minimal
+[ ] Moderate
+[] Rich
+Rule: animations should feel like they belong, and show off the product and last about however long is need in ms.
+5) Dashboard readability rules
+Number format style:
+Provenance shown where:
+No simulated data in auth mode for: ANYTHING.
+6) Import UX rules
+Upload must include:
+[x] Header validation
+[x] Preview rows
+[x] Success message
+[x] Error message
+After import user should immediately see data in:
+Everywhere the data is intended to be used for
+7) Accessibility quick rules
+[ ] Keyboard navigation works
+[ ] Focus states visible
+[ ] Contrast is readable
+8) Top visual fixes to prioritize
+1. Constant brand image all across, everything should follow the same template, with few tweaks in the case that it is for visual appeal
+2. Dark mode, this is a concept that has not been grasped perfectly, research should be done on companies that use a dark mode UI and should be built off the reference these UI examples some include but not limited too; Vercel, Supabase, Square, perplexity, and origin
+3. I like the look of how the profitability tab looks, but it is purely based on the reps, this should be listed under team, make the profitability tab specifically for the understanding of the merchants data and not the reps
+4. On the dashboard the “portfolio dashboard” section should be clickable; ie if I click the portfolio volume it should take me to a dedicated page that shows the transactions as they are coming in, same goes for the rest of the buttons
+5. The settings tab needs to be fixed, one example is but not limited too is logged in as an iso when I am in settings it asks me my business type, if I am an Iso i dont have a business type. as well as the profile that is given at the top of the page should be clickable, same with the one at the bottom left corner, and when you click it you should be taken to a dedicated profile page that allows you to make changes
+6. The integration tab needs to be upgraded, as when a client (ISO/MERCH) wants to integrate their data into ours they need to be able to do so effectively, quickly, and securely.
+9) Done =
+Visual/UX pass is done when:
+- [x] UI is consistent
+- [x] Empty/error/loading states exist
+- [x] Import feedback is obvious
+- [x] Auth mode looks live-ready (not fake)

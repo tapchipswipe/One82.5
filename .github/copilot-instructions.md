@@ -6,7 +6,7 @@
 - `components/Layout.tsx` owns global shell/nav and role-specific nav items; new app views should integrate through `activeView` + `onNavigate` patterns.
 
 ## Service boundaries and data flow
-- `services/authService.ts` handles auth mode (`demo` vs `backend`), session persistence (`one82_auth_session`), and overseer email behavior (`VITE_OVERSEER_EMAIL`).
+- `services/authService.ts` handles auth mode (`demo` vs `backend`) and overseer email behavior (`VITE_OVERSEER_EMAIL`); when backend auth is enabled, login/session persistence is server-side via Supabase-backed API routes.
 - `services/storage.ts` is the primary app data boundary; it abstracts localStorage and backend fallbacks via `*Resolved` methods (for transactions/metrics/notifications).
 - Keep feature components mostly UI-focused; call `StorageService` / `AuthService` from components instead of raw localStorage/fetch where equivalent helpers exist.
 - `services/geminiService.ts` always supports offline behavior (simulated responses when `GEMINI_API_KEY` is absent). Preserve this fallback-first behavior.

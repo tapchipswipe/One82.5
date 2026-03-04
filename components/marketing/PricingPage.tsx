@@ -142,7 +142,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
                 onClick={() => onNavigate('trial')}
                 className="w-full inline-flex items-center justify-center gap-2 px-8 py-4 text-lg font-semibold text-gray-900 bg-white hover:bg-gray-100 rounded-lg transition-colors"
               >
-                Start Free Trial
+                Use Auth Login
                 <ArrowRight className="w-5 h-5" />
               </button>
             </div>
@@ -306,10 +306,10 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
 
           <div className="space-y-6">
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="font-semibold text-gray-900 mb-2">How does the free trial work?</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">How does Auth Login work?</h3>
               <p className="text-gray-600">
-                14-day free trial with full access to all features. No credit card required.
-                Connect your processor and start analyzing immediately.
+                Auth Login connects through the authentication API for account-based access.
+                If Auth Login is unavailable, you can still use Demo Login immediately.
               </p>
             </div>
 
@@ -355,14 +355,14 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
           </h2>
           <p className="text-xl text-gray-300 mb-8">
             Join the ISOs already using ONE82 to transform their portfolio management.
-            Start your free trial today—no credit card required.
+            Use Auth Login for account access, or Demo Login to explore instantly.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={() => onNavigate('trial')}
               className="inline-flex items-center gap-2 px-8 py-4 text-lg font-semibold text-gray-900 bg-white hover:bg-gray-100 rounded-lg transition-colors shadow-lg"
             >
-              Start Free Trial
+              Use Auth Login
               <ArrowRight className="w-5 h-5" />
             </button>
             <button

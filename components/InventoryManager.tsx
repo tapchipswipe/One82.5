@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Package, AlertTriangle, CheckCircle, ShoppingCart, Truck } from 'lucide-react';
+import { Package, AlertTriangle, CheckCircle, ShoppingCart, Truck, Search } from 'lucide-react';
 import { InventoryService } from '../services/inventoryService';
+import { StorageService } from '../services/storage';
 import { InventoryItem } from '../types';
 
 const InventoryManager: React.FC = () => {
+    const isAuthTrialMode = StorageService.getDataMode() === 'backend';
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         setItems(InventoryService.getInventory());
@@ -18,12 +21,29 @@ const InventoryManager: React.FC = () => {
         setSelectedItem(null); // Close modal
     };
 
+    const filteredItems = items.filter((item) => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return true;
+        return item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query);
+    });
+
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <header className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Inventory Intelligence</h1>
                 <p className="text-gray-500 dark:text-gray-400">Automated stock tracking based on sales velocity.</p>
             </header>
+
+            <div className="mb-4 relative max-w-md">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by item name or SKU..."
+                    className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+            </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <table className="w-full text-left">
@@ -38,7 +58,7 @@ const InventoryManager: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {items.map(item => (
+                        {filteredItems.map(item => (
                             <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                 <td className="p-4">
                                     <div className="font-bold text-gray-900 dark:text-white">{item.name}</div>
@@ -71,6 +91,17 @@ const InventoryManager: React.FC = () => {
                                 </td>
                             </tr>
                         ))}
+                        {filteredItems.length === 0 && (
+                            <tr>
+                                <td colSpan={6} className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    {items.length > 0
+                                        ? 'No inventory items match your search.'
+                                        : isAuthTrialMode
+                                        ? 'No inventory data yet in Auth/Trial mode. Connect a live integration or import transaction history first.'
+                                        : 'No inventory items available.'}
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

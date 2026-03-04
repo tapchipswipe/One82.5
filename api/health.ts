@@ -1,3 +1,5 @@
+import { setApiResponseHeaders } from './_lib/backend.js';
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const STATE_TABLE = process.env.ONE82_SUPABASE_STATE_TABLE || 'one82_state';
@@ -17,6 +19,8 @@ type HealthPayload = {
 };
 
 export default async function handler(_req: any, res: any) {
+  setApiResponseHeaders(res, 'public-short');
+
   const payload: HealthPayload = {
     ok: true,
     service: 'one82-api',

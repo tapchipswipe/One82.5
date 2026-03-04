@@ -1,0 +1,21 @@
+date,amount,customer,status,method,items,category
+2026-02-20T08:12:00Z,48.75,Harbor Coffee Co,Completed,Visa,"Latte;Blueberry Muffin",Software
+2026-02-20T08:45:00Z,127.40,Northside Market,Completed,MasterCard,"Bulk Beans;Filters",Inventory
+2026-02-20T09:10:00Z,22.10,Greenline Deli,Completed,Amex,"Breakfast Sandwich",Utilities
+2026-02-20T09:55:00Z,312.00,Urban Eats,Pending,Stripe,"Catering Deposit",Marketing
+2026-02-20T10:30:00Z,19.90,Beacon Books,Completed,Square,"Iced Coffee;Cookie",Miscellaneous
+2026-02-20T11:05:00Z,86.25,Maple Pharmacy,Completed,Visa,"Team Lunch",Payroll
+2026-02-20T11:45:00Z,64.80,Sunset Salon,Failed,MasterCard,"Gift Card Purchase",Miscellaneous
+2026-02-20T12:20:00Z,143.60,Riverfront Gym,Completed,Apple Pay,"Protein Bars;Smoothies",Inventory
+2026-02-20T13:05:00Z,27.35,Hilltop Florist,Completed,Cash,"Americano;Croissant",Rent
+2026-02-20T13:42:00Z,59.99,Prime Printworks,Completed,Wire,"Printer Ink",Software
+2026-02-20T14:18:00Z,214.30,City Pet Supply,Completed,Visa,"Wholesale Kibble",Inventory
+2026-02-20T15:01:00Z,34.50,Oak & Pine Furniture,Pending,MasterCard,"Espresso Flight",Utilities
+2026-02-20T15:44:00Z,18.20,Elm Dental Group,Completed,Amex,"Cold Brew",Miscellaneous
+2026-02-20T16:27:00Z,91.10,Lakeview Hardware,Completed,Stripe,"Special Order Deposit",Marketing
+2026-02-20T17:03:00Z,45.65,Bluebird Bakery,Completed,Square,"Pastry Box",Payroll
+2026-02-20T17:41:00Z,173.90,Metro Auto Care,Completed,Visa,"Fleet Coffee Service",Software
+2026-02-20T18:22:00Z,29.75,Golden Tailor,Completed,MasterCard,"Evening Snack Combo",Rent
+2026-02-20T19:10:00Z,67.00,Peak Outdoor,Failed,Amex,"Subscription Renewal",Utilities
+2026-02-20T19:58:00Z,251.45,Willow Vet Clinic,Completed,Apple Pay,"Monthly Supply Restock",Inventory
+2026-02-20T20:35:00Z,38.15,Fairway Optics,Completed,Cash,"Takeaway Drinks",Miscellaneous

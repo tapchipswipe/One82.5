@@ -14,6 +14,8 @@
 import { getIntegrationKey } from './integrationsConfig';
 import { PortfolioMerchant } from './simulationService';
 
+const isAuthTrialMode = (): boolean => localStorage.getItem('one82_data_mode') === 'backend';
+
 export interface ProcessorTransaction {
     id: string;
     date: string;
@@ -67,6 +69,10 @@ export const stripeService = {
     getTransactions: async (merchantId?: string): Promise<ProcessorTransaction[]> => {
         const key = getIntegrationKey('stripe');
         if (!key) {
+            if (isAuthTrialMode()) {
+                return [];
+            }
+
             return merchantId
                 ? SIMULATED_TRANSACTIONS.filter(t => t.merchantId === merchantId)
                 : SIMULATED_TRANSACTIONS;
@@ -95,7 +101,7 @@ export const stripeService = {
      */
     getTotalVolume: async (startDate: string, endDate: string): Promise<number> => {
         const key = getIntegrationKey('stripe');
-        if (!key) return 243000;
+        if (!key) return isAuthTrialMode() ? 0 : 243000;
 
         const start = Math.floor(new Date(startDate).getTime() / 1000);
         const end = Math.floor(new Date(endDate).getTime() / 1000);
@@ -120,7 +126,7 @@ export const squareService = {
      */
     getTransactions: async (): Promise<ProcessorTransaction[]> => {
         const key = getIntegrationKey('square');
-        if (!key) return SIMULATED_TRANSACTIONS;
+        if (!key) return isAuthTrialMode() ? [] : SIMULATED_TRANSACTIONS;
 
         const response = await fetch('https://connect.squareup.com/v2/payments', {
             method: 'GET',
@@ -159,7 +165,7 @@ export const isoProcessorService = {
      */
     getResidualReports: async (processorId: 'tsys' | 'fiserv' | 'worldpay' | 'global' | 'payrock' | 'elevon'): Promise<ProcessorResidualReport[]> => {
         const key = getIntegrationKey(processorId);
-        if (!key) return SIMULATED_RESIDUALS;
+        if (!key) return isAuthTrialMode() ? [] : SIMULATED_RESIDUALS;
 
         const endpoints: Record<string, string> = {
             tsys: 'https://api.tsys.com/v1/residuals',
@@ -175,7 +181,7 @@ export const isoProcessorService = {
         });
         const data = await response.json();
         // Each processor returns slightly different shapes — normalize here
-        return data?.reports ?? data?.residuals ?? SIMULATED_RESIDUALS;
+        return data?.reports ?? data?.residuals ?? (isAuthTrialMode() ? [] : SIMULATED_RESIDUALS);
     },
 
     /**
@@ -185,6 +191,10 @@ export const isoProcessorService = {
     getMerchantPortfolio: async (processorId: string): Promise<Partial<PortfolioMerchant>[]> => {
         const key = getIntegrationKey(processorId);
         if (!key) {
+            if (isAuthTrialMode()) {
+                return [];
+            }
+
             // Simulation: return minimal shape (full data comes from simulationService)
             return [
                 { id: 'm1', name: "Joe's Pizza", monthlyVolume: 45000 },
@@ -216,6 +226,10 @@ export const cloverService = {
     getOrders: async (merchantId: string): Promise<any[]> => {
         const key = getIntegrationKey('clover');
         if (!key) {
+            if (isAuthTrialMode()) {
+                return [];
+            }
+
             return [
                 { id: 'order_1', total: 2150, createdTime: Date.now() - 60000, state: 'locked' },
                 { id: 'order_2', total: 880, createdTime: Date.now() - 120000, state: 'locked' },

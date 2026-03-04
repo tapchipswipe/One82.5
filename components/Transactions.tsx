@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, Download, Wand2, ChevronRight, Plus, X } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { categorizeTransaction } from '../services/geminiService';
@@ -7,6 +7,7 @@ import TransactionDetail from './TransactionDetail';
 
 const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -22,6 +23,29 @@ const Transactions: React.FC = () => {
   useEffect(() => {
     setTransactions(StorageService.getTransactions());
   }, []);
+
+    const filteredTransactions = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return transactions;
+
+        return transactions.filter((tx) => {
+            const haystack = [
+                tx.id,
+                tx.customer,
+                tx.items.join(' '),
+                String(tx.amount),
+                tx.amount.toFixed(2),
+                new Date(tx.date).toLocaleDateString(),
+                tx.date,
+                tx.category || 'Uncategorized',
+                tx.status
+            ]
+                .join(' ')
+                .toLowerCase();
+
+            return haystack.includes(query);
+        });
+    }, [transactions, searchQuery]);
 
   const handleCategorize = async () => {
     if (!StorageService.hasCredits(2)) {
@@ -155,6 +179,8 @@ const Transactions: React.FC = () => {
                 <input 
                     type="text" 
                     placeholder="Search by customer, amount, or ID..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
             </div>
@@ -175,14 +201,14 @@ const Transactions: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                    {transactions.map((tx) => (
+                    {filteredTransactions.map((tx) => (
                         <tr key={tx.id} onClick={() => setSelectedTx(tx)} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group">
                             <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{tx.id}</td>
                             <td className="px-6 py-4">{new Date(tx.date).toLocaleDateString()}</td>
                             <td className="px-6 py-4">
                                 <div className="flex flex-col">
                                     <span className="text-slate-900 dark:text-white font-medium">{tx.customer}</span>
-                                    <span className="text-xs text-slate-400">{tx.items.join(', ')}</span>
+                                    <span className="text-xs text-slate-400 dark:text-slate-500">{tx.items.join(', ')}</span>
                                 </div>
                             </td>
                             <td className="px-6 py-4">
@@ -214,7 +240,7 @@ const Transactions: React.FC = () => {
         {/* Mobile Card View */}
         <div className="md:hidden">
             <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-                {transactions.map((tx) => (
+                {filteredTransactions.map((tx) => (
                     <li key={tx.id} onClick={() => setSelectedTx(tx)} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
                         <div className="flex justify-between items-start mb-1">
                             <div>
@@ -225,7 +251,7 @@ const Transactions: React.FC = () => {
                         </div>
                         <div className="flex justify-between items-center mt-2">
                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                tx.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-800'
+                                tx.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                             }`}>
                                 {tx.status}
                             </span>
