@@ -317,9 +317,9 @@ const Integrations: React.FC = () => {
         ]
         : [
             'Import transactions or connect at least one payment source',
-            'Confirm Dashboard and Transactions reflect imported rows',
-            'Open Forecast and Data Chat to verify analytics readiness',
-            'Check source/provenance labels before sharing insights'
+            'Confirm Dashboard and Transactions show your imported data',
+            'Open Forecast and Ask AI to start using analytics',
+            'Review data source labels to ensure accuracy before sharing'
         ];
 
     useEffect(() => {
@@ -568,7 +568,7 @@ const Integrations: React.FC = () => {
             )}
 
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-5">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">First-Run Checklist ({role.toUpperCase()})</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">Setup Checklist — {role === 'iso' ? 'ISO' : 'Merchant'}</h3>
                 <ul className="space-y-1.5 text-xs text-gray-600 dark:text-gray-300">
                     {firstRunChecklist.map((step) => (
                         <li key={step} className="flex items-start gap-2">

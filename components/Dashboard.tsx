@@ -128,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
         </select>
       </div>
 
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800/50 rounded-xl p-5 border border-primary-100 dark:border-slate-700 shadow-sm">
+      <div className="relative bg-gradient-to-r from-primary-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800/50 rounded-xl p-5 border border-primary-100 dark:border-slate-700 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary-600" />
@@ -143,7 +143,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
             <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
-        <p className={`text-lg leading-relaxed font-medium ${hasCredits ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'}`}>
+        <p className={`text-lg leading-relaxed font-medium whitespace-pre-wrap break-words ${hasCredits ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'}`}>
           {loading && !insight ? "One82 is thinking..." : insight}
         </p>
       </div>
@@ -151,17 +151,17 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
           <DollarSign className="w-6 h-6 text-green-600 mb-2" />
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Revenue</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Revenue</p>
           <h3 className="text-3xl font-bold text-slate-900 dark:text-white">${displayMetrics.reduce((a, b) => a + b.revenue, 0).toLocaleString()}</h3>
         </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
           <Activity className="w-6 h-6 text-blue-600 mb-2" />
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Volume</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Volume</p>
           <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{displayMetrics.reduce((a, b) => a + b.transactions, 0)}</h3>
         </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
           <TrendingUp className="w-6 h-6 text-purple-600 mb-2" />
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Growth</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Growth</p>
           <h3 className="text-3xl font-bold text-slate-900 dark:text-white">+14.2%</h3>
         </div>
       </div>
@@ -197,7 +197,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
           </div>
 
           {/* Smart To-Do List */}
-          <TodoList role="merchant" className="h flex-1" />
+          <TodoList role="merchant" className="flex-1 min-h-0" />
         </div>
       </div>
 

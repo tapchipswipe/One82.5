@@ -114,8 +114,9 @@ const Layout: React.FC<LayoutProps> = ({
               <NavSection label="Portfolio" />
               <NavItem view="statements" icon={FileText} label="Statement Analysis" />
               <NavItem view="portfolio" icon={Briefcase} label="Merchants" />
-              <NavItem view="profitability" icon={DollarSign} label="Profitability" />
               <NavItem view="team" icon={Users} label="Team" />
+              <NavSection label="Analytics" />
+              <NavItem view="profitability" icon={DollarSign} label="Profitability" />
               <NavSection label="Settings" />
               <NavItem view="integrations" icon={Plug2} label="Integrations" />
             </>
