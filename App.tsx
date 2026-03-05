@@ -19,6 +19,7 @@ const loadInventoryIntelligence = () => import('./components/InventoryIntelligen
 const loadSettings = () => import('./components/Settings');
 const loadDataChat = () => import('./components/DataChat');
 const loadForecast = () => import('./components/Forecast');
+const loadAIReport = () => import('./components/AIReport');
 const loadCalendarPlanner = () => import('./components/CalendarPlanner');
 const loadCustomers = () => import('./components/Customers');
 const loadMerchantLedger = () => import('./components/MerchantLedger');
@@ -41,6 +42,7 @@ const InventoryIntelligence = lazy(loadInventoryIntelligence);
 const Settings = lazy(loadSettings);
 const DataChat = lazy(loadDataChat);
 const Forecast = lazy(loadForecast);
+const AIReport = lazy(loadAIReport);
 const CalendarPlanner = lazy(loadCalendarPlanner);
 const Customers = lazy(loadCustomers);
 const MerchantLedger = lazy(loadMerchantLedger);
@@ -62,6 +64,7 @@ const PREFETCH_BY_ROLE: Record<UserRole, Record<string, Array<() => Promise<unkn
     inventory: [loadTransactions, loadForecast],
     chat: [loadDashboard, loadTransactions],
     forecast: [loadDashboard, loadCalendarPlanner],
+    report: [loadDashboard, loadForecast],
     calendar: [loadForecast, loadDashboard],
     customers: [loadTransactions, loadDashboard],
     profile: [loadSettings],
@@ -98,6 +101,7 @@ const VIEW_LOADERS: Record<string, () => Promise<unknown>> = {
   settings: loadSettings,
   chat: loadDataChat,
   forecast: loadForecast,
+  report: loadAIReport,
   calendar: loadCalendarPlanner,
   customers: loadCustomers,
   portfolio: loadMerchantLedger,
@@ -438,6 +442,7 @@ const App: React.FC = () => {
             {activeView === 'settings' && <Settings />}
             {activeView === 'chat' && <DataChat />}
             {activeView === 'forecast' && <Forecast />}
+                    {activeView === 'report' && <AIReport />}
             {activeView === 'calendar' && <CalendarPlanner />}
             {activeView === 'customers' && <Customers />}
             {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}

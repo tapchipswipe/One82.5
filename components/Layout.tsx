@@ -100,6 +100,7 @@ const Layout: React.FC<LayoutProps> = ({
             <>
               <NavSection label="Business" />
               <NavItem view="forecast" icon={TrendingUp} label="Forecast" />
+              <NavItem view="report" icon={FileText} label="Report" />
               <NavItem view="calendar" icon={CalendarDays} label="Calendar" />
               <NavItem view="chat" icon={MessageSquare} label="Ask AI" />
               <NavItem view="transactions" icon={CreditCard} label="Transactions" />

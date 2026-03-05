@@ -6,8 +6,22 @@ import { StorageService } from '../services/storage';
 import { ChatMessage } from '../types';
 
 const DataChat: React.FC = () => {
+  const isAuthMode = StorageService.getDataMode() === 'backend';
+  const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
+  const hasTrustedData = StorageService.getMetrics().length > 0 || StorageService.getTransactions().length > 0;
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', role: 'model', text: 'Hello! I can analyze your business data in real-time. Ask me anything.', timestamp: Date.now() }
+    {
+      id: '1',
+      role: 'model',
+      text: isAuthMode
+        ? !hasGeminiKey
+          ? 'Data Chat is blocked in Auth Login until a Gemini API key is configured in Integrations.'
+          : !hasTrustedData
+            ? 'Data Chat is blocked in Auth Login until trusted data is available. Next step: import transactions or connect a live integration.'
+            : 'Data Chat is ready. Ask about your trusted business data.'
+        : 'Hello! I can analyze your business data in real-time. Ask me anything.',
+      timestamp: Date.now()
+    }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);

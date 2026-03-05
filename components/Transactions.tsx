@@ -48,6 +48,14 @@ const Transactions: React.FC = () => {
     }, [transactions, searchQuery]);
 
   const handleCategorize = async () => {
+        const isAuthMode = StorageService.getDataMode() === 'backend';
+        const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
+
+        if (isAuthMode && !hasGeminiKey) {
+            alert('AI Categorize is blocked in Auth Login until a Gemini API key is configured in Integrations.');
+            return;
+        }
+
     if (!StorageService.hasCredits(2)) {
         alert("Insufficient credits. Bulk categorization requires 2 credits.");
         return;

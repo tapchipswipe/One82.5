@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, Eye, EyeOff, Zap, Upload, FileSpreadsheet, Users } from 'lucide-react';
+import { CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, Eye, EyeOff, Zap, Upload, FileSpreadsheet, Users, AlertTriangle } from 'lucide-react';
 import {
     INTEGRATIONS,
     IntegrationCategory,
@@ -163,7 +163,7 @@ const transformImportedTransactions = (records: Record<string, string>[]): Trans
 
 const IntegrationCard = ({ integration, onSave }: {
     integration: typeof INTEGRATIONS[0];
-    onSave: () => void;
+    onSave: (integrationId: string, connected: boolean) => void;
 }) => {
     const [expanded, setExpanded] = useState(false);
     const [apiKeyValue, setApiKeyValue] = useState(getIntegrationKey(integration.id));
@@ -173,13 +173,13 @@ const IntegrationCard = ({ integration, onSave }: {
     const handleSave = () => {
         saveIntegrationKey(integration.id, apiKeyValue);
         setExpanded(false);
-        onSave();
+        onSave(integration.id, apiKeyValue.trim().length > 0);
     };
 
     const handleDisconnect = () => {
         saveIntegrationKey(integration.id, '');
         setApiKeyValue('');
-        onSave();
+        onSave(integration.id, false);
     };
 
     return (
@@ -300,13 +300,16 @@ const Integrations: React.FC = () => {
     const [inviteCount, setInviteCount] = useState(0);
     const [inviteStrategy, setInviteStrategy] = useState<MerchantInviteStrategy>(StorageService.getMerchantInviteStrategy());
     const [inviteLinkNotice, setInviteLinkNotice] = useState<string | null>(null);
+    const [syncAlert, setSyncAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
     const isAuthTrialMode = StorageService.getDataMode() === 'backend';
     const role = StorageService.getUser()?.role || 'merchant';
 
     const connectedCount = INTEGRATIONS.filter(i => isIntegrationConnected(i.id)).length;
+    const stripeConnected = isIntegrationConnected('stripe');
 
     const firstRunChecklist = role === 'iso'
         ? [
+            'Connect Stripe first (recommended production path)',
             'Import transactions or connect at least one processor',
             'Import merchant roster to unlock portfolio context',
             'Import team members for rep assignment visibility',
@@ -411,6 +414,7 @@ const Integrations: React.FC = () => {
                 const existing = replaceTransactions ? [] : await StorageService.getTransactionsResolved();
                 await StorageService.saveTransactionsResolved([...importedTransactions, ...existing]);
                 setImportSummary(`Imported ${importedTransactions.length} transaction${importedTransactions.length === 1 ? '' : 's'} from ${importFileName}. Data landed in Transactions, Dashboard, Forecast, and Data Chat context.`);
+                setSyncAlert({ type: 'success', message: 'Transactions imported successfully. Data sync is healthy for imported rows.' });
                 window.dispatchEvent(new Event('user-update'));
             }
 
@@ -434,15 +438,18 @@ const Integrations: React.FC = () => {
                 setMerchantCount(importRows.length);
                 setInviteCount(mergedInvites.length);
                 setImportSummary(`Imported ${importRows.length} merchant record${importRows.length === 1 ? '' : 's'} from ${importFileName}. ${generatedInvites.length > 0 ? `Auto-invited ${generatedInvites.length} merchant contact${generatedInvites.length === 1 ? '' : 's'}. ` : ''}Data landed in ISO portfolio/merchant views.`);
+                setSyncAlert({ type: 'success', message: 'Merchant roster imported successfully. Portfolio sync context is up to date.' });
             }
 
             if (importType === 'team') {
                 await StorageService.saveImportedDataResolved({ team: importRows, inviteStrategy });
                 setTeamCount(importRows.length);
                 setImportSummary(`Imported ${importRows.length} team member record${importRows.length === 1 ? '' : 's'} from ${importFileName}. Data landed in Team views and assignment context.`);
+                setSyncAlert({ type: 'success', message: 'Team import completed successfully.' });
             }
         } catch (error) {
             setImportError(error instanceof Error ? error.message : 'Import failed. Please try again.');
+            setSyncAlert({ type: 'error', message: 'Sync/import failed. Check CSV format or integration credentials, then retry.' });
         } finally {
             setIsImporting(false);
         }
@@ -497,6 +504,68 @@ const Integrations: React.FC = () => {
                     }
                 </div>
             </div>
+
+            <div className={`rounded-xl p-4 border ${stripeConnected
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-900/40'
+                : 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/40'
+                }`}>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Stripe-first production path</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                            Recommended success criteria: Stripe connected, at least one successful transaction import/sync, and Dashboard metrics reflecting fresh records.
+                        </p>
+                    </div>
+                    {!stripeConnected && (
+                        <button
+                            type="button"
+                            onClick={() => document.getElementById('integration-stripe')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/20"
+                        >
+                            Connect Stripe
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {syncAlert && (
+                <div className={`rounded-xl p-4 border flex items-start gap-3 ${syncAlert.type === 'error'
+                    ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/40'
+                    : syncAlert.type === 'success'
+                        ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/40'
+                        : 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/40'
+                    }`}>
+                    <AlertTriangle className={`w-4 h-4 mt-0.5 ${syncAlert.type === 'error'
+                        ? 'text-red-600 dark:text-red-300'
+                        : syncAlert.type === 'success'
+                            ? 'text-green-600 dark:text-green-300'
+                            : 'text-blue-600 dark:text-blue-300'
+                        }`} />
+                    <div className="flex-1">
+                        <p className="text-xs font-semibold text-gray-900 dark:text-white">Integration Sync Alert</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{syncAlert.message}</p>
+                        {syncAlert.type === 'error' && (
+                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                <button
+                                    type="button"
+                                    onClick={() => setSyncAlert(null)}
+                                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
+                                >
+                                    Dismiss
+                                </button>
+                                <a
+                                    href="https://stripe.com/docs/api"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
+                                >
+                                    Stripe Docs
+                                </a>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-5">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">First-Run Checklist ({role.toUpperCase()})</h3>
@@ -688,10 +757,17 @@ const Integrations: React.FC = () => {
                         </h3>
                         <div className="space-y-3">
                             {items.map(integration => (
-                                <div key={integration.id}>
+                                <div key={integration.id} id={`integration-${integration.id}`}>
                                     <IntegrationCard
                                         integration={integration}
-                                        onSave={() => forceUpdate(n => n + 1)}
+                                        onSave={(integrationId, connected) => {
+                                            forceUpdate(n => n + 1);
+                                            if (integrationId === 'stripe') {
+                                                setSyncAlert(connected
+                                                    ? { type: 'success', message: 'Stripe connected. Next: run transaction import/sync and verify Dashboard freshness.' }
+                                                    : { type: 'info', message: 'Stripe disconnected. Reconnect to keep the primary production sync path active.' });
+                                            }
+                                        }}
                                     />
                                 </div>
                             ))}

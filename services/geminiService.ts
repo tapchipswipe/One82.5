@@ -11,6 +11,9 @@ const isTrialMode = () => localStorage.getItem('one82_data_mode') === 'backend';
 const getTrialUnavailableMessage = (feature: string) =>
   `${feature} is unavailable in Auth Login until a Gemini API key is configured.`;
 
+const getTrialDataRequiredMessage = (feature: string, action: string) =>
+  `${feature} is blocked in Auth Login until trusted data is available. Next step: ${action}.`;
+
 const getUnavailableStatementAnalysis = (): import('../types').MerchantStatementAnalysis => ({
   merchantName: 'Unavailable in Auth Login',
   mccCode: 'N/A',
@@ -63,6 +66,11 @@ export const streamDashboardInsights = async (
 ) => {
   const apiKey = getApiKey();
 
+  if (isTrialMode() && metrics.length === 0) {
+    onChunk(getTrialDataRequiredMessage('AI dashboard insights', 'import transactions/metrics or connect a live integration in Integrations'));
+    return;
+  }
+
   if (!apiKey) {
     if (isTrialMode()) {
       onChunk(getTrialUnavailableMessage('AI dashboard insights'));
@@ -111,6 +119,13 @@ export const chatWithDataStream = async (
   onChunk: (text: string) => void
 ) => {
   const apiKey = getApiKey();
+  const metrics = Array.isArray(contextData?.metrics) ? contextData.metrics : [];
+  const transactions = Array.isArray(contextData?.transactions) ? contextData.transactions : [];
+
+  if (isTrialMode() && metrics.length === 0 && transactions.length === 0) {
+    onChunk(getTrialDataRequiredMessage('Data Chat', 'import transactions or connect a live integration before requesting AI analysis'));
+    return;
+  }
 
   if (!apiKey) {
     if (isTrialMode()) {
@@ -205,6 +220,10 @@ export const detectAnomalies = async (transactions: Transaction[]): Promise<{ ti
  */
 export const explainDataPoint = async (point: any, businessType: string): Promise<string> => {
   const apiKey = getApiKey();
+  const revenue = Number(point?.revenue);
+  if (isTrialMode() && !Number.isFinite(revenue)) {
+    return getTrialDataRequiredMessage('Data point analysis', 'load trusted dashboard metrics first');
+  }
   if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Data point analysis');
   if (!apiKey) return `This data point shows $${point.revenue.toLocaleString()} in revenue. In a ${businessType} business, this typically represents a standard operational cycle.`;
 
@@ -218,6 +237,9 @@ export const explainDataPoint = async (point: any, businessType: string): Promis
 
 export const generateForecastInsights = async (historical: DailyMetric[]) => {
   const apiKey = getApiKey();
+  if (isTrialMode() && historical.length === 0) {
+    return getTrialDataRequiredMessage('Forecast insights', 'import transactions/metrics or connect a live integration');
+  }
   if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Forecast insights');
   if (!apiKey) return SIMULATED_FORECASTS[Math.floor(Math.random() * SIMULATED_FORECASTS.length)];
 
@@ -263,6 +285,9 @@ export const categorizeTransaction = async (transaction: Transaction) => {
 
 export const analyzeTransactionRisk = async (transaction: Transaction) => {
   const apiKey = getApiKey();
+  if (isTrialMode() && (!transaction || !Number.isFinite(transaction.amount))) {
+    return getTrialDataRequiredMessage('Transaction risk analysis', 'open a valid transaction record and retry');
+  }
   if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Transaction risk analysis');
   if (!apiKey) return "Low Risk (Simulated)";
 
@@ -281,6 +306,10 @@ export const analyzeTransactionRisk = async (transaction: Transaction) => {
  */
 export const analyzePortfolio = async (merchants: any[]): Promise<string> => {
   const apiKey = getApiKey();
+
+  if (isTrialMode() && merchants.length === 0) {
+    return getTrialDataRequiredMessage('Portfolio AI analysis', 'import merchant roster/transactions or connect a processor integration');
+  }
 
   const generateSimulatedAnalysis = () => {
     const atRisk = merchants.filter(m => m.churnRisk === 'High').map(m => m.name);
@@ -402,6 +431,14 @@ export const analyzeStatementFull = async (
   mimeType: string
 ): Promise<import('../types').MerchantStatementAnalysis> => {
   const apiKey = getApiKey();
+
+  if (isTrialMode() && !base64Data) {
+    return {
+      ...getUnavailableStatementAnalysis(),
+      merchantName: 'Statement Required',
+      mccDescription: 'Upload a statement file to run trusted analysis in Auth Login.'
+    };
+  }
 
   const simulatedResult: import('../types').MerchantStatementAnalysis = {
     merchantName: "Demo Merchant LLC",
