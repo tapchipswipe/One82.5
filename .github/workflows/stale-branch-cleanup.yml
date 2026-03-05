@@ -1,0 +1,96 @@
+name: Stale Branch Cleanup
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'If true, report only and do not delete branches'
+        required: false
+        default: 'true'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean stale merged branches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const repoInfo = await github.rest.repos.get({ owner, repo });
+            const defaultBranch = repoInfo.data.default_branch;
+
+            const protectedNames = new Set([
+              defaultBranch,
+              'main',
+              'master',
+              'develop',
+              'staging'
+            ]);
+
+            const dryRunInput = core.getInput('dry_run');
+            const dryRun = dryRunInput ? dryRunInput === 'true' : true;
+            const staleDays = 30;
+            const cutoff = Date.now() - staleDays * 24 * 60 * 60 * 1000;
+
+            const branches = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              protected: false,
+              per_page: 100
+            });
+
+            const candidates = [];
+
+            for (const branch of branches) {
+              const name = branch.name;
+              if (protectedNames.has(name)) continue;
+              if (name.startsWith('release/')) continue;
+
+              const commitDate = new Date(branch.commit.commit.committer.date).getTime();
+              if (Number.isNaN(commitDate) || commitDate > cutoff) continue;
+
+              const compare = await github.rest.repos.compareCommits({
+                owner,
+                repo,
+                base: defaultBranch,
+                head: name
+              });
+
+              const aheadBy = compare.data.ahead_by;
+              if (aheadBy === 0) {
+                candidates.push({ name, lastCommit: branch.commit.sha.slice(0, 7), date: branch.commit.commit.committer.date });
+              }
+            }
+
+            if (candidates.length === 0) {
+              core.info('No stale merged branches found.');
+              return;
+            }
+
+            for (const branch of candidates) {
+              if (dryRun) {
+                core.info(`[DRY RUN] Would delete branch: ${branch.name} (${branch.lastCommit}, ${branch.date})`);
+              } else {
+                await github.rest.git.deleteRef({
+                  owner,
+                  repo,
+                  ref: `heads/${branch.name}`
+                });
+                core.info(`Deleted branch: ${branch.name}`);
+              }
+            }
+
+            core.summary
+              .addHeading('Stale Branch Cleanup')
+              .addRaw(`Default branch: ${defaultBranch}\n`)
+              .addRaw(`Mode: ${dryRun ? 'dry-run' : 'delete'}\n`)
+              .addRaw(`Candidates: ${candidates.length}\n\n`)
+              .addList(candidates.map(b => `${b.name} (${b.date})`))
+              .write();
