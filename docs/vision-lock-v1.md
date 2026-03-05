@@ -146,3 +146,50 @@ Answers received: `1Y 2C 3Y 4A 5N 6Y`
 5. Soft launch governance
   - Keep tenant isolation verification checklist in release process.
   - Track checklist status but do not block release automatically yet.
+
+## 7) Day 2 Decision Lock (2026-03-04)
+Answers received: `1N 2Y 3Y 4Y 5N 6(Overseer only) 7(Hybrid) 8Y 9Y 10(NO CREDITS) 11Y 12N/A`
+
+- CSV contract lock now: **No** (defer strict v1 contract enforcement for now).
+- Mobile target: **Functional minimum** (not parity) in pilot.
+- Critical sync failures: **Yes** surface in both Integrations and Dashboard.
+- Toast/empty-state policy: **Yes** standardize globally.
+- KPI replacement: **No** (do not replace current KPI with first trusted insight yet).
+- Tenant isolation checklist ownership: **Overseer-only** tracking each release.
+- Roadmap focus: **Hybrid** (reliability/accuracy first, selective AI improvements allowed).
+- Blocked AI UX: **Yes** deterministic next-step CTA required everywhere.
+- Statement analysis in auth mode: **Yes** upload-required only.
+- Credits policy: **No credits consumed** when AI path is blocked.
+- Data freshness: **Yes** add dashboard freshness badge(s).
+- Tomorrow scope lock: **N/A** (no hard freeze flag set).
+
+## 8) Tomorrow Execution Board
+
+### Must Ship
+1. Global blocked-AI CTA consistency
+  - Standardize exact blocked copy + next-step action labels across all AI entry points.
+  - Ensure every auth-mode block points to import/connect action.
+
+2. No-credit-on-block enforcement audit
+  - Verify all blocked AI paths do not call credit deduction first.
+  - Add guardrails where missing.
+
+3. Critical sync alert parity
+  - Ensure sync failure visibility appears in both Integrations and Dashboard surfaces.
+
+4. Statement auth-mode strictness
+  - Keep statement analysis upload-required in auth mode and remove any residual demo fallback text.
+
+### Should Ship
+1. Data freshness indicators
+  - Add compact freshness badge(s) to Dashboard cards driven by imported/integration data.
+
+2. Global toast/error/empty policy alignment
+  - Normalize success/error/info behavior and wording across major operational pages.
+
+### Nice to Have
+1. Overseer release checklist panel
+  - Add lightweight overseer-facing checklist visibility for tenant isolation verification status.
+
+2. Pilot mobile baseline review
+  - Validate functional minimum behavior for critical actions on mobile breakpoints.
