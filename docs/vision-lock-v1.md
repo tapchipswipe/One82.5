@@ -102,10 +102,10 @@ Source: Founder yes/no decision set + clarifications
 - Potential future tab: AI-generated one-page business report.
 
 ## 4) Daily Question Workflow (for async progress)
-- Run one short founder check-in daily:
-  - 3 product questions
-  - 2 UX/trust questions
-  - 1 go/no-go implementation decision
+- Run one short founder check-in daily ask as many questions as needed:
+  -  product questions
+  -  UX/trust questions
+  -  go/no-go implementation decision
 - Use answer format: Y/N/Short text.
 - Convert each day into:
   - locked decision update,
