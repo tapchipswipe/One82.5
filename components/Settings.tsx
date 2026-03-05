@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Save, Bell, DollarSign, Monitor, User as UserIcon, Palette, Server, ShieldAlert, Database, Lock, BrainCircuit } from 'lucide-react';
+import { Save, Bell, Monitor, User as UserIcon, Palette, Server, ShieldAlert, Database, Lock, BrainCircuit } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { AppSettings, User } from '../types';
 import { THEME_COLORS, BUSINESS_TYPES } from '../constants';
@@ -163,24 +163,6 @@ const Settings: React.FC = () => {
         </div>
 
         <hr className="border-slate-200 dark:border-slate-800" />
-
-        {isMerchant && (
-            <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
-                    <DollarSign className="w-4 h-4 mr-2" />
-                    Monthly Revenue Goal
-                </label>
-                <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                    <input 
-                        type="number" 
-                        value={settings.revenueGoal}
-                        onChange={(e) => setSettings({...settings, revenueGoal: Number(e.target.value)})}
-                        className="w-full pl-8 pr-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                    />
-                </div>
-            </div>
-        )}
 
         {/* Notifications */}
         <div className="flex items-center justify-between">

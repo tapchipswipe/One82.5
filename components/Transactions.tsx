@@ -30,15 +30,15 @@ const Transactions: React.FC = () => {
 
         return transactions.filter((tx) => {
             const haystack = [
-                tx.id,
-                tx.customer,
-                tx.items.join(' '),
-                String(tx.amount),
-                tx.amount.toFixed(2),
-                new Date(tx.date).toLocaleDateString(),
-                tx.date,
+                tx.id ?? '',
+                tx.customer ?? '',
+                (Array.isArray(tx.items) ? tx.items : []).join(' '),
+                String(tx.amount ?? ''),
+                tx.amount != null && !isNaN(tx.amount) ? tx.amount.toFixed(2) : '',
+                tx.date ? new Date(tx.date).toLocaleDateString() : '',
+                tx.date ?? '',
                 tx.category || 'Uncategorized',
-                tx.status
+                tx.status ?? ''
             ]
                 .join(' ')
                 .toLowerCase();
