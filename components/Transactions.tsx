@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, Download, Wand2, ChevronRight, Plus, X } from 'lucide-react';
+import { Search, Download, Wand2, ChevronRight, Plus, X } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { categorizeTransaction } from '../services/geminiService';
-import { Transaction, TransactionCategory } from '../types';
+import { Transaction } from '../types';
 import TransactionDetail from './TransactionDetail';
 
 const Transactions: React.FC = () => {

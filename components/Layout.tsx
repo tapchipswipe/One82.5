@@ -13,6 +13,7 @@ interface LayoutProps {
   children: React.ReactNode;
   activeView: string;
   onNavigate: (view: string) => void;
+  onPrefetchView?: (view: string) => void;
   darkMode: boolean;
   toggleTheme: () => void;
   role?: UserRole;
@@ -21,7 +22,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({
-  children, activeView, onNavigate, darkMode, toggleTheme, role, businessType, onLogout
+  children, activeView, onNavigate, onPrefetchView, darkMode, toggleTheme, role, businessType: _businessType, onLogout
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -39,6 +40,8 @@ const Layout: React.FC<LayoutProps> = ({
     return (
       <button
         onClick={() => { onNavigate(view); setIsSidebarOpen(false); }}
+        onMouseEnter={() => onPrefetchView?.(view)}
+        onFocus={() => onPrefetchView?.(view)}
         className={`relative flex items-center w-full px-3 py-2.5 mb-0.5 text-sm font-medium rounded-lg transition-all duration-150 group ${isActive
             ? 'bg-gray-900 text-white'
             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -141,6 +144,7 @@ const Layout: React.FC<LayoutProps> = ({
           <div
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
             onClick={() => { onNavigate('profile'); setIsSidebarOpen(false); }}
+            onMouseEnter={() => onPrefetchView?.('profile')}
           >
             <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
               {user?.name?.charAt(0).toUpperCase() || 'U'}
@@ -192,6 +196,7 @@ const Layout: React.FC<LayoutProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('profile')}
+              onMouseEnter={() => onPrefetchView?.('profile')}
               className="flex items-center gap-2 pl-2 border-l border-gray-200 ml-1 hover:bg-gray-100 rounded-lg pr-2 py-1 transition-colors"
             >
               <div className="hidden sm:block text-right">

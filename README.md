@@ -85,6 +85,37 @@ Built with a modern, high-performance stack:
 
 This is the primary implementation focus before expanding additional feature surfaces.
 
+### Vision Lock v1 (Contributor Constraints)
+Implementation and roadmap decisions must align with [docs/vision-lock-v1.md](docs/vision-lock-v1.md).
+
+- **ISO-first GTM:** primary paid customer is the ISO; avoid merchant-direct self-serve assumptions for production flows.
+- **Pilot execution lock:** prioritize 1-3 design-partner ISOs and Stripe as the first full production integration path.
+- **Auth/data trust model:** in auth/backend mode, browser cache is convenience only (never source of truth); enforce backend tenant isolation, API-layer RBAC, and full session revocation on logout.
+- **Provenance + AI safety:** show source context on major analytics surfaces, hard-block AI in auth mode when required provenance is missing/unknown, never fabricate values when inputs are incomplete, and do not substitute simulated AI output in auth mode.
+- **Priority order (90 days):** integration reliability and statement reader accuracy outrank net-new AI surface area.
+- **Integration UX requirements:** surface failed sync alerts in-app and include freshness indicators on integration-driven views.
+- **AI architecture:** preserve provider abstraction and keep AI customization in Settings (no separate standalone AI config surface unless explicitly requested).
+- **Onboarding model:** production tenants are sales-led (no open signup); kickoff/import session is required before go-live; merchant onboarding defaults to ISO import + auto-invite with invite-link fallback.
+- **AI report scope:** one-page AI Report tab is in-scope when generated from trusted data and labeled with provenance + timestamp.
+
+### PR Checklist (Vision Lock Gate)
+Use this checklist before requesting review:
+
+- [ ] Change preserves ISO-first product assumptions and avoids merchant-direct production self-serve.
+- [ ] Demo mode still works end-to-end without required external services.
+- [ ] Backend/auth-mode behavior does not treat browser cache as source of truth.
+- [ ] Tenant isolation and API-layer RBAC assumptions are preserved (not UI-only guards).
+- [ ] Logout/session flows preserve full session revocation behavior.
+- [ ] AI features are provenance-gated where required and avoid fabricated outputs on missing inputs.
+- [ ] Integration-driven views surface sync failures and freshness signals where relevant.
+- [ ] Stripe-first onboarding/integration path remains explicit as the recommended production path.
+- [ ] Change does not prioritize net-new AI surface over integration reliability or statement-reader accuracy.
+- [ ] AI customization changes (if any) stay in Settings-based patterns.
+- [ ] Auth-mode AI flows hard-block (with clear next actions) when required provenance/data is missing.
+- [ ] Any AI Report tab output is trusted-data-only and includes source/timestamp context.
+- [ ] Role changes are reflected in [HIERARCHY_STRUCTURE.md](HIERARCHY_STRUCTURE.md) in the same PR.
+- [ ] `npm run check` passes locally.
+
 ---
 
 ## 🛠 Getting Started
@@ -174,13 +205,28 @@ No separate backend process is required for this local dev flow.
 Use these commands before production deploys:
 
 ```bash
+npm run typecheck
+npm run lint
 npm run ops:env
+npm run ops:premises
 npm run build
 npm run ops:health
 ```
 
+- `typecheck` validates TypeScript compile safety.
+- `lint` enforces source quality and hook correctness.
 - `ops:env` validates required backend auth/data env vars are present.
+- `ops:premises` validates area baselines for local, GitHub, Vercel, and Supabase.
+
+Optional live area probe:
+
+```bash
+ONE82_HEALTH_URL=https://one82-5.vercel.app npm run ops:premises
+```
+
+When `ONE82_HEALTH_URL` is set, `ops:premises` also checks live `/api/health` Supabase connectivity.
 - `ops:health` checks `/api/health` and fails fast if API/Supabase connectivity is unhealthy.
+- In-app nav timing samples are stored at localStorage key `one82_navigation_perf_samples` (rolling window, includes role/view/prefetch metadata) to track real navigation latency trends over time.
 - `supabase/migrations/0003_one82_performance.sql` adds query indexes and a session-pruning function for long-running auth performance.
 - `supabase/migrations/0004_one82_domain_foundation.sql` creates normalized domain tables (tenants, merchants, team members, processor transactions, import jobs, rep assignments, residual snapshots) for the trial/production data model.
 - `supabase/migrations/0005_one82_operational_hardening.sql` adds operational tables (processor connections, sync runs, events), consistency triggers, `updated_at` automation, analytics views, and backfill from existing tenant state.

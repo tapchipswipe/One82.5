@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
   Upload, FileText, Loader2, File as FileIcon,
-  TrendingUp, TrendingDown, Minus, AlertTriangle,
+  TrendingUp, TrendingDown, Minus,
   CreditCard, DollarSign, Activity, ShieldCheck, BarChart2
 } from 'lucide-react';
 import { analyzeStatementFull } from '../services/geminiService';
 import { MerchantStatementAnalysis } from '../types';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
+  BarChart, Bar, XAxis, YAxis
 } from 'recharts';
 
 const CARD_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#3b82f6'];

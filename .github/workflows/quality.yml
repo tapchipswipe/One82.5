@@ -1,0 +1,45 @@
+name: Quality Checks
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Premises baseline
+        run: npm run ops:premises
+
+      - name: Env baseline (demo mode)
+        env:
+          ONE82_CHECK_MODE: demo
+          VITE_ENABLE_BACKEND_AUTH: "false"
+          VITE_ENABLE_BACKEND_DATA: "false"
+        run: npm run ops:env

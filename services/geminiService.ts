@@ -135,7 +135,7 @@ export const chatWithDataStream = async (
     for await (const chunk of result) {
       if (chunk.text) onChunk(chunk.text);
     }
-  } catch (error) {
+  } catch {
     onChunk(isTrialMode()
       ? getTrialUnavailableMessage('Data Chat')
       : "Data Assistant is temporarily unavailable. Please check your connection.");
@@ -171,7 +171,7 @@ export const analyzeStatementDocument = async (
       }
     });
     return response.text || "No data extracted.";
-  } catch (error) {
+  } catch {
     return "Document analysis failed.";
   }
 };
@@ -197,7 +197,7 @@ export const detectAnomalies = async (transactions: Transaction[]): Promise<{ ti
       if (jsonMatch) return JSON.parse(jsonMatch[0]);
     }
     return null;
-  } catch (e) { return null; }
+  } catch { return null; }
 };
 
 /**
@@ -213,7 +213,7 @@ export const explainDataPoint = async (point: any, businessType: string): Promis
   try {
     const res = await ai.models.generateContent({ model: 'gemini-1.5-flash-latest', contents: prompt });
     return res.text || "No explanation available.";
-  } catch (e) { return "Analysis unavailable."; }
+  } catch { return "Analysis unavailable."; }
 };
 
 export const generateForecastInsights = async (historical: DailyMetric[]) => {
@@ -228,7 +228,7 @@ export const generateForecastInsights = async (historical: DailyMetric[]) => {
       contents: `Forecast next 7 days based on: ${JSON.stringify(historical)}. Short summary.`
     });
     return res.text || "";
-  } catch (e) { return "Forecast offline."; }
+  } catch { return "Forecast offline."; }
 };
 
 export const analyzeSentiment = async (reviews: Review[]) => {
@@ -243,7 +243,7 @@ export const analyzeSentiment = async (reviews: Review[]) => {
       contents: `Sentiment of: ${JSON.stringify(reviews)}. Short summary.`
     });
     return res.text || "";
-  } catch (e) { return "Sentiment unavailable."; }
+  } catch { return "Sentiment unavailable."; }
 };
 
 export const categorizeTransaction = async (transaction: Transaction) => {
@@ -258,7 +258,7 @@ export const categorizeTransaction = async (transaction: Transaction) => {
       contents: `Category for: ${transaction.customer} - ${transaction.items}. One word.`
     });
     return res.text?.trim() || "Uncategorized";
-  } catch (e) { return "Uncategorized"; }
+  } catch { return "Uncategorized"; }
 };
 
 export const analyzeTransactionRisk = async (transaction: Transaction) => {
@@ -273,7 +273,7 @@ export const analyzeTransactionRisk = async (transaction: Transaction) => {
       contents: `Risk of: ${JSON.stringify(transaction)}. 1 sentence.`
     });
     return res.text || "";
-  } catch (e) { return "Unknown risk."; }
+  } catch { return "Unknown risk."; }
 };
 
 /**
@@ -307,7 +307,7 @@ export const analyzePortfolio = async (merchants: any[]): Promise<string> => {
       contents: prompt
     });
     return res.text || generateSimulatedAnalysis();
-  } catch (error) {
+  } catch {
     if (isTrialMode()) {
       return getTrialUnavailableMessage('Portfolio AI analysis');
     }
@@ -359,7 +359,7 @@ export const connectLiveAssistant = async ({ onopen, onmessage, onerror, onclose
     const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
     const ws = new WebSocket(url);
 
-    return new Promise<any>((resolve, reject) => {
+    return new Promise<any>((resolve) => {
       ws.onopen = () => {
         ws.send(JSON.stringify({
           setup: {
@@ -388,8 +388,8 @@ export const connectLiveAssistant = async ({ onopen, onmessage, onerror, onclose
       ws.onerror = onerror;
       ws.onclose = onclose;
     });
-  } catch (e) {
-    onerror(e);
+  } catch (error) {
+    onerror(error);
     return { sendRealtimeInput: () => { }, close: onclose };
   }
 };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AuthService } from '../services/authService';
 import { AuthMode, User } from '../types';
-import { Loader2, Zap, TrendingUp, Shield, BarChart2, Gift, ArrowLeft } from 'lucide-react';
+import { Loader2, TrendingUp, Shield, BarChart2, Gift, ArrowLeft } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User, mode: AuthMode) => void;

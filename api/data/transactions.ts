@@ -47,7 +47,8 @@ export default async function handler(req: any, res: any) {
 
   try {
     await syncTransactionsToDomain(auth.session.tenantId, updated.transactions as any[], auth.user.id, 'app');
-  } catch {
+  } catch (error) {
+    console.error('Failed to sync transactions to domain tables:', error);
   }
 
   res.status(200).json({ ok: true });

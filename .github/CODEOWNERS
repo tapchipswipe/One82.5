@@ -1,0 +1,18 @@
+# CODEOWNERS
+# Single-owner policy
+
+# Default owner for all files
+* @tapchipswipe
+
+# Vision and governance lock files
+/docs/vision-lock-v1.md @tapchipswipe
+/.github/copilot-instructions.md @tapchipswipe
+/README.md @tapchipswipe
+/.github/pull_request_template.md @tapchipswipe
+/HIERARCHY_STRUCTURE.md @tapchipswipe
+
+# Authentication and data trust boundaries
+/services/authService.ts @tapchipswipe
+/services/storage.ts @tapchipswipe
+/api/** @tapchipswipe
+/supabase/migrations/** @tapchipswipe

@@ -16,6 +16,15 @@ type ImportRow = Record<string, string>;
 type Body = {
   merchants?: ImportRow[];
   team?: ImportRow[];
+  merchantInvites?: Array<{
+    id: string;
+    merchantName: string;
+    email: string;
+    status: 'sent' | 'opened';
+    strategy: 'csv-auto-invite' | 'invite-link';
+    createdAt: number;
+  }>;
+  inviteStrategy?: 'csv-auto-invite' | 'invite-link';
 };
 
 export default async function handler(req: any, res: any) {
@@ -37,7 +46,9 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'GET') {
     res.status(200).json({
       merchants: state.importedMerchants || [],
-      team: state.importedTeam || []
+      team: state.importedTeam || [],
+      merchantInvites: state.merchantInvites || [],
+      inviteStrategy: state.inviteStrategy || 'csv-auto-invite'
     });
     return;
   }
@@ -45,16 +56,21 @@ export default async function handler(req: any, res: any) {
   const body = await parseBody<Body>(req);
   const merchants = Array.isArray(body?.merchants) ? body.merchants : state.importedMerchants || [];
   const team = Array.isArray(body?.team) ? body.team : state.importedTeam || [];
+  const merchantInvites = Array.isArray(body?.merchantInvites) ? body.merchantInvites : state.merchantInvites || [];
+  const inviteStrategy = body?.inviteStrategy === 'invite-link' ? 'invite-link' : (state.inviteStrategy || 'csv-auto-invite');
 
   await saveStateForTenant(auth.session.tenantId, {
     ...state,
     importedMerchants: merchants,
-    importedTeam: team
+    importedTeam: team,
+    merchantInvites,
+    inviteStrategy
   } as any);
 
   try {
     await syncImportedRowsToDomain(auth.session.tenantId, merchants, team, auth.user.id);
-  } catch {
+  } catch (error) {
+    console.error('Failed to sync imported rows to domain tables:', error);
   }
 
   res.status(200).json({ ok: true });

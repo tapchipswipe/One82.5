@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 const LiveSituationRoom: React.FC = () => {
     const [isListening, setIsListening] = useState(false);
-    const [activeVisual, setActiveVisual] = useState<string | null>(null);
+    const [activeVisual] = useState<string | null>(null);
 
     // Mock hook for now
     const toggleMicrophone = () => {

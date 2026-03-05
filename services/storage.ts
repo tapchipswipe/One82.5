@@ -1,4 +1,4 @@
-import { User, AppSettings, Transaction, DailyMetric, Review, AppNotification, CreditLog, ActionPlan, UserRole, SmartTask, CalendarEvent } from '../types';
+import { User, AppSettings, Transaction, DailyMetric, Review, AppNotification, CreditLog, ActionPlan, UserRole, SmartTask, CalendarEvent, MerchantInvite, MerchantInviteStrategy } from '../types';
 import { MOCK_METRICS, MOCK_TRANSACTIONS, MOCK_REVIEWS } from '../constants';
 
 type DataMode = 'demo' | 'backend';
@@ -20,7 +20,9 @@ const STORAGE_KEYS = {
   SMART_TASKS_SEEDED: 'one82_smart_tasks_seeded',
   CALENDAR_EVENTS: 'one82_calendar_events',
   IMPORTED_MERCHANTS: 'one82_imported_merchants',
-  IMPORTED_TEAM: 'one82_imported_team'
+  IMPORTED_TEAM: 'one82_imported_team',
+  MERCHANT_INVITES: 'one82_merchant_invites',
+  MERCHANT_INVITE_STRATEGY: 'one82_merchant_invite_strategy'
 };
 
 const RUNTIME_CACHE: {
@@ -31,6 +33,8 @@ const RUNTIME_CACHE: {
   calendarEvents?: CalendarEvent[];
   importedMerchants?: Array<Record<string, string>>;
   importedTeam?: Array<Record<string, string>>;
+  merchantInvites?: MerchantInvite[];
+  merchantInviteStrategy?: MerchantInviteStrategy;
 } = {};
 
 const DATA_API_BASE = (import.meta.env.VITE_DATA_API_BASE || '').replace(/\/$/, '');
@@ -68,6 +72,12 @@ const getCalendarScopeKey = (role: UserRole): string => {
   return `${identity}::${role}`;
 };
 
+const getInviteScopeKey = (): string => {
+  const user = StorageService.getUser();
+  const identity = user?.id || user?.email || 'guest';
+  return `${identity}::iso`;
+};
+
 export const StorageService = {
   isBackendDataEnabled: (): boolean => BACKEND_DATA_ENABLED,
 
@@ -88,6 +98,7 @@ export const StorageService = {
       localStorage.removeItem(STORAGE_KEYS.CALENDAR_EVENTS);
       localStorage.removeItem(STORAGE_KEYS.IMPORTED_MERCHANTS);
       localStorage.removeItem(STORAGE_KEYS.IMPORTED_TEAM);
+      localStorage.removeItem(STORAGE_KEYS.MERCHANT_INVITES);
 
       RUNTIME_CACHE.transactions = [];
       RUNTIME_CACHE.metrics = [];
@@ -96,6 +107,7 @@ export const StorageService = {
       RUNTIME_CACHE.calendarEvents = [];
       RUNTIME_CACHE.importedMerchants = [];
       RUNTIME_CACHE.importedTeam = [];
+      RUNTIME_CACHE.merchantInvites = [];
     }
   },
 
@@ -516,17 +528,28 @@ export const StorageService = {
       const payload = await response.json() as {
         merchants?: Array<Record<string, string>>;
         team?: Array<Record<string, string>>;
+        merchantInvites?: MerchantInvite[];
+        inviteStrategy?: MerchantInviteStrategy;
       };
 
       const merchants = Array.isArray(payload.merchants) ? payload.merchants : [];
       const team = Array.isArray(payload.team) ? payload.team : [];
+      const merchantInvites = Array.isArray(payload.merchantInvites) ? payload.merchantInvites : [];
+      const inviteStrategy = payload.inviteStrategy === 'invite-link' ? 'invite-link' : 'csv-auto-invite';
 
       if (shouldPersistBusinessDataLocally()) {
         localStorage.setItem(STORAGE_KEYS.IMPORTED_MERCHANTS, JSON.stringify(merchants));
         localStorage.setItem(STORAGE_KEYS.IMPORTED_TEAM, JSON.stringify(team));
+        const inviteData = localStorage.getItem(STORAGE_KEYS.MERCHANT_INVITES);
+        const allInvites = inviteData ? (JSON.parse(inviteData) as Record<string, MerchantInvite[]>) : {};
+        allInvites[getInviteScopeKey()] = merchantInvites;
+        localStorage.setItem(STORAGE_KEYS.MERCHANT_INVITES, JSON.stringify(allInvites));
+        localStorage.setItem(STORAGE_KEYS.MERCHANT_INVITE_STRATEGY, inviteStrategy);
       } else {
         RUNTIME_CACHE.importedMerchants = merchants;
         RUNTIME_CACHE.importedTeam = team;
+        RUNTIME_CACHE.merchantInvites = merchantInvites;
+        RUNTIME_CACHE.merchantInviteStrategy = inviteStrategy;
       }
 
       return { merchants, team };
@@ -538,18 +561,33 @@ export const StorageService = {
     }
   },
 
-  saveImportedDataResolved: async (payload: { merchants?: Array<Record<string, string>>; team?: Array<Record<string, string>> }): Promise<void> => {
+  saveImportedDataResolved: async (payload: {
+    merchants?: Array<Record<string, string>>;
+    team?: Array<Record<string, string>>;
+    merchantInvites?: MerchantInvite[];
+    inviteStrategy?: MerchantInviteStrategy;
+  }): Promise<void> => {
     const existingMerchants = StorageService.getImportedMerchants();
     const existingTeam = StorageService.getImportedTeam();
+    const existingInvites = StorageService.getMerchantInvites();
     const merchants = Array.isArray(payload.merchants) ? payload.merchants : existingMerchants;
     const team = Array.isArray(payload.team) ? payload.team : existingTeam;
+    const merchantInvites = Array.isArray(payload.merchantInvites) ? payload.merchantInvites : existingInvites;
+    const inviteStrategy = payload.inviteStrategy === 'invite-link' ? 'invite-link' : StorageService.getMerchantInviteStrategy();
 
     if (shouldPersistBusinessDataLocally()) {
       localStorage.setItem(STORAGE_KEYS.IMPORTED_MERCHANTS, JSON.stringify(merchants));
       localStorage.setItem(STORAGE_KEYS.IMPORTED_TEAM, JSON.stringify(team));
+      const inviteData = localStorage.getItem(STORAGE_KEYS.MERCHANT_INVITES);
+      const allInvites = inviteData ? (JSON.parse(inviteData) as Record<string, MerchantInvite[]>) : {};
+      allInvites[getInviteScopeKey()] = merchantInvites;
+      localStorage.setItem(STORAGE_KEYS.MERCHANT_INVITES, JSON.stringify(allInvites));
+      localStorage.setItem(STORAGE_KEYS.MERCHANT_INVITE_STRATEGY, inviteStrategy);
     } else {
       RUNTIME_CACHE.importedMerchants = merchants;
       RUNTIME_CACHE.importedTeam = team;
+      RUNTIME_CACHE.merchantInvites = merchantInvites;
+      RUNTIME_CACHE.merchantInviteStrategy = inviteStrategy;
     }
 
     const mode = StorageService.getDataMode();
@@ -561,10 +599,49 @@ export const StorageService = {
       await fetch(getDataApiUrl('/api/data/imports'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ merchants, team })
+        body: JSON.stringify({ merchants, team, merchantInvites, inviteStrategy })
       });
     } catch {
       // Preserve runtime/browser state fallback in case backend request fails.
     }
+  },
+
+  getMerchantInviteStrategy: (): MerchantInviteStrategy => {
+    if (isStrictBackendDataMode()) {
+      return RUNTIME_CACHE.merchantInviteStrategy === 'invite-link' ? 'invite-link' : 'csv-auto-invite';
+    }
+
+    const value = localStorage.getItem(STORAGE_KEYS.MERCHANT_INVITE_STRATEGY);
+    return value === 'invite-link' ? 'invite-link' : 'csv-auto-invite';
+  },
+
+  saveMerchantInviteStrategy: (strategy: MerchantInviteStrategy): void => {
+    localStorage.setItem(STORAGE_KEYS.MERCHANT_INVITE_STRATEGY, strategy);
+    if (!shouldPersistBusinessDataLocally()) {
+      RUNTIME_CACHE.merchantInviteStrategy = strategy;
+    }
+  },
+
+  getMerchantInvites: (): MerchantInvite[] => {
+    if (isStrictBackendDataMode()) {
+      return RUNTIME_CACHE.merchantInvites || [];
+    }
+
+    const data = localStorage.getItem(STORAGE_KEYS.MERCHANT_INVITES);
+    if (!data) return [];
+    const allInvites = JSON.parse(data) as Record<string, MerchantInvite[]>;
+    return allInvites[getInviteScopeKey()] || [];
+  },
+
+  saveMerchantInvites: (invites: MerchantInvite[]): void => {
+    if (!shouldPersistBusinessDataLocally()) {
+      RUNTIME_CACHE.merchantInvites = invites;
+      return;
+    }
+
+    const data = localStorage.getItem(STORAGE_KEYS.MERCHANT_INVITES);
+    const allInvites = data ? (JSON.parse(data) as Record<string, MerchantInvite[]>) : {};
+    allInvites[getInviteScopeKey()] = invites;
+    localStorage.setItem(STORAGE_KEYS.MERCHANT_INVITES, JSON.stringify(allInvites));
   }
 };

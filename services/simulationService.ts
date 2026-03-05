@@ -1,4 +1,4 @@
-import { Transaction, DailyMetric, BusinessType } from '../types';
+import { DailyMetric, BusinessType } from '../types';
 
 export interface SimulationScenario {
   id: string;
@@ -55,7 +55,7 @@ export interface PortfolioMerchant {
 }
 
 export const SimulationService = {
-  runSimulation: async (scenario: SimulationScenario, historicalData: DailyMetric[]): Promise<SimulationResult> => {
+  runSimulation: async (scenario: SimulationScenario, _historicalData: DailyMetric[]): Promise<SimulationResult> => {
     console.log('Running simulation for:', scenario.name);
     return {
       scenarioId: scenario.id,

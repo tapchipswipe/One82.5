@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
-    Search, Star, TrendingUp, TrendingDown, Minus,
-    DollarSign, Clock, User, Phone, Mail, ShoppingBag,
+    Search, Star,
+    Clock, User, Phone, Mail, ShoppingBag,
     ChevronDown, ChevronUp, AlertCircle, Sparkles
 } from 'lucide-react';
 import { generateCustomers, CustomerProfile } from '../services/simulationService';
 import {
-    BarChart, Bar, XAxis, YAxis, Tooltip,
-    ResponsiveContainer, CartesianGrid
+    BarChart, Bar, XAxis, Tooltip,
+    ResponsiveContainer
 } from 'recharts';
 import { StorageService } from '../services/storage';
 

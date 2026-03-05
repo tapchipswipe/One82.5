@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
+import { X, ShieldAlert } from 'lucide-react';
 import { Transaction } from '../types';
 import { analyzeTransactionRisk } from '../services/geminiService';
 

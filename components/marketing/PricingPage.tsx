@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, ArrowRight, Users, Briefcase, Package, Calculator } from 'lucide-react';
+import { Check, ArrowRight, Briefcase, Package, Calculator } from 'lucide-react';
 
 interface PricingPageProps {
   onNavigate: (page: 'trial' | 'features') => void;
@@ -10,8 +10,6 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
 
   const monthlyCost = repCount * 100;
   const annualCost = monthlyCost * 12;
-  const annualSavings = annualCost * 0.15; // 15% discount if we offer annual billing
-  const annualCostDiscounted = annualCost - annualSavings;
 
   const isoFeatures = [
     'Live Portfolio Analytics',

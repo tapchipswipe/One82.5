@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, AlertTriangle, CheckCircle, ShoppingCart, Truck, Search } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Truck, Search } from 'lucide-react';
 import { InventoryService } from '../services/inventoryService';
 import { StorageService } from '../services/storage';
 import { InventoryItem } from '../types';

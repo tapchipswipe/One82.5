@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+.venv
 .env*.local
 .env.production.check

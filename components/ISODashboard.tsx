@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Upload, Users, TrendingUp, DollarSign, AlertTriangle,
+    Upload, AlertTriangle,
     ArrowDownRight, Activity, Sparkles, Settings, CreditCard,
     Zap, ArrowUpRight
 } from 'lucide-react';
@@ -79,6 +79,8 @@ const ISODashboard: React.FC = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
     const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY') || '');
+    const [inviteCount, setInviteCount] = useState(0);
+    const [inviteLinkNotice, setInviteLinkNotice] = useState<string | null>(null);
 
     useEffect(() => {
         const load = async () => {
@@ -90,6 +92,7 @@ const ISODashboard: React.FC = () => {
             setTotalVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
             if (!isDemoMode) {
                 setCcVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+                setInviteCount(StorageService.getMerchantInvites().length);
             }
         };
 
@@ -110,6 +113,20 @@ const ISODashboard: React.FC = () => {
     }, [isDemoMode]);
 
     const handleSaveApiKey = () => { localStorage.setItem('GEMINI_API_KEY', apiKey); setShowApiKeyInput(false); };
+
+    const inviteLink = typeof window !== 'undefined'
+        ? `${window.location.origin}/?invite=merchant`
+        : 'https://one82-5.vercel.app/?invite=merchant';
+
+    const handleCopyInviteLink = async () => {
+        try {
+            await navigator.clipboard.writeText(inviteLink);
+            setInviteLinkNotice('Invite link copied. Share with merchants who should self-onboard.');
+            window.setTimeout(() => setInviteLinkNotice(null), 2500);
+        } catch {
+            setInviteLinkNotice('Unable to auto-copy. Manually copy the invite link from Integrations.');
+        }
+    };
 
     const runAnalysis = async () => {
         setIsAnalyzing(true);
@@ -235,6 +252,25 @@ const ISODashboard: React.FC = () => {
                             </button>
                         </div>
                         <p className="text-xs text-gray-400 mt-2">Key is stored locally in your browser.</p>
+                    </div>
+                )}
+
+                {!isDemoMode && (
+                    <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 className="font-bold text-gray-900 dark:text-white text-sm">Merchant Invite Link (Fallback)</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Primary onboarding is CSV import + auto-invite. Use invite link when needed.</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Invites sent: {inviteCount}</span>
+                            <button
+                                onClick={handleCopyInviteLink}
+                                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold"
+                            >
+                                Copy Invite Link
+                            </button>
+                        </div>
+                        {inviteLinkNotice && <p className="text-xs text-green-600 sm:basis-full">{inviteLinkNotice}</p>}
                     </div>
                 )}
 

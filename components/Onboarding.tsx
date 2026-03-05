@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { BUSINESS_TYPES } from '../constants';
-import { BusinessType, UserRole } from '../types';
+import { BusinessType, MerchantInviteStrategy, UserRole } from '../types';
 import { Store, Building2 } from 'lucide-react';
 
 interface OnboardingProps {
-  onComplete: (role: UserRole, data: { businessType?: BusinessType, orgName?: string }) => void;
+  onComplete: (role: UserRole, data: { businessType?: BusinessType, orgName?: string, inviteStrategy?: MerchantInviteStrategy }) => void;
 }
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [inviteStrategy, setInviteStrategy] = useState<MerchantInviteStrategy>('csv-auto-invite');
 
   const handleRoleSelect = (selectedRole: UserRole) => {
     setRole(selectedRole);
@@ -23,7 +24,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   const handleISOComplete = (orgName: string) => {
-    onComplete('iso', { orgName });
+    onComplete('iso', { orgName, inviteStrategy });
   };
 
   return (
@@ -106,6 +107,33 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 placeholder="e.g. Apex Payments"
                 className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-lg bg-transparent dark:text-white mb-4 focus:ring-2 focus:ring-purple-500 outline-none"
               />
+
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">Merchant Onboarding Strategy</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInviteStrategy('csv-auto-invite')}
+                    className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${inviteStrategy === 'csv-auto-invite'
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      }`}
+                  >
+                    CSV Import + Auto-Invite (Primary)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInviteStrategy('invite-link')}
+                    className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${inviteStrategy === 'invite-link'
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      }`}
+                  >
+                    Invite Link (Fallback)
+                  </button>
+                </div>
+              </div>
+
               <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition-colors">
                 Complete Setup
               </button>

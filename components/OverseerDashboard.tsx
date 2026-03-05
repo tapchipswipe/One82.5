@@ -51,7 +51,7 @@ const OverseerDashboard: React.FC = () => {
   const isDemoMode = StorageService.getDataMode() === 'demo';
   const [portfolioVolume, setPortfolioVolume] = useState(0);
   const [liveVolume, setLiveVolume] = useState(0);
-  const [focusedMerchantId, setFocusedMerchantId] = useState<string | null>(null);
+  const [focusedMerchantId] = useState<string | null>(null);
   const [policy, setPolicy] = useState<PolicySettings>({
     alertRiskThreshold: 70,
     maxDailyCreditBurn: 180,
@@ -273,42 +273,6 @@ const OverseerDashboard: React.FC = () => {
       },
       ...current
     ].slice(0, 8));
-  };
-
-  const liveAlerts = useMemo(() => {
-    const riskAlerts = merchants
-      .filter((merchant) => merchant.churnRisk === 'High' || merchant.trend === 'down')
-      .slice(0, 3)
-      .map((merchant) => ({
-        id: `risk_${merchant.id}`,
-        title: `${merchant.name} flagged`,
-        detail: `${merchant.churnRisk} churn risk · trend ${merchant.trend}`,
-        merchantId: merchant.id,
-        tone: merchant.churnRisk === 'High' ? 'critical' : 'warning' as 'critical' | 'warning' | 'info'
-      }));
-
-    const appAlerts = notifications.slice(0, 3).map((notification) => ({
-      id: `notif_${notification.id}`,
-      title: notification.title,
-      detail: notification.message,
-      merchantId: null,
-      tone: notification.type === 'alert' ? 'critical' : 'info' as 'critical' | 'warning' | 'info'
-    }));
-
-    return [...riskAlerts, ...appAlerts].slice(0, 6);
-  }, [merchants, notifications]);
-
-  const handleAlertClick = (merchantId: string | null): void => {
-    if (!merchantId) return;
-
-    setFocusedMerchantId(merchantId);
-
-    const row = document.getElementById(`overseer-merchant-${merchantId}`);
-    row?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    window.setTimeout(() => {
-      setFocusedMerchantId((current) => (current === merchantId ? null : current));
-    }, 1800);
   };
 
   return (

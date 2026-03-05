@@ -3,7 +3,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { Sparkles, TrendingUp, DollarSign, Activity, Award, X, RotateCw } from 'lucide-react';
+import { Sparkles, TrendingUp, DollarSign, Activity, X, RotateCw } from 'lucide-react';
 import { streamDashboardInsights, explainDataPoint } from '../services/geminiService';
 import { BusinessType, DailyMetric } from '../types';
 import { StorageService } from '../services/storage';

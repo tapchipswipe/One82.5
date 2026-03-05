@@ -1,18 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Save, Bell, DollarSign, Monitor, User as UserIcon, Palette, History, Zap, Server, ExternalLink, ShieldAlert, Database, CreditCard, Lock, BrainCircuit } from 'lucide-react';
+import React, { useState } from 'react';
+import { Save, Bell, DollarSign, Monitor, User as UserIcon, Palette, Server, ShieldAlert, Database, Lock, BrainCircuit } from 'lucide-react';
 import { StorageService } from '../services/storage';
-import { AppSettings, User, CreditLog } from '../types';
+import { AppSettings, User } from '../types';
 import { THEME_COLORS, BUSINESS_TYPES } from '../constants';
 
 const Settings: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(StorageService.getSettings());
   const [user, setUser] = useState<User | null>(StorageService.getUser());
-  const [creditLogs, setCreditLogs] = useState<CreditLog[]>([]);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    setCreditLogs(StorageService.getCreditLogs());
-  }, []);
 
   const handleSave = () => {
     StorageService.saveSettings(settings);

@@ -2,6 +2,7 @@
 export type BusinessType = 'Retail' | 'Restaurant' | 'Service' | 'E-Commerce' | 'Convenience Store';
 
 export type UserRole = 'merchant' | 'iso' | 'overseer';
+export type MerchantInviteStrategy = 'csv-auto-invite' | 'invite-link';
 
 export interface User {
   id: string;
@@ -184,6 +185,15 @@ export interface CalendarEvent {
   impactPercent: number;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface MerchantInvite {
+  id: string;
+  merchantName: string;
+  email: string;
+  status: 'sent' | 'opened';
+  strategy: MerchantInviteStrategy;
+  createdAt: number;
 }
 
 export interface Tenant {

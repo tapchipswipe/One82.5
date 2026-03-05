@@ -1,4 +1,4 @@
-import { InventoryItem, Order, Supplier, Transaction } from '../types';
+import { InventoryItem, Order, Supplier } from '../types';
 import { StorageService } from './storage';
 
 const isAuthTrialMode = (): boolean => StorageService.getDataMode() === 'backend';
@@ -10,13 +10,13 @@ const SUPPLIERS: Supplier[] = [
 ];
 
 // Mock Inventory
-let INVENTORY: InventoryItem[] = [
+const INVENTORY: InventoryItem[] = [
     { id: 'i1', name: 'Arabica Coffee Beans (5lb)', sku: 'COF-001', currentStock: 12, reorderPoint: 5, unitCost: 45.00, supplierId: 's1', dailyBurnRate: 1.2, daysRemaining: 10, status: 'Good' },
     { id: 'i2', name: 'Espresso Cups', sku: 'CUP-500', currentStock: 400, reorderPoint: 100, unitCost: 0.50, supplierId: 's1', dailyBurnRate: 5, daysRemaining: 80, status: 'Good' },
     { id: 'i3', name: 'Oat Milk (Case)', sku: 'MLK-OAT', currentStock: 3, reorderPoint: 4, unitCost: 22.00, supplierId: 's1', dailyBurnRate: 0.8, daysRemaining: 3.75, status: 'Critical' }
 ];
 
-let ORDERS: Order[] = [];
+const ORDERS: Order[] = [];
 
 export const InventoryService = {
     getInventory: (): InventoryItem[] => {

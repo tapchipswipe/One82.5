@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User as UserIcon, Lock, Loader2 } from 'lucide-react';
+import { Send, Bot, User as UserIcon, Loader2 } from 'lucide-react';
 import { chatWithDataStream } from '../services/geminiService';
 import { StorageService } from '../services/storage';
 import { ChatMessage } from '../types';

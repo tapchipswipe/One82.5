@@ -62,12 +62,23 @@ type CalendarEvent = {
   updatedAt: number;
 };
 
+type MerchantInvite = {
+  id: string;
+  merchantName: string;
+  email: string;
+  status: 'sent' | 'opened';
+  strategy: 'csv-auto-invite' | 'invite-link';
+  createdAt: number;
+};
+
 type TenantState = {
   transactions: Transaction[];
   notifications: AppNotification[];
   calendarEvents: CalendarEvent[];
   importedMerchants: Array<Record<string, string>>;
   importedTeam: Array<Record<string, string>>;
+  merchantInvites: MerchantInvite[];
+  inviteStrategy: 'csv-auto-invite' | 'invite-link';
 };
 
 type DailyMetric = {
@@ -122,7 +133,9 @@ const defaultState = (): TenantState => ({
   notifications: DEFAULT_NOTIFICATIONS,
   calendarEvents: [],
   importedMerchants: [],
-  importedTeam: []
+  importedTeam: [],
+  merchantInvites: [],
+  inviteStrategy: 'csv-auto-invite'
 });
 
 const parseCookies = (cookieHeader?: string): Record<string, string> => {
@@ -456,8 +469,11 @@ const loadStateFromSupabase = async (tenantId: string): Promise<TenantState | nu
   return {
     transactions: Array.isArray(payload.transactions) ? payload.transactions : [],
     notifications: Array.isArray(payload.notifications) ? payload.notifications : [],
+    calendarEvents: Array.isArray(payload.calendarEvents) ? payload.calendarEvents : [],
     importedMerchants: Array.isArray(payload.importedMerchants) ? payload.importedMerchants : [],
-    importedTeam: Array.isArray(payload.importedTeam) ? payload.importedTeam : []
+    importedTeam: Array.isArray(payload.importedTeam) ? payload.importedTeam : [],
+    merchantInvites: Array.isArray(payload.merchantInvites) ? payload.merchantInvites : [],
+    inviteStrategy: payload.inviteStrategy === 'invite-link' ? 'invite-link' : 'csv-auto-invite'
   };
 };
 
@@ -716,7 +732,9 @@ const normalizeState = (state: TenantState | null): TenantState => {
     notifications: Array.isArray(state.notifications) ? state.notifications : [],
     calendarEvents: Array.isArray(state.calendarEvents) ? state.calendarEvents : [],
     importedMerchants: Array.isArray(state.importedMerchants) ? state.importedMerchants : [],
-    importedTeam: Array.isArray(state.importedTeam) ? state.importedTeam : []
+    importedTeam: Array.isArray(state.importedTeam) ? state.importedTeam : [],
+    merchantInvites: Array.isArray(state.merchantInvites) ? state.merchantInvites : [],
+    inviteStrategy: state.inviteStrategy === 'invite-link' ? 'invite-link' : 'csv-auto-invite'
   };
 };
 

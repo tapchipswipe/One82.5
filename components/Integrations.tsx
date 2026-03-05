@@ -9,7 +9,7 @@ import {
     getIntegrationKey,
 } from '../services/integrationsConfig';
 import { StorageService } from '../services/storage';
-import { Transaction } from '../types';
+import { MerchantInvite, MerchantInviteStrategy, Transaction } from '../types';
 
 const CATEGORIES: IntegrationCategory[] = ['AI', 'POS & Payment', 'ISO Processor'];
 
@@ -110,6 +110,26 @@ const normalizeCategory = (raw: string): Transaction['category'] => {
     if (value === 'rent') return 'Rent';
     if (value === 'miscellaneous') return 'Miscellaneous';
     return 'Uncategorized';
+};
+
+const toMerchantInvitesFromRows = (records: Record<string, string>[]): MerchantInvite[] => {
+    const now = Date.now();
+    return records
+        .map((record, index) => {
+            const email = pickValue(record, ['email', 'owneremail', 'contactemail']).trim().toLowerCase();
+            if (!email) return null;
+
+            const merchantName = pickValue(record, ['name', 'merchantname', 'company', 'businessname']) || `Imported Merchant ${index + 1}`;
+            return {
+                id: `invite_${now}_${index}_${email.replace(/[^a-z0-9]/g, '')}`,
+                merchantName,
+                email,
+                status: 'sent' as const,
+                strategy: 'csv-auto-invite' as const,
+                createdAt: now
+            };
+        })
+        .filter((invite): invite is NonNullable<typeof invite> => Boolean(invite));
 };
 
 const transformImportedTransactions = (records: Record<string, string>[]): Transaction[] => {
@@ -277,6 +297,9 @@ const Integrations: React.FC = () => {
     const [isImporting, setIsImporting] = useState(false);
     const [merchantCount, setMerchantCount] = useState(0);
     const [teamCount, setTeamCount] = useState(0);
+    const [inviteCount, setInviteCount] = useState(0);
+    const [inviteStrategy, setInviteStrategy] = useState<MerchantInviteStrategy>(StorageService.getMerchantInviteStrategy());
+    const [inviteLinkNotice, setInviteLinkNotice] = useState<string | null>(null);
     const isAuthTrialMode = StorageService.getDataMode() === 'backend';
     const role = StorageService.getUser()?.role || 'merchant';
 
@@ -301,10 +324,26 @@ const Integrations: React.FC = () => {
             const imported = await StorageService.getImportedDataResolved();
             setMerchantCount(imported.merchants.length);
             setTeamCount(imported.team.length);
+            setInviteCount(StorageService.getMerchantInvites().length);
+            setInviteStrategy(StorageService.getMerchantInviteStrategy());
         };
 
         void loadImportedCounts();
     }, []);
+
+    const inviteLink = typeof window !== 'undefined'
+        ? `${window.location.origin}/?invite=merchant`
+        : 'https://one82-5.vercel.app/?invite=merchant';
+
+    const handleCopyInviteLink = async () => {
+        try {
+            await navigator.clipboard.writeText(inviteLink);
+            setInviteLinkNotice('Invite link copied. Share it with merchants who should self-create profiles.');
+            window.setTimeout(() => setInviteLinkNotice(null), 2800);
+        } catch {
+            setInviteLinkNotice('Unable to copy automatically. Manually copy the invite link shown below.');
+        }
+    };
 
     const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
         setImportError(null);
@@ -376,13 +415,29 @@ const Integrations: React.FC = () => {
             }
 
             if (importType === 'merchants') {
-                await StorageService.saveImportedDataResolved({ merchants: importRows });
+                const existingInvites = StorageService.getMerchantInvites();
+                const generatedInvites = role === 'iso' && inviteStrategy === 'csv-auto-invite'
+                    ? toMerchantInvitesFromRows(importRows)
+                    : [];
+
+                const mergedInviteMap = new Map<string, MerchantInvite>();
+                [...existingInvites, ...generatedInvites].forEach((invite) => {
+                    mergedInviteMap.set(invite.email, invite);
+                });
+                const mergedInvites = Array.from(mergedInviteMap.values());
+
+                await StorageService.saveImportedDataResolved({
+                    merchants: importRows,
+                    merchantInvites: mergedInvites,
+                    inviteStrategy
+                });
                 setMerchantCount(importRows.length);
-                setImportSummary(`Imported ${importRows.length} merchant record${importRows.length === 1 ? '' : 's'} from ${importFileName}. Data landed in ISO portfolio/merchant views.`);
+                setInviteCount(mergedInvites.length);
+                setImportSummary(`Imported ${importRows.length} merchant record${importRows.length === 1 ? '' : 's'} from ${importFileName}. ${generatedInvites.length > 0 ? `Auto-invited ${generatedInvites.length} merchant contact${generatedInvites.length === 1 ? '' : 's'}. ` : ''}Data landed in ISO portfolio/merchant views.`);
             }
 
             if (importType === 'team') {
-                await StorageService.saveImportedDataResolved({ team: importRows });
+                await StorageService.saveImportedDataResolved({ team: importRows, inviteStrategy });
                 setTeamCount(importRows.length);
                 setImportSummary(`Imported ${importRows.length} team member record${importRows.length === 1 ? '' : 's'} from ${importFileName}. Data landed in Team views and assignment context.`);
             }
@@ -454,6 +509,61 @@ const Integrations: React.FC = () => {
                     ))}
                 </ul>
             </div>
+
+            {role === 'iso' && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-5 space-y-3">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Merchant Invite Strategy</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Primary path uses CSV import + auto-invite. Invite-link fallback remains available for edge cases.</p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                setInviteStrategy('csv-auto-invite');
+                                StorageService.saveMerchantInviteStrategy('csv-auto-invite');
+                                await StorageService.saveImportedDataResolved({ inviteStrategy: 'csv-auto-invite' });
+                            }}
+                            className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${inviteStrategy === 'csv-auto-invite'
+                                ? 'bg-gray-900 text-white border-gray-900'
+                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                                }`}
+                        >
+                            CSV Import + Auto-Invite (Primary)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                setInviteStrategy('invite-link');
+                                StorageService.saveMerchantInviteStrategy('invite-link');
+                                await StorageService.saveImportedDataResolved({ inviteStrategy: 'invite-link' });
+                            }}
+                            className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${inviteStrategy === 'invite-link'
+                                ? 'bg-gray-900 text-white border-gray-900'
+                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                                }`}
+                        >
+                            Invite Link (Fallback)
+                        </button>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                            Invite link: <span className="font-semibold break-all text-gray-700 dark:text-gray-200">{inviteLink}</span>
+                        </p>
+                        <div className="mt-2 flex items-center gap-3 flex-wrap">
+                            <button
+                                type="button"
+                                onClick={handleCopyInviteLink}
+                                className="px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
+                            >
+                                Copy Invite Link
+                            </button>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Invites sent: {inviteCount}</span>
+                        </div>
+                        {inviteLinkNotice && <p className="text-xs text-green-600 mt-2">{inviteLinkNotice}</p>}
+                    </div>
+                </div>
+            )}
 
             {/* Import Hub */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">

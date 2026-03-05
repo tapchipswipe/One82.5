@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Mic, MicOff, Volume2, Bot, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { X, MicOff, Volume2, Bot, Loader2 } from 'lucide-react';
 import { connectLiveAssistant, decodeBase64, encodeBase64 } from '../services/geminiService';
 
 interface LiveAssistantProps {
@@ -10,18 +10,12 @@ interface LiveAssistantProps {
 const LiveAssistant: React.FC<LiveAssistantProps> = ({ onClose }) => {
   const [isActive, setIsActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
-  const [transcription, setTranscription] = useState("");
   const sessionRef = useRef<any>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const nextStartTimeRef = useRef(0);
   const sourcesRef = useRef(new Set<AudioBufferSourceNode>());
-
-  useEffect(() => {
-    startSession();
-    return () => stopSession();
-  }, []);
 
   const decodeAudioData = async (data: Uint8Array, ctx: AudioContext) => {
     const dataInt16 = new Int16Array(data.buffer);
@@ -34,7 +28,14 @@ const LiveAssistant: React.FC<LiveAssistantProps> = ({ onClose }) => {
     return buffer;
   };
 
-  const startSession = async () => {
+  const stopSession = useCallback(() => {
+    sessionRef.current?.then((s: any) => s.close());
+    inputAudioContextRef.current?.close();
+    outputAudioContextRef.current?.close();
+    setIsActive(false);
+  }, []);
+
+  const startSession = useCallback(async () => {
     setIsConnecting(true);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     
@@ -81,14 +82,12 @@ const LiveAssistant: React.FC<LiveAssistantProps> = ({ onClose }) => {
     });
 
     sessionRef.current = sessionPromise;
-  };
+  }, []);
 
-  const stopSession = () => {
-    sessionRef.current?.then((s: any) => s.close());
-    inputAudioContextRef.current?.close();
-    outputAudioContextRef.current?.close();
-    setIsActive(false);
-  };
+  useEffect(() => {
+    void startSession();
+    return () => stopSession();
+  }, [startSession, stopSession]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md">
@@ -119,7 +118,7 @@ const LiveAssistant: React.FC<LiveAssistantProps> = ({ onClose }) => {
             </div>
             
             <div className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[4rem] text-sm text-slate-600 dark:text-slate-300 italic">
-                {transcription || "Assistant audio is currently playing..."}
+              Assistant audio is currently playing...
             </div>
         </div>
 

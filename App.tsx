@@ -1,37 +1,142 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useCallback, useRef } from 'react';
 import Layout from './components/Layout';
-import Dashboard from './components/Dashboard';
-import Transactions from './components/Transactions';
-import StatementReader from './components/StatementReader';
 import Onboarding from './components/Onboarding';
-import ISODashboard from './components/ISODashboard';
-import InventoryManager from './components/InventoryManager';
-import InventoryIntelligence from './components/InventoryIntelligence';
 import Login from './components/Login';
-import Settings from './components/Settings';
-import DataChat from './components/DataChat';
-import Forecast from './components/Forecast';
-import CalendarPlanner from './components/CalendarPlanner';
-import Customers from './components/Customers';
-import MerchantLedger from './components/MerchantLedger';
-import Integrations from './components/Integrations';
-import Profitability from './components/Profitability';
-import Experimental from './components/Experimental';
-import Team from './components/Team';
-import CashFlowForecastDemo from './components/experimental/CashFlowForecastDemo';
 import MarketingLayout from './components/marketing/MarketingLayout';
-import HomePage from './components/marketing/HomePage';
-import FeaturesPage from './components/marketing/FeaturesPage';
-import PricingPage from './components/marketing/PricingPage';
-import OverseerDashboard from './components/OverseerDashboard';
-import Profile from './components/Profile';
 import { StorageService } from './services/storage';
 import { AuthService } from './services/authService';
 import { detectAnomalies } from './services/geminiService';
 import { SimulationService } from './services/simulationService';
-import { User, BusinessType, UserRole, AuthMode, Transaction } from './types';
+import { User, BusinessType, MerchantInviteStrategy, UserRole, AuthMode, Transaction } from './types';
 import { ENABLE_EXPERIMENTAL, THEME_COLORS } from './constants';
+
+const loadDashboard = () => import('./components/Dashboard');
+const loadTransactions = () => import('./components/Transactions');
+const loadStatementReader = () => import('./components/StatementReader');
+const loadISODashboard = () => import('./components/ISODashboard');
+const loadInventoryIntelligence = () => import('./components/InventoryIntelligence');
+const loadSettings = () => import('./components/Settings');
+const loadDataChat = () => import('./components/DataChat');
+const loadForecast = () => import('./components/Forecast');
+const loadCalendarPlanner = () => import('./components/CalendarPlanner');
+const loadCustomers = () => import('./components/Customers');
+const loadMerchantLedger = () => import('./components/MerchantLedger');
+const loadIntegrations = () => import('./components/Integrations');
+const loadProfitability = () => import('./components/Profitability');
+const loadExperimental = () => import('./components/Experimental');
+const loadTeam = () => import('./components/Team');
+const loadCashFlowForecastDemo = () => import('./components/experimental/CashFlowForecastDemo');
+const loadHomePage = () => import('./components/marketing/HomePage');
+const loadFeaturesPage = () => import('./components/marketing/FeaturesPage');
+const loadPricingPage = () => import('./components/marketing/PricingPage');
+const loadOverseerDashboard = () => import('./components/OverseerDashboard');
+const loadProfile = () => import('./components/Profile');
+
+const Dashboard = lazy(loadDashboard);
+const Transactions = lazy(loadTransactions);
+const StatementReader = lazy(loadStatementReader);
+const ISODashboard = lazy(loadISODashboard);
+const InventoryIntelligence = lazy(loadInventoryIntelligence);
+const Settings = lazy(loadSettings);
+const DataChat = lazy(loadDataChat);
+const Forecast = lazy(loadForecast);
+const CalendarPlanner = lazy(loadCalendarPlanner);
+const Customers = lazy(loadCustomers);
+const MerchantLedger = lazy(loadMerchantLedger);
+const Integrations = lazy(loadIntegrations);
+const Profitability = lazy(loadProfitability);
+const Experimental = lazy(loadExperimental);
+const Team = lazy(loadTeam);
+const CashFlowForecastDemo = lazy(loadCashFlowForecastDemo);
+const HomePage = lazy(loadHomePage);
+const FeaturesPage = lazy(loadFeaturesPage);
+const PricingPage = lazy(loadPricingPage);
+const OverseerDashboard = lazy(loadOverseerDashboard);
+const Profile = lazy(loadProfile);
+
+const PREFETCH_BY_ROLE: Record<UserRole, Record<string, Array<() => Promise<unknown>>>> = {
+  merchant: {
+    dashboard: [loadTransactions, loadInventoryIntelligence, loadCustomers],
+    transactions: [loadDashboard, loadDataChat, loadForecast],
+    inventory: [loadTransactions, loadForecast],
+    chat: [loadDashboard, loadTransactions],
+    forecast: [loadDashboard, loadCalendarPlanner],
+    calendar: [loadForecast, loadDashboard],
+    customers: [loadTransactions, loadDashboard],
+    profile: [loadSettings],
+    settings: [loadProfile]
+  },
+  iso: {
+    dashboard: [loadStatementReader, loadMerchantLedger, loadProfitability],
+    statements: [loadMerchantLedger, loadProfitability],
+    portfolio: [loadProfitability, loadTeam],
+    profitability: [loadMerchantLedger, loadIntegrations],
+    team: [loadIntegrations, loadProfile],
+    integrations: [loadDashboard, loadStatementReader],
+    profile: [loadSettings],
+    settings: [loadProfile]
+  },
+  overseer: {
+    dashboard: [loadProfile, loadSettings],
+    profile: [loadSettings, loadOverseerDashboard],
+    settings: [loadProfile, loadOverseerDashboard]
+  }
+};
+
+const PREFETCH_BY_MARKETING_PAGE: Record<'home' | 'features' | 'pricing', Array<() => Promise<unknown>>> = {
+  home: [loadFeaturesPage, loadPricingPage],
+  features: [loadPricingPage, loadHomePage],
+  pricing: [loadFeaturesPage, loadHomePage]
+};
+
+const VIEW_LOADERS: Record<string, () => Promise<unknown>> = {
+  dashboard: loadDashboard,
+  transactions: loadTransactions,
+  statements: loadStatementReader,
+  inventory: loadInventoryIntelligence,
+  settings: loadSettings,
+  chat: loadDataChat,
+  forecast: loadForecast,
+  calendar: loadCalendarPlanner,
+  customers: loadCustomers,
+  portfolio: loadMerchantLedger,
+  integrations: loadIntegrations,
+  profitability: loadProfitability,
+  experimental: loadExperimental,
+  team: loadTeam,
+  'exp-cashflow': loadCashFlowForecastDemo,
+  profile: loadProfile
+};
+
+type NavigationPerfSample = {
+  timestamp: number;
+  role: UserRole;
+  fromView: string;
+  toView: string;
+  durationMs: number;
+  prefetched: boolean;
+};
+
+const NAVIGATION_PERF_KEY = 'one82_navigation_perf_samples';
+const NAVIGATION_PERF_SAMPLE_LIMIT = 500;
+
+const appendNavigationPerfSample = (sample: NavigationPerfSample): void => {
+  try {
+    const raw = localStorage.getItem(NAVIGATION_PERF_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const existing: NavigationPerfSample[] = Array.isArray(parsed) ? parsed : [];
+    const next = [...existing.slice(-(NAVIGATION_PERF_SAMPLE_LIMIT - 1)), sample];
+    localStorage.setItem(NAVIGATION_PERF_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event('one82-navigation-perf'));
+  } catch {
+    // Ignore storage errors so UI flow is never blocked by instrumentation.
+  }
+};
+
+const LoadingView: React.FC = () => (
+  <div className="p-6 text-sm text-slate-500 dark:text-slate-400">Loading...</div>
+);
 
 const buildPortfolioFromTransactions = (transactions: Transaction[]) => {
   const grouped = new Map<string, Transaction[]>();
@@ -100,6 +205,8 @@ const App: React.FC = () => {
   const [authMode, setAuthMode] = useState<AuthMode>('demo');
   const [marketingPage, setMarketingPage] = useState<'home' | 'features' | 'pricing' | null>('home');
   const [showTrial, setShowTrial] = useState(false);
+  const pendingNavigationRef = useRef<{ fromView: string; toView: string; requestedAt: number } | null>(null);
+  const prefetchedViewsRef = useRef(new Set<string>());
   const merchants = authMode === 'demo'
     ? SimulationService.generatePortfolio()
     : buildPortfolioFromTransactions(StorageService.getTransactions());
@@ -125,7 +232,7 @@ const App: React.FC = () => {
         const settings = StorageService.getSettings();
         if (settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) setDarkMode(true);
         const root = document.documentElement;
-        const colorSet = THEME_COLORS[settings.primaryColor || 'charcoal'];
+        const colorSet = THEME_COLORS[settings.primaryColor || 'charcoal'] as Record<string, string>;
         Object.entries(colorSet).forEach(([shade, value]) => root.style.setProperty(`--color-primary-${shade}`, value));
       } catch (e) {
         console.error("Initialization Failed:", e);
@@ -136,6 +243,81 @@ const App: React.FC = () => {
 
     void initialize();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const byRole = PREFETCH_BY_ROLE[user.role];
+    const prefetchers = byRole[activeView] || byRole.dashboard || [];
+    if (prefetchers.length === 0) return;
+
+    const timer = window.setTimeout(() => {
+      prefetchers.forEach((prefetcher) => {
+        void prefetcher().catch(() => undefined);
+      });
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [activeView, user]);
+
+  useEffect(() => {
+    if (user || !marketingPage) return;
+    const prefetchers = PREFETCH_BY_MARKETING_PAGE[marketingPage] || [];
+    if (prefetchers.length === 0) return;
+
+    const timer = window.setTimeout(() => {
+      prefetchers.forEach((prefetcher) => {
+        void prefetcher().catch(() => undefined);
+      });
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [marketingPage, user]);
+
+  const handlePrefetchView = useCallback((view: string) => {
+    if (!user) return;
+    const byRole = PREFETCH_BY_ROLE[user.role] || {};
+    const primaryLoader = VIEW_LOADERS[view];
+    const adjacentLoaders = byRole[view] || [];
+    const prefetchers = primaryLoader ? [primaryLoader, ...adjacentLoaders] : adjacentLoaders;
+    prefetchedViewsRef.current.add(view);
+
+    prefetchers.forEach((prefetcher) => {
+      void prefetcher().catch(() => undefined);
+    });
+  }, [user]);
+
+  const handleNavigate = useCallback((view: string) => {
+    if (view === activeView) return;
+    pendingNavigationRef.current = {
+      fromView: activeView,
+      toView: view,
+      requestedAt: performance.now()
+    };
+    setActiveView(view);
+  }, [activeView]);
+
+  useEffect(() => {
+    if (!user) return;
+    const pending = pendingNavigationRef.current;
+    if (!pending || pending.toView !== activeView) return;
+
+    const durationMs = Math.round(performance.now() - pending.requestedAt);
+    const sample: NavigationPerfSample = {
+      timestamp: Date.now(),
+      role: user.role,
+      fromView: pending.fromView,
+      toView: pending.toView,
+      durationMs,
+      prefetched: prefetchedViewsRef.current.has(pending.toView)
+    };
+
+    appendNavigationPerfSample(sample);
+    pendingNavigationRef.current = null;
+
+    if (import.meta.env.DEV) {
+      console.debug('[perf] navigation', sample);
+    }
+  }, [activeView, user]);
 
   // Step 7: Proactive AI Guardrails (Background Anomaly Monitor) - MERCHANTS ONLY
   useEffect(() => {
@@ -187,7 +369,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleOnboardingComplete = (role: UserRole, data: { businessType?: BusinessType, orgName?: string }) => {
+  const handleOnboardingComplete = (role: UserRole, data: { businessType?: BusinessType, orgName?: string, inviteStrategy?: MerchantInviteStrategy }) => {
     if (user) {
       const updated: User = {
         ...user,
@@ -198,6 +380,9 @@ const App: React.FC = () => {
       };
       setUser(updated);
       StorageService.saveUser(updated);
+      if (role === 'iso' && data.inviteStrategy) {
+        StorageService.saveMerchantInviteStrategy(data.inviteStrategy);
+      }
       void AuthService.saveUserProfile(updated, authMode).catch((error) => {
         console.error('Failed to persist onboarding profile:', error);
       });
@@ -220,9 +405,11 @@ const App: React.FC = () => {
     return (
       <div className={darkMode ? 'dark' : ''}>
         <MarketingLayout activePage={marketingPage} onNavigate={handleMarketingNavigate}>
-          {marketingPage === 'home' && <HomePage onNavigate={handleMarketingNavigate} />}
-          {marketingPage === 'features' && <FeaturesPage onNavigate={handleMarketingNavigate} />}
-          {marketingPage === 'pricing' && <PricingPage onNavigate={handleMarketingNavigate} />}
+          <Suspense fallback={<LoadingView />}>
+            {marketingPage === 'home' && <HomePage onNavigate={handleMarketingNavigate} />}
+            {marketingPage === 'features' && <FeaturesPage onNavigate={handleMarketingNavigate} />}
+            {marketingPage === 'pricing' && <PricingPage onNavigate={handleMarketingNavigate} />}
+          </Suspense>
         </MarketingLayout>
       </div>
     );
@@ -234,53 +421,55 @@ const App: React.FC = () => {
   return (
     <Layout
       activeView={activeView}
-      onNavigate={setActiveView}
+      onNavigate={handleNavigate}
+      onPrefetchView={handlePrefetchView}
       darkMode={darkMode}
       toggleTheme={toggleTheme}
       role={user.role}
       businessType={user.businessType || 'Retail'} // Fallback for ISOs
       onLogout={handleLogout}
     >
-      {user.role === 'merchant' && (
-        <>
-          {activeView === 'dashboard' && <Dashboard businessType={user.businessType!} />}
-          {activeView === 'transactions' && <Transactions />}
-          {activeView === 'inventory' && <InventoryIntelligence />}
-          {activeView === 'settings' && <Settings />}
-          {activeView === 'chat' && <DataChat />}
-          {activeView === 'forecast' && <Forecast />}
-          {activeView === 'calendar' && <CalendarPlanner />}
-          {activeView === 'customers' && <Customers />}
-          {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
-          {ENABLE_EXPERIMENTAL && activeView === 'exp-cashflow' && <div className="p-6"><CashFlowForecastDemo /></div>}
-          {ENABLE_EXPERIMENTAL && activeView === 'experimental' && <Experimental role={user.role} />}
-        </>
-      )}
+      <Suspense fallback={<LoadingView />}>
+        {user.role === 'merchant' && (
+          <>
+            {activeView === 'dashboard' && <Dashboard businessType={user.businessType!} />}
+            {activeView === 'transactions' && <Transactions />}
+            {activeView === 'inventory' && <InventoryIntelligence />}
+            {activeView === 'settings' && <Settings />}
+            {activeView === 'chat' && <DataChat />}
+            {activeView === 'forecast' && <Forecast />}
+            {activeView === 'calendar' && <CalendarPlanner />}
+            {activeView === 'customers' && <Customers />}
+            {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
+            {ENABLE_EXPERIMENTAL && activeView === 'exp-cashflow' && <div className="p-6"><CashFlowForecastDemo /></div>}
+            {ENABLE_EXPERIMENTAL && activeView === 'experimental' && <Experimental role={user.role} />}
+          </>
+        )}
 
-      {user.role === 'iso' && (
-        <>
-          {activeView === 'dashboard' && <ISODashboard />}
-          {activeView === 'statements' && <StatementReader />}
-          {activeView === 'portfolio' && <div className="p-6"><MerchantLedger merchants={merchants} /></div>}
-          {activeView === 'profitability' && <Profitability />}
-          {activeView === 'team' && <Team onNavigate={setActiveView} />}
-          {activeView === 'integrations' && <Integrations />}
-          {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
-          {ENABLE_EXPERIMENTAL && activeView === 'experimental' && <Experimental role={user.role} />}
-          {activeView === 'settings' && <Settings />}
-          {/* Fallback */}
-          {!['dashboard', 'statements', 'portfolio', 'profitability', 'team', 'integrations', 'experimental', 'settings', 'profile'].includes(activeView) && <ISODashboard />}
-        </>
-      )}
+        {user.role === 'iso' && (
+          <>
+            {activeView === 'dashboard' && <ISODashboard />}
+            {activeView === 'statements' && <StatementReader />}
+            {activeView === 'portfolio' && <div className="p-6"><MerchantLedger merchants={merchants} /></div>}
+            {activeView === 'profitability' && <Profitability />}
+            {activeView === 'team' && <Team onNavigate={handleNavigate} />}
+            {activeView === 'integrations' && <Integrations />}
+            {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
+            {ENABLE_EXPERIMENTAL && activeView === 'experimental' && <Experimental role={user.role} />}
+            {activeView === 'settings' && <Settings />}
+            {!['dashboard', 'statements', 'portfolio', 'profitability', 'team', 'integrations', 'experimental', 'settings', 'profile'].includes(activeView) && <ISODashboard />}
+          </>
+        )}
 
-      {user.role === 'overseer' && (
-        <>
-          {activeView === 'dashboard' && <OverseerDashboard />}
-          {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
-          {activeView === 'settings' && <Settings />}
-          {!['dashboard', 'settings', 'profile'].includes(activeView) && <OverseerDashboard />}
-        </>
-      )}
+        {user.role === 'overseer' && (
+          <>
+            {activeView === 'dashboard' && <OverseerDashboard />}
+            {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
+            {activeView === 'settings' && <Settings />}
+            {!['dashboard', 'settings', 'profile'].includes(activeView) && <OverseerDashboard />}
+          </>
+        )}
+      </Suspense>
     </Layout>
   );
 };

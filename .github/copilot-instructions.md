@@ -1,42 +1,64 @@
 # Copilot Instructions for ONE82
 
-## Big-picture architecture
-- This is a single-page React + TypeScript + Vite app (`App.tsx`, `index.tsx`) with role-driven rendering, not route-driven rendering.
-- `App.tsx` is the orchestration layer: bootstraps auth (`AuthService.bootstrap()`), sets data mode (`StorageService.setDataMode()`), gates merchant/ISO/overseer surfaces, and decides marketing vs login vs onboarding.
-- `components/Layout.tsx` owns global shell/nav and role-specific nav items; new app views should integrate through `activeView` + `onNavigate` patterns.
+## 1) Architecture at a glance
+- App type: single-page React + TypeScript + Vite app with role-driven rendering (not route-driven rendering).
+- Main entry: `App.tsx` orchestrates auth bootstrap, data mode, marketing/login/onboarding gating, and role view fallback.
+- Shell/navigation: `components/Layout.tsx` owns global nav and role-specific view switching via `activeView` + `onNavigate`.
 
-## Service boundaries and data flow
-- `services/authService.ts` handles auth mode (`demo` vs `backend`) and overseer email behavior (`VITE_OVERSEER_EMAIL`); when backend auth is enabled, login/session persistence is server-side via Supabase-backed API routes.
-- `services/storage.ts` is the primary app data boundary; it abstracts localStorage and backend fallbacks via `*Resolved` methods (for transactions/metrics/notifications).
-- Keep feature components mostly UI-focused; call `StorageService` / `AuthService` from components instead of raw localStorage/fetch where equivalent helpers exist.
-- `services/geminiService.ts` always supports offline behavior (simulated responses when `GEMINI_API_KEY` is absent). Preserve this fallback-first behavior.
-- `services/simulationService.ts` provides canonical seeded/demo datasets for portfolio, customers, and reps.
+## 2) Core boundaries (respect these)
+- `services/authService.ts`: source of truth for auth mode (`demo` or `backend`) and session bootstrap/login/logout behavior.
+- `services/storage.ts`: primary data boundary; prefer `*Resolved` helpers for backend+demo fallback behavior.
+- `services/simulationService.ts`: canonical demo data generator (portfolio, reps, customers, etc.).
+- `services/geminiService.ts`: must remain fallback-first (simulate behavior when API key/network is unavailable).
+- `services/integrationsConfig.ts`: source of truth for live integration capability and key gating.
 
-## Mode and provenance conventions
-- Feature flags are env-driven (`VITE_ENABLE_BACKEND_AUTH`, `VITE_ENABLE_BACKEND_DATA`, `VITE_ENABLE_LIVE_INTEGRATIONS`, `VITE_ENABLE_EXPERIMENTAL`).
-- Demo mode is expected to work end-to-end without external dependencies; avoid introducing hard failures when APIs/keys are missing.
-- Show explicit source/provenance when relevant using `components/ProvenanceIndicators.tsx` (`Live` vs `Simulated (Demo)` and optional `AI-Generated`).
-- For integrations, use `services/integrationsConfig.ts` as the source of truth; keys are stored locally and gated by `LIVE_INTEGRATIONS_ENABLED`.
+## 3) Modes, flags, and resilience
+- Feature flags are env-driven: `VITE_ENABLE_BACKEND_AUTH`, `VITE_ENABLE_BACKEND_DATA`, `VITE_ENABLE_LIVE_INTEGRATIONS`, `VITE_ENABLE_EXPERIMENTAL`.
+- Demo mode must work end-to-end without external services.
+- Never introduce hard failures when APIs/keys are missing; degrade gracefully with clear UX state.
+- Where relevant, show provenance using `components/ProvenanceIndicators.tsx` (`Live`, `Simulated (Demo)`, `AI-Generated`).
 
-## Role and access model
-- Valid app roles are `'merchant' | 'iso' | 'overseer'` (`types.ts`). Keep role checks aligned with `HIERARCHY_STRUCTURE.md`.
+## 4) Role model and access rules
+- Valid roles are exactly `'merchant' | 'iso' | 'overseer'` (see `types.ts`).
+- Keep role logic consistent with `HIERARCHY_STRUCTURE.md`.
 - If role behavior changes, update both implementation and `HIERARCHY_STRUCTURE.md` in the same change.
-- Existing login behavior: emails containing `iso` map to ISO in demo mode; `VITE_OVERSEER_EMAIL` maps to overseer.
+- Demo auth convention: emails containing `iso` map to ISO; `VITE_OVERSEER_EMAIL` maps to overseer.
 
-## UI and state patterns used here
-- Tailwind utility classes are used inline throughout components; follow existing class composition style instead of introducing a new styling system.
-- Many components read/write browser state directly through services and react to `window` events (example: `user-update` in `Layout.tsx` and `StorageService.updateCredits`).
-- `App.tsx` performs role-based view fallback (e.g., unknown ISO view -> `ISODashboard`); keep equivalent defensive fallbacks when adding views.
+## 5) UI/state conventions
+- Use existing inline Tailwind utility style; do not introduce a parallel styling system.
+- Prefer existing components/patterns over new infrastructure.
+- Keep defensive fallback behavior in `App.tsx` when unknown/invalid views are requested.
+- Many features sync via browser events and storage helpers; preserve existing event-driven patterns.
 
-## Local workflows
-- Install: `npm install`
-- Dev server: `npm run dev` (Vite, default port 3000 from `vite.config.ts`)
+## 6) Implementation rules for changes
+- Prefer editing existing files/services before creating new modules.
+- Reuse domain types from `types.ts`; avoid duplicate type definitions.
+- Keep components UI-focused; use services for persistence, auth, and integrations.
+- For data mutations, persist through `StorageService` first, then optional backend sync (existing resolved pattern).
+- Keep changes minimal, surgical, and consistent with current naming/style.
+
+## 7) Local development workflow
+- Install deps: `npm install`
+- Run dev server: `npm run dev`
+- Type-check: `npm run typecheck`
+- Lint: `npm run lint`
+- Full validation: `npm run check`
 - Production build: `npm run build`
 - Preview build: `npm run preview`
-- No formal test/lint scripts are currently defined in `package.json`; validate by running `npm run build` after non-trivial changes.
 
-## Practical implementation tips for agents
-- Prefer editing existing services/components over creating new infrastructure.
-- Reuse existing domain types from `types.ts` before introducing new ones.
-- For AI features, include graceful no-key behavior and avoid blocking UX on model/network failures.
-- For data mutations, persist through `StorageService` first, then optional backend sync (same pattern as `saveTransactionsResolved` / `markNotificationsReadResolved`).
+## 8) Definition of done for non-trivial work
+- App compiles and passes `npm run check`.
+- New behavior works in demo mode (no required external keys).
+- Any role-affecting changes are reflected in `HIERARCHY_STRUCTURE.md`.
+- User-facing data source/provenance is explicit where needed.
+
+## 9) Vision lock alignment (required)
+- Treat `docs/vision-lock-v1.md` as a product constraint document for implementation decisions.
+- Favor ISO-first product decisions (onboarding flows, pricing presentation, activation paths); avoid merchant-direct self-serve assumptions.
+- Honor Day 1 lock priorities: focus pilot execution around 1–3 design-partner ISOs and Stripe as the first full production integration path.
+- Follow the locked onboarding direction: ISO import + auto-invite is the primary merchant onboarding path, with invite-link fallback.
+- In auth/backend mode, never rely on browser cache as source of truth; preserve backend-enforced tenant isolation, API-layer RBAC, and full logout/session revocation.
+- Keep provenance/trust behavior strict: in auth mode, hard-block AI when required provenance is missing/unknown, avoid fabricated AI outputs when inputs are incomplete, and do not emit simulated AI outputs as auth-mode substitutes.
+- Prioritize integration reliability, statement reader accuracy, sync failure visibility, and freshness indicators over net-new AI surface area.
+- Keep AI provider abstraction and settings-based AI customization patterns; avoid introducing dedicated standalone AI config surfaces unless explicitly requested.
+- AI report expansion is in-scope: one-page AI report experience can be implemented, but only from trusted available data with explicit source/timestamp context.
