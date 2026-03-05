@@ -72,6 +72,7 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
 
 const ISODashboard: React.FC = () => {
     const isDemoMode = StorageService.getDataMode() === 'demo';
+    const isAuthMode = StorageService.getDataMode() === 'backend';
     const [merchants, setMerchants] = useState<PortfolioMerchant[]>([]);
     const [totalVolume, setTotalVolume] = useState(0);
     const [ccVolume, setCcVolume] = useState(243817.50);
@@ -129,6 +130,16 @@ const ISODashboard: React.FC = () => {
     };
 
     const runAnalysis = async () => {
+        if (isAuthMode && !apiKey.trim()) {
+            setAiAnalysis('Portfolio AI analysis is blocked in Auth Login until a Gemini API key is configured in Integrations.');
+            return;
+        }
+
+        if (isAuthMode && merchants.length === 0) {
+            setAiAnalysis('Portfolio AI analysis is blocked in Auth Login until trusted merchant/transaction data is available. Next step: import merchant roster/transactions or connect a processor integration.');
+            return;
+        }
+
         setIsAnalyzing(true);
         try { setAiAnalysis(await analyzePortfolio(merchants)); }
         catch { setAiAnalysis('Portfolio analysis currently unavailable.'); }

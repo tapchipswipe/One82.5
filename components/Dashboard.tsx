@@ -35,6 +35,8 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
   const fetchInsights = useCallback(async (force: boolean = false) => {
     const allMetrics = StorageService.getMetrics();
     const transactions = StorageService.getTransactions();
+    const isAuthMode = StorageService.getDataMode() === 'backend';
+    const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
 
     let filtered = [...allMetrics];
     if (timeRange === 'Last 30 Days') filtered = filtered.map(m => ({ ...m, revenue: m.revenue * 1.2 }));
@@ -51,6 +53,20 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
     const cached = StorageService.getCachedInsight(cacheKey);
     if (cached && !force) {
       setInsight(cached);
+      setLoading(false);
+      return;
+    }
+
+    if (isAuthMode && !hasGeminiKey) {
+      setHasCredits(true);
+      setInsight('AI dashboard insights are blocked in Auth Login until a Gemini API key is configured in Integrations.');
+      setLoading(false);
+      return;
+    }
+
+    if (isAuthMode && filtered.length === 0) {
+      setHasCredits(true);
+      setInsight('AI dashboard insights are blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
       setLoading(false);
       return;
     }

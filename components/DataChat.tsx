@@ -35,6 +35,32 @@ const DataChat: React.FC = () => {
     e.preventDefault();
     if (!input.trim() || isTyping) return;
 
+    const isAuthMode = StorageService.getDataMode() === 'backend';
+    const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
+    const metrics = StorageService.getMetrics();
+    const transactions = StorageService.getTransactions().slice(0, 10);
+    const hasTrustedData = metrics.length > 0 || transactions.length > 0;
+
+    if (isAuthMode && !hasGeminiKey) {
+      setMessages(prev => [...prev, {
+        id: `blocked_${Date.now()}`,
+        role: 'model',
+        text: 'Data Chat is blocked in Auth Login until a Gemini API key is configured in Integrations.',
+        timestamp: Date.now()
+      }]);
+      return;
+    }
+
+    if (isAuthMode && !hasTrustedData) {
+      setMessages(prev => [...prev, {
+        id: `blocked_${Date.now()}`,
+        role: 'model',
+        text: 'Data Chat is blocked in Auth Login until trusted data is available. Next step: import transactions or connect a live integration.',
+        timestamp: Date.now()
+      }]);
+      return;
+    }
+
     if (!StorageService.hasCredits(1)) {
         setMessages(prev => [...prev, { id: 'error', role: 'model', text: 'Out of credits.', timestamp: Date.now() }]);
         return;
@@ -46,7 +72,7 @@ const DataChat: React.FC = () => {
     setInput('');
     setIsTyping(true);
 
-    const context = { metrics: StorageService.getMetrics(), transactions: StorageService.getTransactions().slice(0, 10) };
+    const context = { metrics, transactions };
     
     // Create a placeholder for streaming
     const streamId = (Date.now() + 1).toString();

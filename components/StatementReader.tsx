@@ -10,6 +10,7 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis
 } from 'recharts';
+import { StorageService } from '../services/storage';
 
 const CARD_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#3b82f6'];
 
@@ -42,6 +43,7 @@ const StatCard = ({ label, value, sub, icon }: { label: string; value: string; s
 );
 
 const StatementReader: React.FC = () => {
+  const isAuthMode = StorageService.getDataMode() === 'backend';
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -61,7 +63,6 @@ const StatementReader: React.FC = () => {
 
   const onAnalyze = async () => {
     setAnalyzing(true);
-    // Pass empty string if no file — simulation mode handles it
     const base64 = preview ? preview.split(',')[1] : '';
     const mime = file?.type || 'application/pdf';
     const result = await analyzeStatementFull(base64, mime);
@@ -69,12 +70,22 @@ const StatementReader: React.FC = () => {
     setAnalyzing(false);
   };
 
-  // Also allow demo run without a file
   const onDemoRun = async () => {
     setAnalyzing(true);
     const result = await analyzeStatementFull('', 'application/pdf');
     setData(result);
     setAnalyzing(false);
+  };
+
+  const handlePrimaryAction = async () => {
+    if (file) {
+      await onAnalyze();
+      return;
+    }
+
+    if (!isAuthMode) {
+      await onDemoRun();
+    }
   };
 
   const cardBrandData = data ? [
@@ -180,7 +191,7 @@ const StatementReader: React.FC = () => {
           </p>
         </div>
         <span className="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full font-medium border border-indigo-100 dark:border-indigo-900/30">
-          Simulation Ready
+          {isAuthMode ? 'Auth Mode' : 'Simulation Ready'}
         </span>
       </div>
 
@@ -206,11 +217,17 @@ const StatementReader: React.FC = () => {
             )}
           </div>
           <button
-            onClick={file ? onAnalyze : onDemoRun}
-            disabled={analyzing}
+            onClick={() => void handlePrimaryAction()}
+            disabled={analyzing || (isAuthMode && !file)}
             className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
           >
-            {analyzing ? <><Loader2 className="animate-spin w-5 h-5" /> Analyzing...</> : (file ? 'Run AI Analysis' : 'Run Demo Analysis')}
+            {analyzing
+              ? <><Loader2 className="animate-spin w-5 h-5" /> Analyzing...</>
+              : file
+                ? 'Run AI Analysis'
+                : isAuthMode
+                  ? 'Upload Statement Required'
+                  : 'Run Demo Analysis'}
           </button>
         </div>
 

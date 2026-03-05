@@ -12,6 +12,8 @@ const Forecast: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
 
   const settings = StorageService.getSettings();
+  const isAuthMode = StorageService.getDataMode() === 'backend';
+  const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
   const cacheKey = useMemo(() => `forecast_insight_${settings.aiResponseStyle}`, [settings.aiResponseStyle]);
 
   const fetchForecast = useCallback(async (force: boolean = false) => {
@@ -29,7 +31,7 @@ const Forecast: React.FC = () => {
     // Simple mock projection logic
     const lastDay = historical[historical.length - 1];
     const projected = [];
-    let baseRevenue = lastDay.revenue;
+    let baseRevenue = lastDay?.revenue ?? 0;
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     for(let i=0; i<7; i++) {
@@ -59,6 +61,16 @@ const Forecast: React.FC = () => {
         ...projected
     ]);
 
+    if (isAuthMode && !hasGeminiKey) {
+      setInsight('Forecast AI is blocked in Auth Login until a Gemini API key is configured in Integrations.');
+      return;
+    }
+
+    if (isAuthMode && historical.length === 0) {
+      setInsight('Forecast AI is blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
+      return;
+    }
+
     // Check Cache
     const cached = StorageService.getCachedInsight(cacheKey);
     if (cached && !force) {
@@ -71,7 +83,7 @@ const Forecast: React.FC = () => {
     setInsight(text);
     StorageService.setCachedInsight(cacheKey, text);
     setLoading(false);
-  }, [cacheKey]);
+  }, [cacheKey, hasGeminiKey, isAuthMode]);
 
   useEffect(() => {
     fetchForecast();
