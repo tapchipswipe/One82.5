@@ -5,11 +5,12 @@ import { Store, Building2 } from 'lucide-react';
 
 interface OnboardingProps {
   onComplete: (role: UserRole, data: { businessType?: BusinessType, orgName?: string, inviteStrategy?: MerchantInviteStrategy }) => void;
+  initialRole?: UserRole;
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [role, setRole] = useState<UserRole | null>(null);
+const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialRole }) => {
+  const [step, setStep] = useState<1 | 2>(initialRole ? 2 : 1);
+  const [role, setRole] = useState<UserRole | null>(initialRole || null);
   const [inviteStrategy, setInviteStrategy] = useState<MerchantInviteStrategy>('csv-auto-invite');
 
   const handleRoleSelect = (selectedRole: UserRole) => {
@@ -141,7 +142,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 2 && !initialRole && (
           <button onClick={() => setStep(1)} className="mt-6 text-slate-500 hover:text-slate-700 text-sm flex items-center justify-center w-full">
             ← Back to Role Selection
           </button>

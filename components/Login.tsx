@@ -8,6 +8,7 @@ interface LoginProps {
   showTrialMode?: boolean;
   onBackToHome?: () => void;
   initialAuthMode?: AuthMode;
+  inviteIntent?: 'merchant' | null;
 }
 
 const FEATURES = [
@@ -16,7 +17,7 @@ const FEATURES = [
   { icon: Shield, text: 'Churn risk & residual tracking' },
 ];
 
-const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToHome, initialAuthMode = 'demo' }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToHome, initialAuthMode = 'demo', inviteIntent = null }) => {
   const isBackendAuthEnabled = AuthService.isBackendEnabled();
   const overseerEmail = AuthService.getOverseerEmail();
   const [email, setEmail] = useState('');
@@ -138,16 +139,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
             <span className="text-gray-900 font-bold text-xl">ONE82</span>
           </div>
 
-          {showTrialMode && (
+          {(showTrialMode || inviteIntent === 'merchant') && (
             <div className="mb-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0">
                   <Gift className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-green-900 text-sm mb-1">Auth Login Access</h3>
+                  <h3 className="font-semibold text-green-900 text-sm mb-1">{inviteIntent === 'merchant' ? 'Merchant Invite Detected' : 'Auth Login Access'}</h3>
                   <p className="text-green-700 text-xs">
-                    Sign in with your account to access full platform features.
+                    {inviteIntent === 'merchant'
+                      ? 'You are opening a merchant invite. Sign in to continue into merchant onboarding.'
+                      : 'Sign in with your account to access full platform features.'}
                   </p>
                 </div>
               </div>

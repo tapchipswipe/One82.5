@@ -221,6 +221,7 @@ const App: React.FC = () => {
   const [authMode, setAuthMode] = useState<AuthMode>('demo');
   const [marketingPage, setMarketingPage] = useState<'home' | 'features' | 'pricing' | null>('home');
   const [showTrial, setShowTrial] = useState(false);
+  const [inviteIntent, setInviteIntent] = useState<'merchant' | null>(null);
   const pendingNavigationRef = useRef<{ fromView: string; toView: string; requestedAt: number } | null>(null);
   const prefetchedViewsRef = useRef(new Set<string>());
   const merchants = authMode === 'demo'
@@ -234,6 +235,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const initialize = async () => {
       try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const invite = searchParams.get('invite');
+        const parsedInviteIntent = invite === 'merchant' ? 'merchant' : null;
+        setInviteIntent(parsedInviteIntent);
+
         const { user: bootstrappedUser, mode } = await AuthService.bootstrap();
         setAuthMode(mode);
         StorageService.setDataMode(resolveDataMode(mode));
@@ -242,7 +248,12 @@ const App: React.FC = () => {
           setUser(bootstrappedUser);
           setMarketingPage(null);
         } else {
-          setMarketingPage('home');
+          if (parsedInviteIntent === 'merchant') {
+            setMarketingPage(null);
+            setShowTrial(true);
+          } else {
+            setMarketingPage('home');
+          }
         }
 
         const settings = StorageService.getSettings();
@@ -362,9 +373,22 @@ const App: React.FC = () => {
 
   const toggleTheme = () => setDarkMode(!darkMode);
   const handleLogin = (u: User, mode: AuthMode) => {
+    let nextUser = u;
+
+    if (inviteIntent === 'merchant' && mode === 'demo' && u.role !== 'merchant') {
+      nextUser = {
+        ...u,
+        role: 'merchant',
+        onboardingComplete: false,
+        organizationName: undefined,
+        businessType: u.businessType
+      };
+      StorageService.saveUser(nextUser);
+    }
+
     setAuthMode(mode);
     StorageService.setDataMode(resolveDataMode(mode));
-    setUser(u);
+    setUser(nextUser);
   };
   const handleLogout = () => {
     void AuthService.logout(authMode);
@@ -402,6 +426,13 @@ const App: React.FC = () => {
       void AuthService.saveUserProfile(updated, authMode).catch((error) => {
         console.error('Failed to persist onboarding profile:', error);
       });
+
+      if (inviteIntent) {
+        setInviteIntent(null);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('invite');
+        window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+      }
     }
   };
 
@@ -431,8 +462,8 @@ const App: React.FC = () => {
     );
   }
   
-  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial} onBackToHome={() => setMarketingPage('home')} initialAuthMode={showTrial ? 'backend' : authMode} /></div>;
-  if (!user.onboardingComplete && user.role !== 'overseer') return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} /></div>;
+  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial || inviteIntent === 'merchant'} onBackToHome={inviteIntent === 'merchant' ? undefined : () => setMarketingPage('home')} initialAuthMode={showTrial || inviteIntent === 'merchant' ? 'backend' : authMode} inviteIntent={inviteIntent} /></div>;
+  if (!user.onboardingComplete && user.role !== 'overseer') return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} initialRole={inviteIntent === 'merchant' ? 'merchant' : undefined} /></div>;
 
   return (
     <Layout
