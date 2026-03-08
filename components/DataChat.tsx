@@ -25,7 +25,14 @@ const DataChat: React.FC = () => {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('chat'));
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const markAiRun = () => {
+    const timestamp = Date.now();
+    StorageService.setAiLastRunAt('chat', timestamp);
+    setLastAiRunAt(timestamp);
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,6 +55,7 @@ const DataChat: React.FC = () => {
         text: 'Data Chat is blocked in Auth Login until a Gemini API key is configured in Integrations.',
         timestamp: Date.now()
       }]);
+      markAiRun();
       return;
     }
 
@@ -58,11 +66,13 @@ const DataChat: React.FC = () => {
         text: 'Data Chat is blocked in Auth Login until trusted data is available. Next step: import transactions or connect a live integration.',
         timestamp: Date.now()
       }]);
+      markAiRun();
       return;
     }
 
     if (!StorageService.hasCredits(1)) {
         setMessages(prev => [...prev, { id: 'error', role: 'model', text: 'Out of credits.', timestamp: Date.now() }]);
+      markAiRun();
         return;
     }
 
@@ -83,6 +93,7 @@ const DataChat: React.FC = () => {
     });
     
     setMessages(prev => prev.map(m => m.id === streamId ? { ...m, isStreaming: false } : m));
+    markAiRun();
     setIsTyping(false);
   };
 
@@ -90,6 +101,7 @@ const DataChat: React.FC = () => {
     <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
         <h2 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Bot className="w-5 h-5 text-primary-600" /> AI Streaming Assistant</h2>
+        {lastAiRunAt && <p className="text-[11px] text-slate-500 dark:text-slate-400">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</p>}
       </div>
       
       <div className="flex-1 overflow-y-auto p-6 space-y-6">

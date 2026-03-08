@@ -1,14 +1,20 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart2, DollarSign, TrendingUp, Activity } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { StorageService } from '../services/storage';
-import { Transaction } from '../types';
+import { BuyRateProfile, Transaction } from '../types';
 
 type MerchantProfitRow = {
   name: string;
+  processorTarget: BuyRateProfile['processorTarget'];
   volume: number;
   transactions: number;
   avgTicket: number;
+  buyRateBps: number;
+  markupBps: number;
+  serviceFeeMonthly: number;
+  processorCost: number;
+  estimatedRevenue: number;
   estimatedMargin: number;
   trend: 'up' | 'down' | 'flat';
 };
@@ -16,7 +22,7 @@ type MerchantProfitRow = {
 const formatCurrency = (value: number): string =>
   `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
-const getMerchantRows = (transactions: Transaction[]): MerchantProfitRow[] => {
+const getMerchantRows = (transactions: Transaction[], profiles: BuyRateProfile[]): MerchantProfitRow[] => {
   const grouped = new Map<string, Transaction[]>();
 
   transactions.forEach((transaction) => {
@@ -31,7 +37,14 @@ const getMerchantRows = (transactions: Transaction[]): MerchantProfitRow[] => {
       const volume = records.reduce((sum, record) => sum + record.amount, 0);
       const transactionsCount = records.length;
       const avgTicket = transactionsCount > 0 ? volume / transactionsCount : 0;
-      const estimatedMargin = volume * 0.018;
+      const profile = profiles.find((entry) => entry.merchantName === name);
+      const buyRateBps = profile?.buyRateBps ?? 160;
+      const markupBps = profile?.markupBps ?? 35;
+      const serviceFeeMonthly = profile?.serviceFeeMonthly ?? 10;
+      const processorTarget = profile?.processorTarget ?? 'stripe';
+      const processorCost = volume * (buyRateBps / 10000) + serviceFeeMonthly;
+      const estimatedRevenue = volume * ((buyRateBps + markupBps) / 10000) + serviceFeeMonthly;
+      const estimatedMargin = estimatedRevenue - processorCost;
 
       const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const midpoint = Math.max(1, Math.floor(sorted.length / 2));
@@ -41,9 +54,15 @@ const getMerchantRows = (transactions: Transaction[]): MerchantProfitRow[] => {
 
       return {
         name,
+        processorTarget,
         volume,
         transactions: transactionsCount,
         avgTicket,
+        buyRateBps,
+        markupBps,
+        serviceFeeMonthly,
+        processorCost,
+        estimatedRevenue,
         estimatedMargin,
         trend
       };
@@ -53,22 +72,49 @@ const getMerchantRows = (transactions: Transaction[]): MerchantProfitRow[] => {
 
 const Profitability: React.FC = () => {
   const isDemoMode = StorageService.getDataMode() === 'demo';
+  const [processorFilter, setProcessorFilter] = useState<'all' | BuyRateProfile['processorTarget']>('all');
+  const [buyRateProfiles, setBuyRateProfiles] = useState<BuyRateProfile[]>(() => StorageService.getBuyRateProfiles());
   const transactions = useMemo(() => StorageService.getTransactions(), []);
-  const merchantRows = useMemo(() => getMerchantRows(transactions), [transactions]);
+  const merchantRows = useMemo(() => getMerchantRows(transactions, buyRateProfiles), [transactions, buyRateProfiles]);
+  const filteredRows = useMemo(() => {
+    if (processorFilter === 'all') return merchantRows;
+    return merchantRows.filter((row) => row.processorTarget === processorFilter);
+  }, [merchantRows, processorFilter]);
+
+  const upsertProfile = (row: MerchantProfitRow, updates: Partial<Pick<MerchantProfitRow, 'buyRateBps' | 'markupBps' | 'serviceFeeMonthly' | 'processorTarget'>>) => {
+    StorageService.upsertBuyRateProfile({
+      merchantName: row.name,
+      processorTarget: updates.processorTarget || row.processorTarget,
+      buyRateBps: updates.buyRateBps ?? row.buyRateBps,
+      markupBps: updates.markupBps ?? row.markupBps,
+      serviceFeeMonthly: updates.serviceFeeMonthly ?? row.serviceFeeMonthly
+    });
+    const latestProfiles = StorageService.getBuyRateProfiles();
+    void StorageService.saveBuyRateProfilesResolved(latestProfiles);
+    setBuyRateProfiles(latestProfiles);
+  };
+
+  useEffect(() => {
+    void StorageService.getBuyRateProfilesResolved().then((profiles) => setBuyRateProfiles(profiles));
+  }, []);
 
   const totals = useMemo(() => {
-    const totalVolume = merchantRows.reduce((sum, row) => sum + row.volume, 0);
-    const totalMargin = merchantRows.reduce((sum, row) => sum + row.estimatedMargin, 0);
-    const totalTransactions = merchantRows.reduce((sum, row) => sum + row.transactions, 0);
+    const totalVolume = filteredRows.reduce((sum, row) => sum + row.volume, 0);
+    const totalMargin = filteredRows.reduce((sum, row) => sum + row.estimatedMargin, 0);
+    const totalProcessorCost = filteredRows.reduce((sum, row) => sum + row.processorCost, 0);
+    const totalRevenue = filteredRows.reduce((sum, row) => sum + row.estimatedRevenue, 0);
+    const totalTransactions = filteredRows.reduce((sum, row) => sum + row.transactions, 0);
     return {
       totalVolume,
       totalMargin,
+      totalProcessorCost,
+      totalRevenue,
       totalTransactions,
-      activeMerchants: merchantRows.length
+      activeMerchants: filteredRows.length
     };
-  }, [merchantRows]);
+  }, [filteredRows]);
 
-  if (!isDemoMode && merchantRows.length === 0) {
+  if (!isDemoMode && filteredRows.length === 0) {
     return (
       <div className="max-w-7xl mx-auto p-6 space-y-8">
         <div>
@@ -98,15 +144,30 @@ const Profitability: React.FC = () => {
           Profitability
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Merchant-level volume, margin, and trend analysis.
+          Merchant-level buy-rate cost, markup, and margin analysis.
         </p>
+        <div className="mt-3 flex items-center gap-2">
+          <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Processor</label>
+          <select
+            value={processorFilter}
+            onChange={(event) => setProcessorFilter(event.target.value as 'all' | BuyRateProfile['processorTarget'])}
+            className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
+          >
+            <option value="all">All</option>
+            <option value="stripe">Stripe</option>
+            <option value="tsys">TSYS</option>
+            <option value="fiserv">Fiserv</option>
+            <option value="worldpay">Worldpay</option>
+            <option value="global">Global Payments</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-5 rounded-xl border bg-indigo-600 border-indigo-700 text-white">
           <div className="flex items-center gap-2 mb-1 text-indigo-200">
             <DollarSign className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wide font-medium">Estimated Margin</span>
+            <span className="text-xs uppercase tracking-wide font-medium">Net Margin (Markup)</span>
           </div>
           <p className="text-2xl font-bold font-mono">{formatCurrency(totals.totalMargin)}</p>
         </div>
@@ -130,9 +191,20 @@ const Profitability: React.FC = () => {
         <div className="p-5 rounded-xl border bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-1 text-gray-500 dark:text-gray-400">
             <BarChart2 className="w-4 h-4" />
-            <span className="text-xs uppercase tracking-wide font-medium">Active Merchants</span>
+            <span className="text-xs uppercase tracking-wide font-medium">Processor Cost</span>
           </div>
-          <p className="text-2xl font-bold font-mono text-gray-900 dark:text-white">{totals.activeMerchants}</p>
+          <p className="text-2xl font-bold font-mono text-gray-900 dark:text-white">{formatCurrency(totals.totalProcessorCost)}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-800 p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Estimated Revenue</p>
+          <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(totals.totalRevenue)}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-800 p-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Service Fee Model</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">Default assumes monthly service fee pass-through; margin primarily comes from markup bps.</p>
         </div>
       </div>
 
@@ -140,7 +212,7 @@ const Profitability: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6">
           <h3 className="font-bold text-gray-900 dark:text-white mb-4 text-sm">Top Merchant Volume</h3>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={merchantRows.slice(0, 8)}>
+            <BarChart data={filteredRows.slice(0, 8)}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(value) => `$${value}`} />
@@ -153,7 +225,7 @@ const Profitability: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6">
           <h3 className="font-bold text-gray-900 dark:text-white mb-4 text-sm">Top Merchant Margin</h3>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={merchantRows.slice(0, 8)}>
+            <BarChart data={filteredRows.slice(0, 8)}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(value) => `$${value}`} />
@@ -172,18 +244,56 @@ const Profitability: React.FC = () => {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700">
               <tr>
-                {['Merchant', 'Volume', 'Transactions', 'Avg Ticket', 'Est. Margin', 'Trend'].map((heading) => (
+                {['Merchant', 'Processor', 'Volume', 'Buy Rate', 'Markup', 'Service Fee', 'Proc. Cost', 'Est. Margin', 'Trend'].map((heading) => (
                   <th key={heading} className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">{heading}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-              {merchantRows.map((row) => (
+              {filteredRows.map((row) => (
                 <tr key={row.name} className="hover:bg-indigo-50/30 dark:hover:bg-gray-700/20 transition-colors">
                   <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">{row.name}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={row.processorTarget}
+                      onChange={(event) => upsertProfile(row, { processorTarget: event.target.value as BuyRateProfile['processorTarget'] })}
+                      className="px-2 py-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
+                    >
+                      <option value="stripe">Stripe</option>
+                      <option value="tsys">TSYS</option>
+                      <option value="fiserv">Fiserv</option>
+                      <option value="worldpay">Worldpay</option>
+                      <option value="global">Global Payments</option>
+                    </select>
+                  </td>
                   <td className="px-4 py-3 font-mono text-gray-700 dark:text-gray-300">{formatCurrency(row.volume)}</td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{row.transactions}</td>
-                  <td className="px-4 py-3 font-mono text-gray-700 dark:text-gray-300">{formatCurrency(row.avgTicket)}</td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      value={row.buyRateBps}
+                      onChange={(event) => upsertProfile(row, { buyRateBps: Number(event.target.value || 0) })}
+                      className="w-20 px-2 py-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
+                    />
+                    <span className="ml-1 text-xs text-gray-500">bps</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      value={row.markupBps}
+                      onChange={(event) => upsertProfile(row, { markupBps: Number(event.target.value || 0) })}
+                      className="w-20 px-2 py-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
+                    />
+                    <span className="ml-1 text-xs text-gray-500">bps</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      value={row.serviceFeeMonthly}
+                      onChange={(event) => upsertProfile(row, { serviceFeeMonthly: Number(event.target.value || 0) })}
+                      className="w-20 px-2 py-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
+                    />
+                  </td>
+                  <td className="px-4 py-3 font-mono text-gray-700 dark:text-gray-300">{formatCurrency(row.processorCost)}</td>
                   <td className="px-4 py-3 font-mono font-bold text-green-600 dark:text-green-400">{formatCurrency(row.estimatedMargin)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${

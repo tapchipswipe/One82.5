@@ -9,6 +9,7 @@ Source: Founder yes/no decision set + clarifications
 - Primary paid customer is the ISO (not merchant-direct).
 - No B2C/small-merchant self-serve this year.
 - Core value proposition: faster onboarding + pricing + risk visibility.
+- Core operational value includes centralized rep onboarding, commission automation, and buy-rate visibility.
 - Competitive framing is not "beating Salesforce" directly.
 - Premium modern trust UX is strategic.
 
@@ -28,6 +29,8 @@ Source: Founder yes/no decision set + clarifications
 - First case studies should be ISO-centric.
 - First customer flow: ISO credentials -> business questionnaire -> import/integration flow -> dashboard.
 - Integrations should be available in trial phase (not locked/blocked).
+- Centralized onboarding hub is the target operating model: one deal intake flow that routes application packages to downstream processor onboarding paths.
+- Rep access for onboarding should be role-limited to assigned merchant/deal scope (no full-database access requirement).
 
 ### Trust + Data Policy
 - Auth mode remains 100% non-simulated.
@@ -91,6 +94,8 @@ Source: Founder yes/no decision set + clarifications
 - Critical toasts policy: define where success/failure must be surfaced.
 - Weekly active teams metric replacement: define primary usage KPI for small ISO orgs.
 - Tenant-isolation launch gate: define exact verification checklist.
+- Processor package routing policy for centralized onboarding: define canonical field contract and destination mappings per processor.
+- Buy-rate semantics lock: confirm whether "buy-rate tracking" includes markup floor controls in v1 or analytics-only first.
 
 ## 3) Founder Clarifications Captured
 - Merchant onboarding model needs decision:
@@ -193,3 +198,64 @@ Answers received: `1N 2Y 3Y 4Y 5N 6(Overseer only) 7(Hybrid) 8Y 9Y 10(NO CREDITS
 
 2. Pilot mobile baseline review
   - Validate functional minimum behavior for critical actions on mobile breakpoints.
+
+## 9) Day 3 Decision Lock (2026-03-08)
+Answers received: `1N 2Y 3N 4Y 5N 6Y 7N 8Y 9(Settings option) 10Y 11Y 12Y 13Y 14N 15Y 16N 17Y 18Y 19Y 20N`
+
+- Alert ownership requirement before clear: **No**.
+- Dashboard stale-data indicator: **Yes**.
+- Role-specific stale-data thresholds: **No** (single rule for all roles).
+- Permanent import log (who/when/file/errors): **Yes**.
+- Strict statement file validation block messaging: **No** (defer hard block expansion).
+- Blocked AI CTA should deep-link to fix page: **Yes**.
+- Blocked AI button labels limited to two fixed labels: **No**.
+- AI sections should show last run timestamp: **Yes**.
+- AI confidence visibility: **User setting toggle** for projection responses.
+- Retry sync cooldown: **Yes**.
+- Trust/auth changes require manual reviewer signoff: **Yes**.
+- Major trust bug pauses net-new features: **Yes**.
+- Overseer trust health page: **Yes**.
+- CSV column mapping step for non-standard imports: **No**.
+- Failed imports downloadable error report: **Yes**.
+- Trust warnings strict plain-language only: **No**.
+- Production deploy trust notes required: **Yes**.
+- Automatic rollback tag per production deploy: **Yes**.
+- Emergency AI UI kill switch: **Yes**.
+- Decision sequencing split (1-10 first): **No** (all decisions active now).
+
+## 10) Updated Execution Priority (Post Day 3)
+
+### Must Ship Next
+1. Dashboard stale-data indicator with a single global threshold.
+2. AI last-run timestamp across key AI surfaces.
+3. Retry sync cooldown and anti-spam UX.
+4. Failed import downloadable error report.
+5. Emergency AI UI kill switch (env/feature flag controlled).
+
+### Should Ship Next
+1. Permanent import audit log (who/when/file/errors).
+2. Overseer trust health page for failures/stale data/blocked AI.
+3. Deep-link CTA routing for blocked AI states.
+4. Settings toggle for AI confidence display in projections.
+
+### Post-Pilot ISO Ops Expansion
+1. Centralized Onboarding Hub
+  - Add one central deal intake workspace for ISO/rep teams.
+  - Auto-generate destination-ready onboarding packages for supported processors.
+  - Enforce role-limited rep permissions so onboarding does not require full org data access.
+
+2. Commission Automation
+  - Calculate monthly agent commissions from trusted imported/integrated processor and platform data.
+  - Replace manual spreadsheet-style monthly commission workflows with auditable system outputs.
+  - Surface commission run status, totals, and exception flags for ISO operators.
+
+3. Buy-Rate Tracking
+  - Track per-account processor costs (buy rates/fees) alongside ONE82 service fee behavior.
+  - Show gross-to-net margin visibility by account, rep, and ISO portfolio rollup.
+  - Keep this analytics capability non-blocking to Stripe-first Day 1 production path.
+
+### Process / Governance
+1. Manual reviewer signoff required for trust/auth PRs.
+2. Pause net-new feature work when P0 trust bug exists.
+3. Add trust-change notes to every production deployment.
+4. Create rollback tag automatically at production deploy time.

@@ -71,6 +71,51 @@ type MerchantInvite = {
   createdAt: number;
 };
 
+type OnboardingDeal = {
+  id: string;
+  merchantName: string;
+  merchantEmail: string;
+  ownerRepName: string;
+  processorTarget: 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
+  status: 'draft' | 'validation-required' | 'ready-to-submit' | 'submitted';
+  packageSummary: string;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+  submittedAt?: number;
+};
+
+type CommissionLineItem = {
+  id: string;
+  repName: string;
+  merchantName: string;
+  volume: number;
+  residualRevenue: number;
+  commissionRate: number;
+  payout: number;
+  exception?: string;
+};
+
+type CommissionRun = {
+  id: string;
+  period: string;
+  status: 'draft' | 'finalized';
+  createdAt: number;
+  finalizedAt?: number;
+  totalPayout: number;
+  lineItems: CommissionLineItem[];
+};
+
+type BuyRateProfile = {
+  id: string;
+  merchantName: string;
+  processorTarget: 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
+  buyRateBps: number;
+  markupBps: number;
+  serviceFeeMonthly: number;
+  updatedAt: number;
+};
+
 type TenantState = {
   transactions: Transaction[];
   notifications: AppNotification[];
@@ -79,6 +124,9 @@ type TenantState = {
   importedTeam: Array<Record<string, string>>;
   merchantInvites: MerchantInvite[];
   inviteStrategy: 'csv-auto-invite' | 'invite-link';
+  onboardingDeals: OnboardingDeal[];
+  commissionRuns: CommissionRun[];
+  buyRateProfiles: BuyRateProfile[];
 };
 
 type DailyMetric = {
@@ -135,7 +183,10 @@ const defaultState = (): TenantState => ({
   importedMerchants: [],
   importedTeam: [],
   merchantInvites: [],
-  inviteStrategy: 'csv-auto-invite'
+  inviteStrategy: 'csv-auto-invite',
+  onboardingDeals: [],
+  commissionRuns: [],
+  buyRateProfiles: []
 });
 
 const parseCookies = (cookieHeader?: string): Record<string, string> => {
@@ -473,7 +524,10 @@ const loadStateFromSupabase = async (tenantId: string): Promise<TenantState | nu
     importedMerchants: Array.isArray(payload.importedMerchants) ? payload.importedMerchants : [],
     importedTeam: Array.isArray(payload.importedTeam) ? payload.importedTeam : [],
     merchantInvites: Array.isArray(payload.merchantInvites) ? payload.merchantInvites : [],
-    inviteStrategy: payload.inviteStrategy === 'invite-link' ? 'invite-link' : 'csv-auto-invite'
+    inviteStrategy: payload.inviteStrategy === 'invite-link' ? 'invite-link' : 'csv-auto-invite',
+    onboardingDeals: Array.isArray(payload.onboardingDeals) ? payload.onboardingDeals : [],
+    commissionRuns: Array.isArray(payload.commissionRuns) ? payload.commissionRuns : [],
+    buyRateProfiles: Array.isArray(payload.buyRateProfiles) ? payload.buyRateProfiles : []
   };
 };
 
@@ -734,7 +788,10 @@ const normalizeState = (state: TenantState | null): TenantState => {
     importedMerchants: Array.isArray(state.importedMerchants) ? state.importedMerchants : [],
     importedTeam: Array.isArray(state.importedTeam) ? state.importedTeam : [],
     merchantInvites: Array.isArray(state.merchantInvites) ? state.merchantInvites : [],
-    inviteStrategy: state.inviteStrategy === 'invite-link' ? 'invite-link' : 'csv-auto-invite'
+    inviteStrategy: state.inviteStrategy === 'invite-link' ? 'invite-link' : 'csv-auto-invite',
+    onboardingDeals: Array.isArray(state.onboardingDeals) ? state.onboardingDeals : [],
+    commissionRuns: Array.isArray(state.commissionRuns) ? state.commissionRuns : [],
+    buyRateProfiles: Array.isArray(state.buyRateProfiles) ? state.buyRateProfiles : []
   };
 };
 

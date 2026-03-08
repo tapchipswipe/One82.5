@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { AppNotification, User, UserRole } from '../types';
-import { ENABLE_EXPERIMENTAL } from '../constants';
+import { DISABLE_AI_UI, ENABLE_EXPERIMENTAL } from '../constants';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -99,20 +99,20 @@ const Layout: React.FC<LayoutProps> = ({
           {role === 'merchant' && (
             <>
               <NavSection label="Business" />
-              <NavItem view="forecast" icon={TrendingUp} label="Forecast" />
-              <NavItem view="report" icon={FileText} label="Report" />
+              {!DISABLE_AI_UI && <NavItem view="forecast" icon={TrendingUp} label="Forecast" />}
+              {!DISABLE_AI_UI && <NavItem view="report" icon={FileText} label="Report" />}
               <NavItem view="calendar" icon={CalendarDays} label="Calendar" />
-              <NavItem view="chat" icon={MessageSquare} label="Ask AI" />
+              {!DISABLE_AI_UI && <NavItem view="chat" icon={MessageSquare} label="Ask AI" />}
               <NavItem view="transactions" icon={CreditCard} label="Transactions" />
               <NavItem view="customers" icon={Users} label="Customers" />
-              <NavItem view="inventory" icon={Package} label="Inventory AI" />
+              {!DISABLE_AI_UI && <NavItem view="inventory" icon={Package} label="Inventory AI" />}
             </>
           )}
 
           {role === 'iso' && (
             <>
               <NavSection label="Portfolio" />
-              <NavItem view="statements" icon={FileText} label="Statement Analysis" />
+              {!DISABLE_AI_UI && <NavItem view="statements" icon={FileText} label="Statement Analysis" />}
               <NavItem view="portfolio" icon={Briefcase} label="Merchants" />
               <NavItem view="profitability" icon={DollarSign} label="Profitability" />
               <NavItem view="team" icon={Users} label="Team" />

@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Bell, Building2, ClipboardList, CreditCard, Shield, ShieldCheck, Sparkles, Users, Wrench } from 'lucide-react';
 import { SimulationService } from '../services/simulationService';
 import { StorageService } from '../services/storage';
-import { INTEGRATIONS, isIntegrationConnected, LIVE_INTEGRATIONS_ENABLED } from '../services/integrationsConfig';
+import { INTEGRATIONS, getIntegrationKey, isIntegrationConnected, LIVE_INTEGRATIONS_ENABLED } from '../services/integrationsConfig';
 import { SourceStatusText } from './ProvenanceIndicators';
+import { DISABLE_AI_UI } from '../constants';
 
 type InterventionStatus = 'open' | 'in_progress' | 'done';
 
@@ -47,7 +48,21 @@ interface OpsSummary {
   latestEventAt: string | null;
 }
 
-const OverseerDashboard: React.FC = () => {
+interface OverseerDashboardProps {
+  onNavigate?: (view: string) => void;
+}
+
+interface TrustHealthSummary {
+  syncFailureCount: number;
+  latestSyncAlertMessage: string | null;
+  latestSyncAlertAt: number | null;
+  dataStaleHours: number | null;
+  dataIsStale: boolean;
+  aiBlocked: boolean;
+  aiBlockedReason: string | null;
+}
+
+const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => {
   const isDemoMode = StorageService.getDataMode() === 'demo';
   const [portfolioVolume, setPortfolioVolume] = useState(0);
   const [liveVolume, setLiveVolume] = useState(0);
@@ -240,6 +255,50 @@ const OverseerDashboard: React.FC = () => {
     });
   }, [riskRadar]);
 
+  const trustHealth = useMemo<TrustHealthSummary>(() => {
+    const syncAlertRaw = localStorage.getItem('one82_sync_alert');
+    const syncAlert = syncAlertRaw ? JSON.parse(syncAlertRaw) as { message?: string; timestamp?: number } : null;
+    const latestSyncAlertMessage = typeof syncAlert?.message === 'string' ? syncAlert.message : null;
+    const latestSyncAlertAt = Number.isFinite(syncAlert?.timestamp) ? Number(syncAlert?.timestamp) : null;
+
+    const newestTransactionTs = transactions
+      .map((transaction) => new Date(transaction.date).getTime())
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => b - a)[0] || null;
+
+    const dataStaleHours = newestTransactionTs
+      ? Math.floor((Date.now() - newestTransactionTs) / 3600000)
+      : null;
+    const dataIsStale = isDemoMode ? false : (dataStaleHours === null || dataStaleHours >= 24);
+
+    const hasGeminiKey = getIntegrationKey('gemini').trim().length > 0;
+    const hasTrustedData = transactions.length > 0 || StorageService.getMetrics().length > 0;
+
+    let aiBlocked = false;
+    let aiBlockedReason: string | null = null;
+
+    if (DISABLE_AI_UI) {
+      aiBlocked = true;
+      aiBlockedReason = 'Emergency AI UI kill switch is enabled.';
+    } else if (StorageService.getDataMode() === 'backend' && !hasGeminiKey) {
+      aiBlocked = true;
+      aiBlockedReason = 'Auth mode AI is blocked until Gemini is configured.';
+    } else if (StorageService.getDataMode() === 'backend' && !hasTrustedData) {
+      aiBlocked = true;
+      aiBlockedReason = 'Auth mode AI is blocked until trusted imported/integration data is available.';
+    }
+
+    return {
+      syncFailureCount: opsSummary.failedSyncRuns,
+      latestSyncAlertMessage,
+      latestSyncAlertAt,
+      dataStaleHours,
+      dataIsStale,
+      aiBlocked,
+      aiBlockedReason
+    };
+  }, [isDemoMode, opsSummary.failedSyncRuns, transactions]);
+
   const executiveNarrative = useMemo(() => {
     const topRisk = riskRadar[0];
     const connectedCount = integrationHealth.filter((integration) => integration.connected).length;
@@ -366,6 +425,79 @@ const OverseerDashboard: React.FC = () => {
 
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-indigo-600" />
+          <h2 className="font-semibold text-gray-900">Trust Health</h2>
+        </div>
+        <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`rounded-xl border px-4 py-3 ${trustHealth.syncFailureCount > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Sync Failures</p>
+            <p className={`text-lg font-bold mt-1 ${trustHealth.syncFailureCount > 0 ? 'text-red-700' : 'text-gray-900'}`}>
+              {trustHealth.syncFailureCount}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {trustHealth.latestSyncAlertMessage
+                ? `${trustHealth.latestSyncAlertMessage}${trustHealth.latestSyncAlertAt ? ` · ${new Date(trustHealth.latestSyncAlertAt).toLocaleString()}` : ''}`
+                : 'No recent sync alert in local signal cache'}
+            </p>
+          </div>
+
+          <div className={`rounded-xl border px-4 py-3 ${trustHealth.dataIsStale ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Data Freshness</p>
+            <p className={`text-lg font-bold mt-1 ${trustHealth.dataIsStale ? 'text-amber-700' : 'text-gray-900'}`}>
+              {isDemoMode
+                ? 'Simulated'
+                : trustHealth.dataStaleHours === null
+                  ? 'No Data'
+                  : trustHealth.dataIsStale
+                    ? `Stale (${trustHealth.dataStaleHours}h)`
+                    : `Fresh (${trustHealth.dataStaleHours}h)`}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {isDemoMode
+                ? 'Demo mode uses simulated freshness signals.'
+                : 'Stale threshold is global at 24h since latest transaction.'}
+            </p>
+          </div>
+
+          <div className={`rounded-xl border px-4 py-3 ${trustHealth.aiBlocked ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">AI Block State</p>
+            <p className={`text-lg font-bold mt-1 ${trustHealth.aiBlocked ? 'text-red-700' : 'text-gray-900'}`}>
+              {trustHealth.aiBlocked ? 'Blocked' : 'Available'}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {trustHealth.aiBlockedReason || 'No active AI trust block condition detected.'}
+            </p>
+          </div>
+        </div>
+        <div className="px-5 pb-5">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onNavigate?.('settings')}
+              className="px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-200 text-gray-700 hover:bg-white"
+            >
+              Open Settings
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate?.('profile')}
+              className="px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-200 text-gray-700 hover:bg-white"
+            >
+              Open Profile
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById('overseer-integration-freshness')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              className="px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-200 text-gray-700 hover:bg-white"
+            >
+              View Integration Freshness
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
           <Shield className="w-4 h-4 text-indigo-600" />
           <h2 className="font-semibold text-gray-900">Global Risk Radar</h2>
         </div>
@@ -462,7 +594,7 @@ const OverseerDashboard: React.FC = () => {
               <SnapshotRow label="Unread notifications" value={StorageService.getNotifications().filter(n => !n.read).length.toString()} />
               <SnapshotRow label="Overseer visibility" value="Merchant + ISO operation surface" />
             </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50">
+            <div id="overseer-integration-freshness" className="rounded-xl border border-gray-200 bg-gray-50">
               <div className="px-4 py-3 border-b border-gray-200">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Integration Freshness</p>
               </div>

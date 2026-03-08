@@ -259,6 +259,150 @@ Dependencies:
 Risk:
 - High (cross-cutting behavior changes).
 
+## Sprint 4 (Post-Pilot Ops): ISO Operations Core
+
+### Task 12 — Centralized onboarding hub (single deal intake + processor package routing)
+Files:
+- types.ts
+- services/storage.ts
+- components/Onboarding.tsx
+- components/ISODashboard.tsx
+- api/data/imports.ts
+
+Implementation:
+- Data model
+	- Add `OnboardingDeal` type with fields for merchant profile, owner rep, processor target, package status, and timestamps.
+	- Add `OnboardingPackage` type for destination payload metadata, validation status, and submission history.
+- Service/storage
+	- Add scoped storage helpers for create/update/list of onboarding deals.
+	- Keep backend-aware `*Resolved` behavior: local persistence first with backend sync attempt where enabled.
+- API
+	- Extend onboarding/import endpoint contract to accept normalized deal intake payload and return field-level validation results.
+	- Return destination summary (processor target, required missing fields, package readiness status).
+- UI
+	- Add one ISO-facing intake flow that captures a deal once and produces destination-ready package status.
+	- Add role-limited rep visibility so reps only see assigned deals/merchants.
+	- Surface explicit status states: draft, validation-required, ready-to-submit, submitted.
+
+Acceptance:
+- ISO can create a deal in one workflow and see processor package readiness in the same workspace.
+- Assigned rep cannot view unassigned deals.
+- Validation errors are field-specific and actionable before package generation.
+
+Dependencies:
+- Existing merchant import and invite flow in `components/Onboarding.tsx`.
+- Existing import audit patterns in `services/storage.ts`.
+
+Risk:
+- High (new domain objects + role-bound workflow changes).
+
+Execution Checklist (Owner + Estimate):
+- [ ] Finalize intake field contract and status model (`OnboardingDeal`, `OnboardingPackage`) — **Owner:** Backend/Data — **Estimate:** 1 day
+- [ ] Implement typed storage + resolved sync helpers for deals/packages — **Owner:** Backend — **Estimate:** 1 day
+- [ ] Extend `api/data/imports.ts` for deal validation + destination summary response — **Owner:** Backend — **Estimate:** 1-2 days
+- [ ] Build ISO onboarding hub UI in `components/Onboarding.tsx` with status pipeline — **Owner:** Frontend — **Estimate:** 2 days
+- [ ] Add rep-scoped visibility controls in `components/ISODashboard.tsx` and shared selectors — **Owner:** Frontend — **Estimate:** 1 day
+- [ ] Add QA matrix for role access + validation error states + backend mode behavior — **Owner:** QA/Full-stack — **Estimate:** 1 day
+
+Total Effort (Task 12): 7-8 engineering days
+
+---
+
+### Task 13 — Commission automation (monthly agent payouts + exceptions)
+Files:
+- types.ts
+- services/storage.ts
+- services/processorService.ts
+- components/Team.tsx
+- components/ISODashboard.tsx
+- api/data/metrics.ts
+
+Implementation:
+- Data model
+	- Add `CommissionPlan`, `CommissionRun`, and `CommissionLineItem` types with versioning and run status.
+	- Store attribution keys (repId, merchantId, processorAccountId, period).
+- Service/calculation
+	- Add deterministic commission calculator service that computes payouts from trusted residual/volume inputs.
+	- Add exception flags for missing attribution, stale input windows, or negative-margin merchants.
+- API
+	- Add commission run endpoint to persist run metadata and results for audit/replay.
+	- Expose run summary endpoint for totals, exception counts, and completion timestamp.
+- UI
+	- Add ISO run controls: period select, preview run, finalize run.
+	- Add rep-facing payout summary and ISO-facing exceptions queue with drill-down.
+
+Acceptance:
+- ISO can generate a monthly run with reproducible totals for the same input snapshot.
+- Each payout line item is traceable to source merchant/rep inputs.
+- Exceptions are visible and exportable before finalization.
+
+Dependencies:
+- Processor residual data normalization in `services/processorService.ts`.
+- Team IA split direction (rep-centric surface in `components/Team.tsx`).
+
+Risk:
+- High (financial calculations + audit expectations).
+
+Execution Checklist (Owner + Estimate):
+- [ ] Define commission data contract (`CommissionPlan`, `CommissionRun`, `CommissionLineItem`) + attribution keys — **Owner:** Backend/Data — **Estimate:** 1 day
+- [ ] Implement deterministic calculator service in `services/processorService.ts` (or sibling commission module) — **Owner:** Backend/Data — **Estimate:** 2 days
+- [ ] Add run persistence + summary endpoints in `api/data/metrics.ts` — **Owner:** Backend — **Estimate:** 1-2 days
+- [ ] Build ISO run controls (period, preview, finalize) in `components/ISODashboard.tsx` — **Owner:** Frontend — **Estimate:** 1 day
+- [ ] Build rep payout + exception UX in `components/Team.tsx` — **Owner:** Frontend — **Estimate:** 1 day
+- [ ] Add reproducibility + traceability QA checks (same snapshot => same totals) — **Owner:** QA/Full-stack — **Estimate:** 1 day
+
+Total Effort (Task 13): 7-8 engineering days
+
+---
+
+### Task 14 — Buy-rate tracking and margin visibility
+Files:
+- types.ts
+- services/storage.ts
+- services/processorService.ts
+- components/Profitability.tsx
+- components/ISODashboard.tsx
+- api/data/transactions.ts
+
+Implementation:
+- Data model
+	- Add `BuyRateProfile` and `MarginSnapshot` types keyed by merchant and processor account.
+	- Track effective processor cost, service fee, markup, and gross-to-net margin fields.
+- Service/analytics
+	- Normalize processor fee inputs into a comparable per-account monthly cost view.
+	- Compute account-level and portfolio-level margin rollups by period.
+- API
+	- Add persistence/read endpoints for buy-rate profile updates and generated margin snapshots.
+	- Include freshness timestamps and source status metadata for trust visibility.
+- UI
+	- Add ISO profitability views for account, rep, and portfolio margin rollups.
+	- Add filters for processor, rep, and margin exception state.
+	- Show explicit stale/fresh indicators on all buy-rate-driven cards.
+
+Acceptance:
+- ISO can compare processor cost vs service-fee/markup at account and portfolio level.
+- Margin views clearly identify stale data and last successful refresh.
+- Calculations remain available in demo mode with simulated provenance labels and in backend mode with trusted-source gating.
+
+Dependencies:
+- Data freshness indicator pattern and trust-state conventions.
+- Integration reliability work for processor sync completeness.
+
+Risk:
+- Medium-High (depends on fee normalization quality across processors).
+
+Execution Checklist (Owner + Estimate):
+- [ ] Define buy-rate and margin types (`BuyRateProfile`, `MarginSnapshot`) and freshness metadata — **Owner:** Backend/Data — **Estimate:** 1 day
+- [ ] Normalize processor fee inputs into unified monthly cost model in `services/processorService.ts` — **Owner:** Data/Backend — **Estimate:** 2 days
+- [ ] Add buy-rate profile + margin snapshot persistence/read APIs in `api/data/transactions.ts` — **Owner:** Backend — **Estimate:** 1-2 days
+- [ ] Build ISO rollup views/filters in `components/Profitability.tsx` and `components/ISODashboard.tsx` — **Owner:** Frontend — **Estimate:** 2 days
+- [ ] Add stale/fresh indicators and provenance handling on all margin cards — **Owner:** Frontend — **Estimate:** 1 day
+- [ ] Add QA checks for demo provenance labels vs backend trust gating — **Owner:** QA/Full-stack — **Estimate:** 1 day
+
+Total Effort (Task 14): 8-9 engineering days
+
+Combined Post-Pilot Ops Effort (Tasks 12-14): 22-25 engineering days
+
 ## Current Week: Do First / Do Next
 
 ### Do First (high confidence, fast wins)

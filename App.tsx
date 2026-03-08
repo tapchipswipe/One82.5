@@ -9,7 +9,7 @@ import { AuthService } from './services/authService';
 import { detectAnomalies } from './services/geminiService';
 import { SimulationService } from './services/simulationService';
 import { User, BusinessType, MerchantInviteStrategy, UserRole, AuthMode, Transaction } from './types';
-import { ENABLE_EXPERIMENTAL, THEME_COLORS } from './constants';
+import { DISABLE_AI_UI, ENABLE_EXPERIMENTAL, THEME_COLORS } from './constants';
 
 const loadDashboard = () => import('./components/Dashboard');
 const loadTransactions = () => import('./components/Transactions');
@@ -140,6 +140,14 @@ const appendNavigationPerfSample = (sample: NavigationPerfSample): void => {
 
 const LoadingView: React.FC = () => (
   <div className="p-6 text-sm text-slate-500 dark:text-slate-400">Loading...</div>
+);
+
+const AiDisabledView: React.FC = () => (
+  <div className="p-6">
+    <div className="max-w-3xl rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10 p-4 text-sm text-amber-800 dark:text-amber-200">
+      AI features are temporarily disabled by admin. Use non-AI workflows until the incident toggle is lifted.
+    </div>
+  </div>
 );
 
 const buildPortfolioFromTransactions = (transactions: Transaction[]) => {
@@ -438,11 +446,11 @@ const App: React.FC = () => {
           <>
             {activeView === 'dashboard' && <Dashboard businessType={user.businessType!} />}
             {activeView === 'transactions' && <Transactions />}
-            {activeView === 'inventory' && <InventoryIntelligence />}
+                {activeView === 'inventory' && (DISABLE_AI_UI ? <AiDisabledView /> : <InventoryIntelligence />)}
             {activeView === 'settings' && <Settings />}
-            {activeView === 'chat' && <DataChat />}
-            {activeView === 'forecast' && <Forecast />}
-                    {activeView === 'report' && <AIReport />}
+                {activeView === 'chat' && (DISABLE_AI_UI ? <AiDisabledView /> : <DataChat />)}
+                {activeView === 'forecast' && (DISABLE_AI_UI ? <AiDisabledView /> : <Forecast />)}
+                {activeView === 'report' && (DISABLE_AI_UI ? <AiDisabledView /> : <AIReport />)}
             {activeView === 'calendar' && <CalendarPlanner />}
             {activeView === 'customers' && <Customers />}
             {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
@@ -454,7 +462,7 @@ const App: React.FC = () => {
         {user.role === 'iso' && (
           <>
             {activeView === 'dashboard' && <ISODashboard />}
-            {activeView === 'statements' && <StatementReader />}
+            {activeView === 'statements' && (DISABLE_AI_UI ? <AiDisabledView /> : <StatementReader />)}
             {activeView === 'portfolio' && <div className="p-6"><MerchantLedger merchants={merchants} /></div>}
             {activeView === 'profitability' && <Profitability />}
             {activeView === 'team' && <Team onNavigate={handleNavigate} />}
@@ -468,10 +476,10 @@ const App: React.FC = () => {
 
         {user.role === 'overseer' && (
           <>
-            {activeView === 'dashboard' && <OverseerDashboard />}
+            {activeView === 'dashboard' && <OverseerDashboard onNavigate={handleNavigate} />}
             {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
             {activeView === 'settings' && <Settings />}
-            {!['dashboard', 'settings', 'profile'].includes(activeView) && <OverseerDashboard />}
+            {!['dashboard', 'settings', 'profile'].includes(activeView) && <OverseerDashboard onNavigate={handleNavigate} />}
           </>
         )}
       </Suspense>

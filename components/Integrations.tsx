@@ -9,7 +9,7 @@ import {
     getIntegrationKey,
 } from '../services/integrationsConfig';
 import { StorageService } from '../services/storage';
-import { MerchantInvite, MerchantInviteStrategy, Transaction } from '../types';
+import { ImportAuditEntry, MerchantInvite, MerchantInviteStrategy, Transaction } from '../types';
 
 const CATEGORIES: IntegrationCategory[] = ['AI', 'POS & Payment', 'ISO Processor'];
 
@@ -301,11 +301,30 @@ const Integrations: React.FC = () => {
     const [inviteStrategy, setInviteStrategy] = useState<MerchantInviteStrategy>(StorageService.getMerchantInviteStrategy());
     const [inviteLinkNotice, setInviteLinkNotice] = useState<string | null>(null);
     const [syncAlert, setSyncAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+    const [lastImportErrorReport, setLastImportErrorReport] = useState<string | null>(null);
+    const [importAuditLog, setImportAuditLog] = useState<ImportAuditEntry[]>([]);
+    const [retryCooldownUntil, setRetryCooldownUntil] = useState(0);
+    const [nowMs, setNowMs] = useState(Date.now());
     const isAuthTrialMode = StorageService.getDataMode() === 'backend';
     const role = StorageService.getUser()?.role || 'merchant';
 
     const connectedCount = INTEGRATIONS.filter(i => isIntegrationConnected(i.id)).length;
+        const raiseSyncAlert = (alert: { type: 'success' | 'error' | 'info'; message: string }) => {
+            setSyncAlert(alert);
+            if (alert.type === 'error') {
+                localStorage.setItem('one82_sync_alert', JSON.stringify({ ...alert, timestamp: Date.now() }));
+                window.dispatchEvent(new Event('one82-sync-alert'));
+            }
+        };
+
     const stripeConnected = isIntegrationConnected('stripe');
+    const retryCooldownSeconds = Math.max(0, Math.ceil((retryCooldownUntil - nowMs) / 1000));
+
+    useEffect(() => {
+        if (retryCooldownUntil <= Date.now()) return;
+        const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+        return () => window.clearInterval(timer);
+    }, [retryCooldownUntil]);
 
     const firstRunChecklist = role === 'iso'
         ? [
@@ -329,10 +348,34 @@ const Integrations: React.FC = () => {
             setTeamCount(imported.team.length);
             setInviteCount(StorageService.getMerchantInvites().length);
             setInviteStrategy(StorageService.getMerchantInviteStrategy());
+            setImportAuditLog(StorageService.getImportAuditLog());
         };
 
         void loadImportedCounts();
     }, []);
+
+    const logImportAudit = (payload: {
+        importType: ImportType;
+        fileName: string;
+        rowCount: number;
+        status: 'success' | 'failed';
+        errorMessage?: string;
+    }) => {
+        const user = StorageService.getUser();
+        const actor = user?.name
+            ? `${user.name} (${user.email})`
+            : user?.email || 'Unknown User';
+
+        StorageService.appendImportAuditLogEntry({
+            actor,
+            importType: payload.importType,
+            fileName: payload.fileName,
+            rowCount: payload.rowCount,
+            status: payload.status,
+            errorMessage: payload.errorMessage
+        });
+        setImportAuditLog(StorageService.getImportAuditLog());
+    };
 
     const inviteLink = typeof window !== 'undefined'
         ? `${window.location.origin}/?invite=merchant`
@@ -354,11 +397,33 @@ const Integrations: React.FC = () => {
         const file = event.target.files?.[0];
         if (!file) return;
 
+        const buildImportErrorReport = (message: string): string => {
+            const lines = [
+                `ONE82 Import Error Report`,
+                `Generated: ${new Date().toISOString()}`,
+                `Import Type: ${importType}`,
+                `File: ${file.name}`,
+                `Rows Parsed: ${importRows.length}`,
+                `Headers: ${importHeaders.join(', ') || 'N/A'}`,
+                `Error: ${message}`
+            ];
+            return `${lines.join('\n')}\n`;
+        };
+
         const text = await file.text();
         const rows = parseCsvRows(text);
 
         if (rows.length < 2) {
-            setImportError('CSV must include a header row and at least one data row.');
+            const message = 'CSV must include a header row and at least one data row.';
+            setImportError(message);
+            setLastImportErrorReport(buildImportErrorReport(message));
+            logImportAudit({
+                importType,
+                fileName: file.name,
+                rowCount: Math.max(0, rows.length - 1),
+                status: 'failed',
+                errorMessage: message
+            });
             setImportRows([]);
             setImportHeaders([]);
             setImportFileName(file.name);
@@ -379,7 +444,16 @@ const Integrations: React.FC = () => {
             const hasCustomer = headers.some((header) => ['customer', 'customername', 'merchantname', 'name'].includes(header));
 
             if (!hasAmount || !hasCustomer) {
-                setImportError('Transaction imports require at least amount and customer/name columns.');
+                const message = 'Transaction imports require at least amount and customer/name columns.';
+                setImportError(message);
+                setLastImportErrorReport(buildImportErrorReport(message));
+                logImportAudit({
+                    importType,
+                    fileName: file.name,
+                    rowCount: records.length,
+                    status: 'failed',
+                    errorMessage: message
+                });
                 setImportRows([]);
                 setImportHeaders(headers);
                 setImportFileName(file.name);
@@ -393,20 +467,52 @@ const Integrations: React.FC = () => {
     };
 
     const handleRunImport = async () => {
+        const buildImportErrorReport = (message: string): string => {
+            const lines = [
+                `ONE82 Import Error Report`,
+                `Generated: ${new Date().toISOString()}`,
+                `Import Type: ${importType}`,
+                `File: ${importFileName || 'N/A'}`,
+                `Rows Parsed: ${importRows.length}`,
+                `Headers: ${importHeaders.join(', ') || 'N/A'}`,
+                `Error: ${message}`
+            ];
+            return `${lines.join('\n')}\n`;
+        };
+
         if (importRows.length === 0) {
-            setImportError('Upload a CSV file before importing.');
+            const message = 'Upload a CSV file before importing.';
+            setImportError(message);
+            setLastImportErrorReport(buildImportErrorReport(message));
+            logImportAudit({
+                importType,
+                fileName: importFileName || 'N/A',
+                rowCount: 0,
+                status: 'failed',
+                errorMessage: message
+            });
             return;
         }
 
         setImportError(null);
         setImportSummary(null);
+        setLastImportErrorReport(null);
         setIsImporting(true);
 
         try {
             if (importType === 'transactions') {
                 const importedTransactions = transformImportedTransactions(importRows);
                 if (importedTransactions.length === 0) {
-                    setImportError('No valid transactions found. Include at least amount and customer columns.');
+                    const message = 'No valid transactions found. Include at least amount and customer columns.';
+                    setImportError(message);
+                    setLastImportErrorReport(buildImportErrorReport(message));
+                    logImportAudit({
+                        importType,
+                        fileName: importFileName || 'N/A',
+                        rowCount: importRows.length,
+                        status: 'failed',
+                        errorMessage: message
+                    });
                     setIsImporting(false);
                     return;
                 }
@@ -414,7 +520,13 @@ const Integrations: React.FC = () => {
                 const existing = replaceTransactions ? [] : await StorageService.getTransactionsResolved();
                 await StorageService.saveTransactionsResolved([...importedTransactions, ...existing]);
                 setImportSummary(`Imported ${importedTransactions.length} transaction${importedTransactions.length === 1 ? '' : 's'} from ${importFileName}. Data landed in Transactions, Dashboard, Forecast, and Data Chat context.`);
-                setSyncAlert({ type: 'success', message: 'Transactions imported successfully. Data sync is healthy for imported rows.' });
+                logImportAudit({
+                    importType,
+                    fileName: importFileName || 'N/A',
+                    rowCount: importedTransactions.length,
+                    status: 'success'
+                });
+                raiseSyncAlert({ type: 'success', message: 'Transactions imported successfully. Data sync is healthy for imported rows.' });
                 window.dispatchEvent(new Event('user-update'));
             }
 
@@ -438,21 +550,70 @@ const Integrations: React.FC = () => {
                 setMerchantCount(importRows.length);
                 setInviteCount(mergedInvites.length);
                 setImportSummary(`Imported ${importRows.length} merchant record${importRows.length === 1 ? '' : 's'} from ${importFileName}. ${generatedInvites.length > 0 ? `Auto-invited ${generatedInvites.length} merchant contact${generatedInvites.length === 1 ? '' : 's'}. ` : ''}Data landed in ISO portfolio/merchant views.`);
-                setSyncAlert({ type: 'success', message: 'Merchant roster imported successfully. Portfolio sync context is up to date.' });
+                logImportAudit({
+                    importType,
+                    fileName: importFileName || 'N/A',
+                    rowCount: importRows.length,
+                    status: 'success'
+                });
+                raiseSyncAlert({ type: 'success', message: 'Merchant roster imported successfully. Portfolio sync context is up to date.' });
             }
 
             if (importType === 'team') {
                 await StorageService.saveImportedDataResolved({ team: importRows, inviteStrategy });
                 setTeamCount(importRows.length);
                 setImportSummary(`Imported ${importRows.length} team member record${importRows.length === 1 ? '' : 's'} from ${importFileName}. Data landed in Team views and assignment context.`);
-                setSyncAlert({ type: 'success', message: 'Team import completed successfully.' });
+                logImportAudit({
+                    importType,
+                    fileName: importFileName || 'N/A',
+                    rowCount: importRows.length,
+                    status: 'success'
+                });
+                raiseSyncAlert({ type: 'success', message: 'Team import completed successfully.' });
             }
         } catch (error) {
-            setImportError(error instanceof Error ? error.message : 'Import failed. Please try again.');
-            setSyncAlert({ type: 'error', message: 'Sync/import failed. Check CSV format or integration credentials, then retry.' });
+            const message = error instanceof Error ? error.message : 'Import failed. Please try again.';
+            setImportError(message);
+            setLastImportErrorReport(buildImportErrorReport(message));
+            logImportAudit({
+                importType,
+                fileName: importFileName || 'N/A',
+                rowCount: importRows.length,
+                status: 'failed',
+                errorMessage: message
+            });
+            raiseSyncAlert({ type: 'error', message: 'Sync/import failed. Check CSV format or integration credentials, then retry.' });
         } finally {
             setIsImporting(false);
         }
+    };
+
+    const handleRetrySync = async () => {
+        if (retryCooldownSeconds > 0 || isImporting) return;
+        setRetryCooldownUntil(Date.now() + 30000);
+
+        if (importRows.length > 0) {
+            await handleRunImport();
+            return;
+        }
+
+        raiseSyncAlert({
+            type: 'info',
+            message: 'No import payload is loaded to retry. Upload a CSV or reconnect an integration, then retry sync.'
+        });
+    };
+
+    const handleDownloadImportErrorReport = () => {
+        if (!lastImportErrorReport) return;
+        const blob = new Blob([lastImportErrorReport], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `one82-import-error-${Date.now()}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -546,6 +707,14 @@ const Integrations: React.FC = () => {
                         <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{syncAlert.message}</p>
                         {syncAlert.type === 'error' && (
                             <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                <button
+                                    type="button"
+                                    onClick={() => void handleRetrySync()}
+                                    disabled={retryCooldownSeconds > 0 || isImporting}
+                                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {retryCooldownSeconds > 0 ? `Retry Sync (${retryCooldownSeconds}s)` : 'Retry Sync'}
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => setSyncAlert(null)}
@@ -743,8 +912,60 @@ const Integrations: React.FC = () => {
                         {isImporting ? 'Importing…' : `Import ${importType === 'transactions' ? 'Transactions' : importType === 'merchants' ? 'Merchants' : 'Team'}`}
                     </button>
                     {importError && <p className="text-xs text-red-600">{importError}</p>}
+                    {importError && lastImportErrorReport && (
+                        <button
+                            type="button"
+                            onClick={handleDownloadImportErrorReport}
+                            className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/10"
+                        >
+                            Download Error Report
+                        </button>
+                    )}
                     {importSummary && <p className="text-xs text-green-600">{importSummary}</p>}
                 </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-5 space-y-3">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Import Audit Log</h3>
+                {importAuditLog.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">No import events yet. Completed and failed imports will appear here with actor, file, and error context.</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                            <thead>
+                                <tr className="border-b border-gray-100 dark:border-gray-700 text-gray-500 uppercase tracking-wide">
+                                    <th className="py-2 pr-3 text-left font-semibold">When</th>
+                                    <th className="py-2 pr-3 text-left font-semibold">Actor</th>
+                                    <th className="py-2 pr-3 text-left font-semibold">Type</th>
+                                    <th className="py-2 pr-3 text-left font-semibold">File</th>
+                                    <th className="py-2 pr-3 text-left font-semibold">Rows</th>
+                                    <th className="py-2 pr-3 text-left font-semibold">Status</th>
+                                    <th className="py-2 text-left font-semibold">Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {importAuditLog.slice(0, 12).map((entry) => (
+                                    <tr key={entry.id} className="border-b border-gray-50 dark:border-gray-800">
+                                        <td className="py-2 pr-3 text-gray-600 dark:text-gray-300">{new Date(entry.createdAt).toLocaleString()}</td>
+                                        <td className="py-2 pr-3 text-gray-600 dark:text-gray-300">{entry.actor}</td>
+                                        <td className="py-2 pr-3 text-gray-600 dark:text-gray-300 uppercase">{entry.importType}</td>
+                                        <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">{entry.fileName}</td>
+                                        <td className="py-2 pr-3 text-gray-600 dark:text-gray-300">{entry.rowCount}</td>
+                                        <td className="py-2 pr-3">
+                                            <span className={`inline-flex px-2 py-0.5 rounded-full font-semibold ${entry.status === 'success'
+                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
+                                                : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+                                                }`}>
+                                                {entry.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-2 text-gray-600 dark:text-gray-300">{entry.errorMessage || '—'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* Integration Cards by Category */}
@@ -763,7 +984,7 @@ const Integrations: React.FC = () => {
                                         onSave={(integrationId, connected) => {
                                             forceUpdate(n => n + 1);
                                             if (integrationId === 'stripe') {
-                                                setSyncAlert(connected
+                                                raiseSyncAlert(connected
                                                     ? { type: 'success', message: 'Stripe connected. Next: run transaction import/sync and verify Dashboard freshness.' }
                                                     : { type: 'info', message: 'Stripe disconnected. Reconnect to keep the primary production sync path active.' });
                                             }

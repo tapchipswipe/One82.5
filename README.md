@@ -142,11 +142,13 @@ Use this checklist before requesting review:
   VITE_ENABLE_BACKEND_DATA=false
   VITE_ENABLE_LIVE_INTEGRATIONS=false
   VITE_ENABLE_EXPERIMENTAL=false
+  VITE_DISABLE_AI_UI=false
   VITE_OVERSEER_EMAIL=owner@one82.io
   VITE_AUTH_API_BASE=http://localhost:3000
   VITE_DATA_API_BASE=http://localhost:3000
     ```
   Demo Phase defaults should remain `false` for all three feature flags.
+  Set `VITE_DISABLE_AI_UI=true` only for emergency incident response to hard-disable AI surfaces.
   Set `VITE_ENABLE_EXPERIMENTAL=true` to expose the Experimental tab for merchant/ISO users.
   `VITE_OVERSEER_EMAIL` is reserved for owner-only Overseer login access.
 
@@ -154,8 +156,8 @@ Use this checklist before requesting review:
 
   | Profile | Flag Values |
   |---|---|
-  | Demo | `VITE_ENABLE_BACKEND_AUTH=false`, `VITE_ENABLE_BACKEND_DATA=false`, `VITE_ENABLE_LIVE_INTEGRATIONS=false`, `VITE_ENABLE_EXPERIMENTAL=false` |
-  | Trial | `VITE_ENABLE_BACKEND_AUTH=true`, `VITE_ENABLE_BACKEND_DATA=true`, `VITE_ENABLE_LIVE_INTEGRATIONS=true`, `VITE_ENABLE_EXPERIMENTAL=true` |
+  | Demo | `VITE_ENABLE_BACKEND_AUTH=false`, `VITE_ENABLE_BACKEND_DATA=false`, `VITE_ENABLE_LIVE_INTEGRATIONS=false`, `VITE_ENABLE_EXPERIMENTAL=false`, `VITE_DISABLE_AI_UI=false` |
+  | Trial | `VITE_ENABLE_BACKEND_AUTH=true`, `VITE_ENABLE_BACKEND_DATA=true`, `VITE_ENABLE_LIVE_INTEGRATIONS=true`, `VITE_ENABLE_EXPERIMENTAL=true`, `VITE_DISABLE_AI_UI=false` |
 
   Trial should use staging credentials and tenant-isolated data.
   For trial phase bootstrap, you can copy `.env.trial.example` to `.env.local` and fill the Supabase values.

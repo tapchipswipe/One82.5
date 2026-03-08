@@ -196,6 +196,17 @@ export interface MerchantInvite {
   createdAt: number;
 }
 
+export interface ImportAuditEntry {
+  id: string;
+  actor: string;
+  importType: 'transactions' | 'merchants' | 'team';
+  fileName: string;
+  rowCount: number;
+  status: 'success' | 'failed';
+  errorMessage?: string;
+  createdAt: number;
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -258,4 +269,52 @@ export interface PortfolioMetric {
   averageTicket: number;
   sourceStatus: CapabilityStatus;
   generatedAt: string;
+}
+
+export type OnboardingDealStatus = 'draft' | 'validation-required' | 'ready-to-submit' | 'submitted';
+export type ProcessorTarget = 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
+
+export interface OnboardingDeal {
+  id: string;
+  merchantName: string;
+  merchantEmail: string;
+  ownerRepName: string;
+  processorTarget: ProcessorTarget;
+  status: OnboardingDealStatus;
+  packageSummary: string;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+  submittedAt?: number;
+}
+
+export interface CommissionLineItem {
+  id: string;
+  repName: string;
+  merchantName: string;
+  volume: number;
+  residualRevenue: number;
+  commissionRate: number;
+  payout: number;
+  exception?: string;
+}
+
+export interface CommissionRun {
+  id: string;
+  period: string;
+  status: 'draft' | 'finalized';
+  createdAt: number;
+  finalizedAt?: number;
+  totalPayout: number;
+  lineItems: CommissionLineItem[];
+}
+
+export interface BuyRateProfile {
+  id: string;
+  merchantName: string;
+  processorTarget: ProcessorTarget;
+  buyRateBps: number;
+  markupBps: number;
+  serviceFeeMonthly: number;
+  updatedAt: number;
 }

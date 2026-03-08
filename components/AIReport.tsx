@@ -11,7 +11,13 @@ const formatCurrency = (value: number): string =>
 const AIReport: React.FC = () => {
   const [narrative, setNarrative] = useState('Generating report...');
   const [loading, setLoading] = useState(false);
-  const [generatedAt, setGeneratedAt] = useState<number>(Date.now());
+  const [generatedAt, setGeneratedAt] = useState<number | null>(() => StorageService.getAiLastRunAt('report'));
+
+  const markAiRun = useCallback(() => {
+    const timestamp = Date.now();
+    StorageService.setAiLastRunAt('report', timestamp);
+    setGeneratedAt(timestamp);
+  }, []);
 
   const mode = StorageService.getDataMode();
   const isAuthMode = mode === 'backend';
@@ -52,7 +58,7 @@ const AIReport: React.FC = () => {
   const generateReport = useCallback(async (force = false) => {
     if (!hasTrustedData) {
       setNarrative('Report is blocked until trusted transactions and metrics are available. Next step: import transactions or connect a live integration from Integrations.');
-      setGeneratedAt(Date.now());
+      markAiRun();
       return;
     }
 
@@ -60,6 +66,7 @@ const AIReport: React.FC = () => {
     const cached = StorageService.getCachedInsight(cacheKey);
     if (cached && !force) {
       setNarrative(cached);
+      markAiRun();
       return;
     }
 
@@ -75,10 +82,10 @@ const AIReport: React.FC = () => {
     ].join('\n\n');
 
     setNarrative(composed);
-    setGeneratedAt(Date.now());
+    markAiRun();
     StorageService.setCachedInsight(cacheKey, composed);
     setLoading(false);
-  }, [hasGeminiKey, hasTrustedData, isAuthMode, metrics, mode, summary.avgTicket, summary.topCategory, summary.totalRevenue, summary.totalTransactions]);
+  }, [hasGeminiKey, hasTrustedData, isAuthMode, markAiRun, metrics, mode, summary.avgTicket, summary.topCategory, summary.totalRevenue, summary.totalTransactions]);
 
   useEffect(() => {
     void generateReport(false);
@@ -108,7 +115,7 @@ const AIReport: React.FC = () => {
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         <div className="flex items-center justify-between gap-3 flex-wrap text-xs text-slate-500 dark:text-slate-400">
           <SourceStatusText className="font-semibold" />
-          <p>Generated: {new Date(generatedAt).toLocaleString()}</p>
+          {generatedAt && <p>Last AI run: {new Date(generatedAt).toLocaleString()}</p>}
         </div>
       </div>
 

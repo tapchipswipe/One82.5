@@ -49,6 +49,13 @@ const StatementReader: React.FC = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [data, setData] = useState<MerchantStatementAnalysis | null>(null);
   const [volumeToggle, setVolumeToggle] = useState<'daily' | 'monthly' | 'yearly'>('monthly');
+  const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('statements'));
+
+  const markAiRun = () => {
+    const timestamp = Date.now();
+    StorageService.setAiLastRunAt('statements', timestamp);
+    setLastAiRunAt(timestamp);
+  };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -67,6 +74,7 @@ const StatementReader: React.FC = () => {
     const mime = file?.type || 'application/pdf';
     const result = await analyzeStatementFull(base64, mime);
     setData(result);
+    markAiRun();
     setAnalyzing(false);
   };
 
@@ -74,6 +82,7 @@ const StatementReader: React.FC = () => {
     setAnalyzing(true);
     const result = await analyzeStatementFull('', 'application/pdf');
     setData(result);
+    markAiRun();
     setAnalyzing(false);
   };
 
@@ -193,6 +202,7 @@ const StatementReader: React.FC = () => {
         <span className="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full font-medium border border-indigo-100 dark:border-indigo-900/30">
           {isAuthMode ? 'Auth Mode' : 'Simulation Ready'}
         </span>
+        {lastAiRunAt && <span className="text-[11px] text-gray-500 dark:text-gray-400">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</span>}
       </div>
 
       {/* Upload + Quick Stats */}

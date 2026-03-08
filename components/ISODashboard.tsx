@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
     Upload, AlertTriangle,
     ArrowDownRight, Activity, Sparkles, Settings, CreditCard,
-    Zap, ArrowUpRight
+    Zap, ArrowUpRight, ClipboardList, Send
 } from 'lucide-react';
 import { SimulationService, PortfolioMerchant } from '../services/simulationService';
 import { analyzePortfolio } from '../services/geminiService';
 import TodoList from './TodoList';
 import MerchantLedger from './MerchantLedger';
 import { StorageService } from '../services/storage';
-import { Transaction } from '../types';
+import { OnboardingDeal, ProcessorTarget, Transaction } from '../types';
+import { DISABLE_AI_UI } from '../constants';
 
 const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioMerchant[] => {
     const grouped = new Map<string, Transaction[]>();
@@ -82,6 +83,22 @@ const ISODashboard: React.FC = () => {
     const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY') || '');
     const [inviteCount, setInviteCount] = useState(0);
     const [inviteLinkNotice, setInviteLinkNotice] = useState<string | null>(null);
+    const [onboardingDeals, setOnboardingDeals] = useState<OnboardingDeal[]>([]);
+    const [repOptions, setRepOptions] = useState<string[]>([]);
+    const [dealForm, setDealForm] = useState({
+        merchantName: '',
+        merchantEmail: '',
+        ownerRepName: '',
+        processorTarget: 'stripe' as ProcessorTarget,
+        notes: ''
+    });
+    const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('iso-portfolio'));
+
+    const markAiRun = () => {
+        const timestamp = Date.now();
+        StorageService.setAiLastRunAt('iso-portfolio', timestamp);
+        setLastAiRunAt(timestamp);
+    };
 
     useEffect(() => {
         const load = async () => {
@@ -95,6 +112,19 @@ const ISODashboard: React.FC = () => {
                 setCcVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
                 setInviteCount(StorageService.getMerchantInvites().length);
             }
+
+            setOnboardingDeals(await StorageService.getOnboardingDealsResolved());
+            const importedTeam = StorageService.getImportedTeam();
+            const teamReps = importedTeam
+                .map((row) => row.name || row.repName || row.rep || row.owner || '')
+                .map((name) => name.trim())
+                .filter((name) => name.length > 0);
+            const deduped = Array.from(new Set(teamReps));
+            setRepOptions(deduped);
+            setDealForm((current) => ({
+                ...current,
+                ownerRepName: current.ownerRepName || deduped[0] || ''
+            }));
         };
 
         void load();
@@ -130,25 +160,69 @@ const ISODashboard: React.FC = () => {
     };
 
     const runAnalysis = async () => {
+        if (DISABLE_AI_UI) {
+            setAiAnalysis('AI features are temporarily disabled by admin. Use non-AI workflows until the incident toggle is lifted.');
+            markAiRun();
+            return;
+        }
+
         if (isAuthMode && !apiKey.trim()) {
             setAiAnalysis('Portfolio AI analysis is blocked in Auth Login until a Gemini API key is configured in Integrations.');
+            markAiRun();
             return;
         }
 
         if (isAuthMode && merchants.length === 0) {
             setAiAnalysis('Portfolio AI analysis is blocked in Auth Login until trusted merchant/transaction data is available. Next step: import merchant roster/transactions or connect a processor integration.');
+            markAiRun();
             return;
         }
 
         setIsAnalyzing(true);
         try { setAiAnalysis(await analyzePortfolio(merchants)); }
         catch { setAiAnalysis('Portfolio analysis currently unavailable.'); }
+        markAiRun();
         setIsAnalyzing(false);
     };
 
     const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
     const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
     const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
+
+    const createOnboardingDeal = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!dealForm.merchantName.trim()) return;
+        const hasValidEmail = dealForm.merchantEmail.includes('@');
+        const status: OnboardingDeal['status'] = hasValidEmail ? 'ready-to-submit' : 'validation-required';
+
+        StorageService.addOnboardingDeal({
+            merchantName: dealForm.merchantName.trim(),
+            merchantEmail: dealForm.merchantEmail.trim(),
+            ownerRepName: dealForm.ownerRepName.trim() || 'Unassigned Rep',
+            processorTarget: dealForm.processorTarget,
+            status,
+            packageSummary: hasValidEmail
+                ? `${dealForm.processorTarget.toUpperCase()} package ready`
+                : 'Missing valid merchant email for package generation',
+            notes: dealForm.notes.trim() || undefined
+        });
+
+        const latestDeals = StorageService.getOnboardingDeals();
+        await StorageService.saveOnboardingDealsResolved(latestDeals);
+        setOnboardingDeals(StorageService.getOnboardingDeals());
+        setDealForm((current) => ({
+            ...current,
+            merchantName: '',
+            merchantEmail: '',
+            notes: ''
+        }));
+    };
+
+    const updateDealStatus = async (dealId: string, status: OnboardingDeal['status']) => {
+        StorageService.updateOnboardingDealStatus(dealId, status);
+        await StorageService.saveOnboardingDealsResolved(StorageService.getOnboardingDeals());
+        setOnboardingDeals(StorageService.getOnboardingDeals());
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a12]">
@@ -285,6 +359,125 @@ const ISODashboard: React.FC = () => {
                     </div>
                 )}
 
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <ClipboardList className="w-4 h-4 text-indigo-500" /> Centralized Onboarding Hub
+                            </h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Enter each merchant deal once, assign rep ownership, and route package readiness to the target processor.
+                            </p>
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Open deals: {onboardingDeals.length}</span>
+                    </div>
+
+                    <form onSubmit={(event) => { void createOnboardingDeal(event); }} className="px-6 py-4 border-b border-gray-100 dark:border-gray-700/60 grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <input
+                            value={dealForm.merchantName}
+                            onChange={(event) => setDealForm((current) => ({ ...current, merchantName: event.target.value }))}
+                            placeholder="Merchant name"
+                            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm"
+                            required
+                        />
+                        <input
+                            value={dealForm.merchantEmail}
+                            onChange={(event) => setDealForm((current) => ({ ...current, merchantEmail: event.target.value }))}
+                            placeholder="Merchant email"
+                            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm"
+                        />
+                        <select
+                            value={dealForm.ownerRepName}
+                            onChange={(event) => setDealForm((current) => ({ ...current, ownerRepName: event.target.value }))}
+                            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm"
+                        >
+                            {repOptions.length === 0 && <option value="">Unassigned Rep</option>}
+                            {repOptions.map((rep) => <option key={rep} value={rep}>{rep}</option>)}
+                        </select>
+                        <select
+                            value={dealForm.processorTarget}
+                            onChange={(event) => setDealForm((current) => ({ ...current, processorTarget: event.target.value as ProcessorTarget }))}
+                            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm"
+                        >
+                            <option value="stripe">Stripe</option>
+                            <option value="tsys">TSYS</option>
+                            <option value="fiserv">Fiserv</option>
+                            <option value="worldpay">Worldpay</option>
+                            <option value="global">Global Payments</option>
+                        </select>
+                        <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold">
+                            Add Deal
+                        </button>
+                        <input
+                            value={dealForm.notes}
+                            onChange={(event) => setDealForm((current) => ({ ...current, notes: event.target.value }))}
+                            placeholder="Notes (optional)"
+                            className="md:col-span-5 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm"
+                        />
+                    </form>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700">
+                                <tr>
+                                    {['Merchant', 'Rep Owner', 'Processor', 'Package', 'Status', 'Action'].map((header) => (
+                                        <th key={header} className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">{header}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700/40">
+                                {onboardingDeals.slice(0, 12).map((deal) => (
+                                    <tr key={deal.id} className="hover:bg-indigo-50/30 dark:hover:bg-gray-700/20 transition-colors">
+                                        <td className="px-4 py-3">
+                                            <p className="font-semibold text-gray-900 dark:text-white">{deal.merchantName}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">{deal.merchantEmail || 'Email pending'}</p>
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{deal.ownerRepName}</td>
+                                        <td className="px-4 py-3 text-gray-700 dark:text-gray-300 uppercase">{deal.processorTarget}</td>
+                                        <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{deal.packageSummary}</td>
+                                        <td className="px-4 py-3">
+                                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${deal.status === 'submitted'
+                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                                : deal.status === 'ready-to-submit'
+                                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                                                    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                                }`}>
+                                                {deal.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {deal.status !== 'ready-to-submit' && deal.status !== 'submitted' && (
+                                                <button
+                                                    onClick={() => { void updateDealStatus(deal.id, 'ready-to-submit'); }}
+                                                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                                                >
+                                                    Mark Ready
+                                                </button>
+                                            )}
+                                            {deal.status === 'ready-to-submit' && (
+                                                <button
+                                                    onClick={() => { void updateDealStatus(deal.id, 'submitted'); }}
+                                                    className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 dark:text-green-400 hover:underline"
+                                                >
+                                                    <Send className="w-3 h-3" /> Submit
+                                                </button>
+                                            )}
+                                            {deal.status === 'submitted' && <span className="text-xs text-gray-400">Completed</span>}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {onboardingDeals.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                            No onboarding deals yet. Create the first merchant deal to start centralized intake.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 {/* At Risk + AI Opportunities */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* At Risk Table */}
@@ -347,9 +540,10 @@ const ISODashboard: React.FC = () => {
                                 <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <Sparkles className="w-4 h-4 text-indigo-500" /> AI Opportunities
                                 </h2>
+                                {lastAiRunAt && <p className="text-[11px] text-gray-500 dark:text-gray-400">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</p>}
                                 <button
                                     onClick={runAnalysis}
-                                    disabled={isAnalyzing}
+                                    disabled={isAnalyzing || DISABLE_AI_UI}
                                     className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline disabled:opacity-50"
                                 >
                                     {isAnalyzing ? 'Analyzing…' : 'Refresh'}

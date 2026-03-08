@@ -2,6 +2,7 @@
 import { DailyMetric, Transaction, Review } from './types';
 
 export const ENABLE_EXPERIMENTAL = import.meta.env.VITE_ENABLE_EXPERIMENTAL === 'true';
+export const DISABLE_AI_UI = import.meta.env.VITE_DISABLE_AI_UI === 'true';
 
 // Expanded to 30 days for a full month experience
 export const MOCK_METRICS: DailyMetric[] = [

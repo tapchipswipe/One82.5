@@ -13,6 +13,7 @@ export const config = { runtime: 'nodejs' };
 
 type Body = {
   transactions?: unknown[];
+  buyRateProfiles?: unknown[];
 };
 
 export default async function handler(req: any, res: any) {
@@ -32,15 +33,20 @@ export default async function handler(req: any, res: any) {
   const state = await getStateForTenant(auth.session.tenantId);
 
   if (req.method === 'GET') {
-    res.status(200).json({ transactions: state.transactions });
+    res.status(200).json({
+      transactions: state.transactions,
+      buyRateProfiles: state.buyRateProfiles || []
+    });
     return;
   }
 
   const body = await parseBody<Body>(req);
-  const transactions = Array.isArray(body?.transactions) ? body.transactions : [];
+  const transactions = Array.isArray(body?.transactions) ? body.transactions : state.transactions;
+  const buyRateProfiles = Array.isArray(body?.buyRateProfiles) ? body.buyRateProfiles : state.buyRateProfiles || [];
   const updated = {
     ...state,
-    transactions: transactions as any[]
+    transactions: transactions as any[],
+    buyRateProfiles: buyRateProfiles as any[]
   };
 
   await saveStateForTenant(auth.session.tenantId, updated as any);

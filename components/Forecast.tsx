@@ -10,11 +10,18 @@ const Forecast: React.FC = () => {
   const [insight, setInsight] = useState('Analyzing trends...');
   const [loading, setLoading] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+  const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('forecast'));
 
   const settings = StorageService.getSettings();
   const isAuthMode = StorageService.getDataMode() === 'backend';
   const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
   const cacheKey = useMemo(() => `forecast_insight_${settings.aiResponseStyle}`, [settings.aiResponseStyle]);
+
+  const markAiRun = useCallback(() => {
+    const timestamp = Date.now();
+    StorageService.setAiLastRunAt('forecast', timestamp);
+    setLastAiRunAt(timestamp);
+  }, []);
 
   const fetchForecast = useCallback(async (force: boolean = false) => {
     const historical = StorageService.getMetrics();
@@ -63,11 +70,13 @@ const Forecast: React.FC = () => {
 
     if (isAuthMode && !hasGeminiKey) {
       setInsight('Forecast AI is blocked in Auth Login until a Gemini API key is configured in Integrations.');
+      markAiRun();
       return;
     }
 
     if (isAuthMode && historical.length === 0) {
       setInsight('Forecast AI is blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
+      markAiRun();
       return;
     }
 
@@ -75,6 +84,7 @@ const Forecast: React.FC = () => {
     const cached = StorageService.getCachedInsight(cacheKey);
     if (cached && !force) {
         setInsight(cached);
+      markAiRun();
         return;
     }
 
@@ -82,8 +92,9 @@ const Forecast: React.FC = () => {
     const text = await generateForecastInsights(historical);
     setInsight(text);
     StorageService.setCachedInsight(cacheKey, text);
+    markAiRun();
     setLoading(false);
-  }, [cacheKey, hasGeminiKey, isAuthMode]);
+  }, [cacheKey, hasGeminiKey, isAuthMode, markAiRun]);
 
   useEffect(() => {
     fetchForecast();
@@ -110,6 +121,7 @@ const Forecast: React.FC = () => {
         <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
         <div>
             <h4 className="font-semibold text-indigo-900 dark:text-indigo-200 text-sm">AI Outlook</h4>
+          {lastAiRunAt && <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mb-1">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</p>}
             <p className="text-sm text-indigo-800 dark:text-indigo-300">{insight}</p>
             {upcomingEvents.length > 0 && (
               <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-2">

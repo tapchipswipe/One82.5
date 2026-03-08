@@ -14,6 +14,7 @@ interface DashboardProps {
 }
 
 const COLORS = ['#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444'];
+const DATA_STALE_THRESHOLD_HOURS = 24;
 
 const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
   const [insight, setInsight] = useState<string>('');
@@ -23,8 +24,16 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [hasCredits, setHasCredits] = useState(true);
   const [explanation, setExplanation] = useState<{ point: any, text: string } | null>(null);
+  const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('dashboard'));
+  const [lastDataUpdateAt, setLastDataUpdateAt] = useState<number | null>(null);
 
   const settings = StorageService.getSettings();
+
+  const markAiRun = useCallback(() => {
+    const timestamp = Date.now();
+    StorageService.setAiLastRunAt('dashboard', timestamp);
+    setLastAiRunAt(timestamp);
+  }, []);
 
   // Memoize cache key components to ensure stability
   const cacheKey = useMemo(() =>
@@ -49,10 +58,17 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
     });
     setCategoryData(Object.keys(catCounts).map(k => ({ name: k, value: catCounts[k] })));
 
+    const newestTxTimestamp = transactions
+      .map((transaction) => new Date(transaction.date).getTime())
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => b - a)[0] || null;
+    setLastDataUpdateAt(newestTxTimestamp);
+
     // Check Cache
     const cached = StorageService.getCachedInsight(cacheKey);
     if (cached && !force) {
       setInsight(cached);
+      markAiRun();
       setLoading(false);
       return;
     }
@@ -60,6 +76,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
     if (isAuthMode && !hasGeminiKey) {
       setHasCredits(true);
       setInsight('AI dashboard insights are blocked in Auth Login until a Gemini API key is configured in Integrations.');
+      markAiRun();
       setLoading(false);
       return;
     }
@@ -67,6 +84,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
     if (isAuthMode && filtered.length === 0) {
       setHasCredits(true);
       setInsight('AI dashboard insights are blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
+      markAiRun();
       setLoading(false);
       return;
     }
@@ -86,13 +104,20 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
       if (finalInsight) {
         StorageService.setCachedInsight(cacheKey, finalInsight);
       }
+      markAiRun();
       setLoading(false);
     } else {
       setHasCredits(false);
       setInsight("Insufficient credits.");
+      markAiRun();
       setLoading(false);
     }
-  }, [businessType, timeRange, cacheKey]); // Removed 'transactions' and 'settings' to prevent loop
+  }, [businessType, timeRange, cacheKey, markAiRun]); // Removed 'transactions' and 'settings' to prevent loop
+
+  const staleDataHours = lastDataUpdateAt
+    ? Math.floor((Date.now() - lastDataUpdateAt) / 3600000)
+    : null;
+  const isDataStale = staleDataHours === null || staleDataHours >= DATA_STALE_THRESHOLD_HOURS;
 
   useEffect(() => {
     fetchInsights();
@@ -122,6 +147,13 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{businessType} Intelligence Overview</p>
+          <p className={`text-xs mt-1 font-medium ${isDataStale ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>
+            Data freshness: {isDataStale
+              ? staleDataHours === null
+                ? 'stale (no recent sync/import detected)'
+                : `stale (${staleDataHours}h since last transaction)`
+              : `fresh (${staleDataHours}h since last transaction)`}
+          </p>
         </div>
         <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg p-2.5 outline-none">
           <option>Last 7 Days</option><option>Last 30 Days</option>
@@ -134,6 +166,9 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
             <Sparkles className="w-5 h-5 text-primary-600" />
             <h3 className="font-semibold text-primary-900 dark:text-primary-200">Real-time Analysis</h3>
           </div>
+          {lastAiRunAt && (
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</p>
+          )}
           <button
             onClick={() => fetchInsights(true)}
             disabled={loading}

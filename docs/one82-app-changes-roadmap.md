@@ -60,6 +60,19 @@ Input source: docs/One82 Information Base-changes.txt
 11) AI credits model review
 - Evaluate removing credits system and tying AI usage to subscription tier instead
 
+12) Centralized onboarding hub for rep teams
+- Create one onboarding workspace for ISO/rep teams to complete deal intake once
+- Output processor-ready onboarding packages for downstream submission paths
+- Enforce scoped rep permissions so onboarding does not require full company database access
+
+13) Agent commission automation
+- Automate monthly commission calculations for ISO agent teams from trusted imported/integrated data
+- Provide audit-friendly outputs and exception visibility for disputed/missing inputs
+
+14) Buy-rate tracking and margin visibility
+- Track per-account processor costs and compare against platform service-fee and markup behavior
+- Surface profitability rollups by account, rep, and portfolio for ISO operators
+
 ## Cross-Cutting UX Rules (Must apply to all work)
 - No simulated data in Auth/Trial mode
 - Every imported/integrated dataset must show immediate visible impact where relevant
@@ -83,6 +96,11 @@ Sprint 3:
 - Integrations UX upgrade
 - Calendar concept spike
 - AI credits vs subscription decision
+
+Post-Pilot Ops Sprint:
+- Centralized onboarding hub
+- Agent commission automation
+- Buy-rate tracking and margin visibility
 
 ## Definition of Done for this roadmap
 - Each P0 item has reproducible bug case + validated fix

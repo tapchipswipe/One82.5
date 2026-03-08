@@ -6,6 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_BACKEND_DATA: string;
   readonly VITE_ENABLE_LIVE_INTEGRATIONS: string;
   readonly VITE_ENABLE_EXPERIMENTAL: string;
+  readonly VITE_DISABLE_AI_UI: string;
   readonly VITE_OVERSEER_EMAIL: string;
   readonly VITE_AUTH_API_BASE: string;
   readonly VITE_DATA_API_BASE: string;
