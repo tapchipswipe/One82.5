@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Upload, AlertTriangle,
-    ArrowDownRight, Activity, Sparkles, Settings, CreditCard,
+    ArrowDownRight, Activity, Sparkles, CreditCard,
     Zap, ArrowUpRight
 } from 'lucide-react';
 import { SimulationService, PortfolioMerchant } from '../services/simulationService';
@@ -177,17 +177,6 @@ const ISODashboard: React.FC = () => {
                             <p className="text-indigo-300 text-sm mt-1">
                                 {merchants.length} merchants across {uniqueIndustries} industries
                             </p>
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                            <button
-                                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-xl text-sm hover:bg-white/10 transition-colors"
-                            >
-                                <Settings className="w-4 h-4" /> AI Config
-                            </button>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-indigo-600/25">
-                                <Upload className="w-4 h-4" /> Upload Statement
-                            </button>
                         </div>
                     </div>
 
