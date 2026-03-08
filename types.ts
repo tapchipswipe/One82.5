@@ -274,6 +274,118 @@ export interface PortfolioMetric {
 export type OnboardingDealStatus = 'draft' | 'validation-required' | 'ready-to-submit' | 'submitted';
 export type ProcessorTarget = 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
 
+export interface OnboardingAddress {
+  street1: string;
+  street2?: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+}
+
+export interface OnboardingOwnerProfile {
+  firstName: string;
+  lastName: string;
+  title?: string;
+  ownershipPercent?: string;
+  ssn?: string;
+  dateOfBirth?: string;
+  mobilePhone?: string;
+  email?: string;
+  personalGuarantee?: boolean;
+  address?: OnboardingAddress;
+}
+
+export interface OnboardingBankAccount {
+  bankName: string;
+  accountType: 'checking' | 'savings' | '';
+  routingNumber: string;
+  accountNumber: string;
+}
+
+export interface OnboardingThirdPartyProvider {
+  usesProvider: boolean;
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface OnboardingApplicationData {
+  contactInformation: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  };
+  businessInformation: {
+    legalName: string;
+    dbaName: string;
+    taxFilingName: string;
+    taxIdType: 'ein' | 'ssn';
+    taxIdValue: string;
+    taxFilingMethod: string;
+    ownershipType: string;
+    businessDescription: string;
+    industryMcc: string;
+    businessStartDate: string;
+    businessPhone: string;
+    website: string;
+    quasiCash: string;
+    stockExchange: string;
+    stockTickerSymbol: string;
+    taxExempt: boolean;
+  };
+  businessAddress: OnboardingAddress;
+  legalMailingAddress: OnboardingAddress;
+  ownerInformation: {
+    primaryOwner: OnboardingOwnerProfile;
+    additionalOwners: OnboardingOwnerProfile[];
+  };
+  bankingAndProcessing: {
+    modeOfTransaction: {
+      inPerson: string;
+      telephone: string;
+      online: string;
+    };
+    deliveryWindow: 'same-day' | '0-7' | '8-14' | '15-30' | '30+' | '';
+    averageMonthlyCardVolume: string;
+    averageTransactionAmount: string;
+    depositBankAccount: OnboardingBankAccount;
+    withdrawalBankAccount: OnboardingBankAccount;
+    withdrawalSameAsDeposit: boolean;
+    thirdPartyProvider: OnboardingThirdPartyProvider;
+  };
+  equipment: {
+    cloverMenuRequested: boolean;
+    shipToAttention: string;
+    shipToEmail: string;
+    shipToAddress: OnboardingAddress;
+    orderNotes: string;
+  };
+  pricingAndProgram: {
+    pricingModel: 'flat-rate' | 'swiped-non-swiped' | 'bill-back' | 'interchange-plus' | 'tiered' | '';
+    discountFrequency: 'daily' | 'monthly' | '';
+    fundingRollup: 'individual-batches' | 'separate-fees-and-deposits' | 'net-fees-and-deposits' | '';
+    visaCreditDiscountFee: string;
+    mastercardCreditDiscountFee: string;
+    discoverCreditDiscountFee: string;
+    amexCreditDiscountFee: string;
+    debitCardDiscountFee: string;
+    debitCardTransactionFee: string;
+    consumerSurchargeRate: string;
+    monthlyAndMiscFees: string;
+    surchargeProgramEnabled: boolean;
+  };
+  agreement: {
+    signerName: string;
+    signerTitle: string;
+    signatureDate: string;
+    clientInitials: string;
+    earlyTerminationFeeAccepted: boolean;
+    personalGuaranteeAccepted: boolean;
+  };
+}
+
 export interface OnboardingDeal {
   id: string;
   merchantName: string;
@@ -283,6 +395,7 @@ export interface OnboardingDeal {
   status: OnboardingDealStatus;
   packageSummary: string;
   notes?: string;
+  applicationData?: OnboardingApplicationData;
   createdAt: number;
   updatedAt: number;
   submittedAt?: number;

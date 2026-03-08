@@ -1,17 +1,150 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ClipboardList, Send } from 'lucide-react';
 import { StorageService } from '../services/storage';
-import { OnboardingDeal, ProcessorTarget } from '../types';
+import { OnboardingAddress, OnboardingApplicationData, OnboardingDeal, OnboardingOwnerProfile, ProcessorTarget } from '../types';
+
+const emptyAddress = (): OnboardingAddress => ({
+  street1: '',
+  street2: '',
+  city: '',
+  state: '',
+  zip: '',
+  country: 'US'
+});
+
+const emptyOwner = (): OnboardingOwnerProfile => ({
+  firstName: '',
+  lastName: '',
+  title: '',
+  ownershipPercent: '',
+  ssn: '',
+  dateOfBirth: '',
+  mobilePhone: '',
+  email: '',
+  personalGuarantee: false,
+  address: emptyAddress()
+});
+
+const emptyApplicationData = (): OnboardingApplicationData => ({
+  contactInformation: {
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: ''
+  },
+  businessInformation: {
+    legalName: '',
+    dbaName: '',
+    taxFilingName: '',
+    taxIdType: 'ein',
+    taxIdValue: '',
+    taxFilingMethod: '',
+    ownershipType: '',
+    businessDescription: '',
+    industryMcc: '',
+    businessStartDate: '',
+    businessPhone: '',
+    website: '',
+    quasiCash: '',
+    stockExchange: '',
+    stockTickerSymbol: '',
+    taxExempt: false
+  },
+  businessAddress: emptyAddress(),
+  legalMailingAddress: emptyAddress(),
+  ownerInformation: {
+    primaryOwner: emptyOwner(),
+    additionalOwners: [emptyOwner(), emptyOwner(), emptyOwner(), emptyOwner()]
+  },
+  bankingAndProcessing: {
+    modeOfTransaction: {
+      inPerson: '',
+      telephone: '',
+      online: ''
+    },
+    deliveryWindow: '',
+    averageMonthlyCardVolume: '',
+    averageTransactionAmount: '',
+    depositBankAccount: {
+      bankName: '',
+      accountType: '',
+      routingNumber: '',
+      accountNumber: ''
+    },
+    withdrawalBankAccount: {
+      bankName: '',
+      accountType: '',
+      routingNumber: '',
+      accountNumber: ''
+    },
+    withdrawalSameAsDeposit: true,
+    thirdPartyProvider: {
+      usesProvider: false,
+      name: '',
+      email: '',
+      phone: ''
+    }
+  },
+  equipment: {
+    cloverMenuRequested: false,
+    shipToAttention: '',
+    shipToEmail: '',
+    shipToAddress: emptyAddress(),
+    orderNotes: ''
+  },
+  pricingAndProgram: {
+    pricingModel: '',
+    discountFrequency: '',
+    fundingRollup: '',
+    visaCreditDiscountFee: '',
+    mastercardCreditDiscountFee: '',
+    discoverCreditDiscountFee: '',
+    amexCreditDiscountFee: '',
+    debitCardDiscountFee: '',
+    debitCardTransactionFee: '',
+    consumerSurchargeRate: '',
+    monthlyAndMiscFees: '',
+    surchargeProgramEnabled: false
+  },
+  agreement: {
+    signerName: '',
+    signerTitle: '',
+    signatureDate: '',
+    clientInitials: '',
+    earlyTerminationFeeAccepted: false,
+    personalGuaranteeAccepted: false
+  }
+});
 
 const OnboardingHub: React.FC = () => {
   const [onboardingDeals, setOnboardingDeals] = useState<OnboardingDeal[]>([]);
   const [repOptions, setRepOptions] = useState<string[]>([]);
-  const [dealForm, setDealForm] = useState({
-    merchantName: '',
-    merchantEmail: '',
+  const [internalNotes, setInternalNotes] = useState('');
+  const [applicationData, setApplicationData] = useState<OnboardingApplicationData>(() => emptyApplicationData());
+
+  const requiredChecklist = useMemo(() => {
+    const businessLegalNameReady = applicationData.businessInformation.legalName.trim().length > 0;
+    const contactEmailReady = applicationData.contactInformation.email.includes('@');
+    const primaryOwnerReady = applicationData.ownerInformation.primaryOwner.firstName.trim().length > 0
+      && applicationData.ownerInformation.primaryOwner.lastName.trim().length > 0;
+    const depositAccountReady = applicationData.bankingAndProcessing.depositBankAccount.routingNumber.trim().length > 0
+      && applicationData.bankingAndProcessing.depositBankAccount.accountNumber.trim().length > 0;
+    const agreementReady = applicationData.agreement.signerName.trim().length > 0
+      && applicationData.agreement.signatureDate.trim().length > 0;
+
+    return {
+      businessLegalNameReady,
+      contactEmailReady,
+      primaryOwnerReady,
+      depositAccountReady,
+      agreementReady,
+      isReady: businessLegalNameReady && contactEmailReady && primaryOwnerReady && depositAccountReady && agreementReady
+    };
+  }, [applicationData]);
+
+  const [merchantIdentity, setMerchantIdentity] = useState({
     ownerRepName: '',
-    processorTarget: 'stripe' as ProcessorTarget,
-    notes: ''
+    processorTarget: 'stripe' as ProcessorTarget
   });
 
   useEffect(() => {
@@ -24,7 +157,7 @@ const OnboardingHub: React.FC = () => {
         .filter((name) => name.length > 0);
       const deduped = Array.from(new Set(teamReps));
       setRepOptions(deduped);
-      setDealForm((current) => ({
+      setMerchantIdentity((current) => ({
         ...current,
         ownerRepName: current.ownerRepName || deduped[0] || ''
       }));
@@ -40,31 +173,37 @@ const OnboardingHub: React.FC = () => {
 
   const createOnboardingDeal = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!dealForm.merchantName.trim()) return;
-    const hasValidEmail = dealForm.merchantEmail.includes('@');
-    const status: OnboardingDeal['status'] = hasValidEmail ? 'ready-to-submit' : 'validation-required';
+    const merchantName = applicationData.businessInformation.dbaName.trim() || applicationData.businessInformation.legalName.trim();
+    const merchantEmail = applicationData.contactInformation.email.trim();
+    if (!merchantName) return;
+
+    const status: OnboardingDeal['status'] = requiredChecklist.isReady ? 'ready-to-submit' : 'validation-required';
+    const missingFields = [
+      requiredChecklist.businessLegalNameReady ? null : 'Business Legal Name',
+      requiredChecklist.contactEmailReady ? null : 'Contact Email',
+      requiredChecklist.primaryOwnerReady ? null : 'Primary Owner Name',
+      requiredChecklist.depositAccountReady ? null : 'Deposit Account Routing/Number',
+      requiredChecklist.agreementReady ? null : 'Signature Name/Date'
+    ].filter(Boolean);
 
     StorageService.addOnboardingDeal({
-      merchantName: dealForm.merchantName.trim(),
-      merchantEmail: dealForm.merchantEmail.trim(),
-      ownerRepName: dealForm.ownerRepName.trim() || 'Unassigned Rep',
-      processorTarget: dealForm.processorTarget,
+      merchantName,
+      merchantEmail,
+      ownerRepName: merchantIdentity.ownerRepName.trim() || 'Unassigned Rep',
+      processorTarget: merchantIdentity.processorTarget,
       status,
-      packageSummary: hasValidEmail
-        ? `${dealForm.processorTarget.toUpperCase()} package ready`
-        : 'Missing valid merchant email for package generation',
-      notes: dealForm.notes.trim() || undefined
+      packageSummary: requiredChecklist.isReady
+        ? `${merchantIdentity.processorTarget.toUpperCase()} package complete for underwriting review`
+        : `Missing required fields: ${missingFields.join(', ')}`,
+      notes: internalNotes.trim() || undefined,
+      applicationData
     });
 
     const latestDeals = StorageService.getOnboardingDeals();
     await StorageService.saveOnboardingDealsResolved(latestDeals);
     setOnboardingDeals(StorageService.getOnboardingDeals());
-    setDealForm((current) => ({
-      ...current,
-      merchantName: '',
-      merchantEmail: '',
-      notes: ''
-    }));
+    setInternalNotes('');
+    setApplicationData(emptyApplicationData());
   };
 
   const updateDealStatus = async (dealId: string, status: OnboardingDeal['status']) => {
@@ -77,7 +216,7 @@ const OnboardingHub: React.FC = () => {
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <h1 className="text-2xl font-bold text-gray-900">Onboarding</h1>
-        <p className="mt-1 text-sm text-gray-500">Centralized intake for merchant onboarding packages, rep ownership, and processor routing.</p>
+        <p className="mt-1 text-sm text-gray-500">MPA-aligned onboarding capture for business, owners, banking, pricing, and agreement sign-off.</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -87,54 +226,289 @@ const OnboardingHub: React.FC = () => {
               <ClipboardList className="w-4 h-4 text-indigo-500" /> Centralized Onboarding Hub
             </h2>
             <p className="text-xs text-gray-500 mt-1">
-              Enter each merchant deal once, assign rep ownership, and route package readiness to the target processor.
+              Form sections mirror the Merchant Processing Application: business details, owner information, banking, processing, pricing, and agreement.
             </p>
           </div>
           <span className="text-xs text-gray-500">Open deals: {onboardingDeals.length}</span>
         </div>
 
-        <form onSubmit={(event) => { void createOnboardingDeal(event); }} className="px-6 py-4 border-b border-gray-100 grid grid-cols-1 md:grid-cols-5 gap-3">
-          <input
-            value={dealForm.merchantName}
-            onChange={(event) => setDealForm((current) => ({ ...current, merchantName: event.target.value }))}
-            placeholder="Merchant name"
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
-            required
-          />
-          <input
-            value={dealForm.merchantEmail}
-            onChange={(event) => setDealForm((current) => ({ ...current, merchantEmail: event.target.value }))}
-            placeholder="Merchant email"
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
-          />
-          <select
-            value={dealForm.ownerRepName}
-            onChange={(event) => setDealForm((current) => ({ ...current, ownerRepName: event.target.value }))}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
-          >
-            {repOptions.length === 0 && <option value="">Unassigned Rep</option>}
-            {repOptions.map((rep) => <option key={rep} value={rep}>{rep}</option>)}
-          </select>
-          <select
-            value={dealForm.processorTarget}
-            onChange={(event) => setDealForm((current) => ({ ...current, processorTarget: event.target.value as ProcessorTarget }))}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
-          >
-            <option value="stripe">Stripe</option>
-            <option value="tsys">TSYS</option>
-            <option value="fiserv">Fiserv</option>
-            <option value="worldpay">Worldpay</option>
-            <option value="global">Global Payments</option>
-          </select>
-          <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold">
-            Add Deal
-          </button>
-          <input
-            value={dealForm.notes}
-            onChange={(event) => setDealForm((current) => ({ ...current, notes: event.target.value }))}
-            placeholder="Notes (optional)"
-            className="md:col-span-5 px-3 py-2 rounded-xl border border-gray-200 text-sm"
-          />
+        <form onSubmit={(event) => { void createOnboardingDeal(event); }} className="px-6 py-4 border-b border-gray-100 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <select
+              value={merchantIdentity.ownerRepName}
+              onChange={(event) => setMerchantIdentity((current) => ({ ...current, ownerRepName: event.target.value }))}
+              className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
+            >
+              {repOptions.length === 0 && <option value="">Unassigned Rep</option>}
+              {repOptions.map((rep) => <option key={rep} value={rep}>{rep}</option>)}
+            </select>
+            <select
+              value={merchantIdentity.processorTarget}
+              onChange={(event) => setMerchantIdentity((current) => ({ ...current, processorTarget: event.target.value as ProcessorTarget }))}
+              className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
+            >
+              <option value="stripe">Stripe</option>
+              <option value="tsys">TSYS</option>
+              <option value="fiserv">Fiserv</option>
+              <option value="worldpay">Worldpay</option>
+              <option value="global">Global Payments</option>
+            </select>
+            <input
+              value={internalNotes}
+              onChange={(event) => setInternalNotes(event.target.value)}
+              placeholder="Internal notes"
+              className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
+            />
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Contact Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <input value={applicationData.contactInformation.firstName} onChange={(event) => setApplicationData((current) => ({ ...current, contactInformation: { ...current.contactInformation, firstName: event.target.value } }))} placeholder="First Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.contactInformation.lastName} onChange={(event) => setApplicationData((current) => ({ ...current, contactInformation: { ...current.contactInformation, lastName: event.target.value } }))} placeholder="Last Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.contactInformation.email} onChange={(event) => setApplicationData((current) => ({ ...current, contactInformation: { ...current.contactInformation, email: event.target.value } }))} placeholder="Email" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.contactInformation.phoneNumber} onChange={(event) => setApplicationData((current) => ({ ...current, contactInformation: { ...current.contactInformation, phoneNumber: event.target.value } }))} placeholder="Phone Number" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Business Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <input value={applicationData.businessInformation.legalName} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, legalName: event.target.value } }))} placeholder="Business Legal Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.dbaName} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, dbaName: event.target.value } }))} placeholder="DBA Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.taxFilingName} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, taxFilingName: event.target.value } }))} placeholder="Tax Filing Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.taxFilingMethod} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, taxFilingMethod: event.target.value } }))} placeholder="Tax Filing Method" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+
+              <select value={applicationData.businessInformation.taxIdType} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, taxIdType: event.target.value as 'ein' | 'ssn' } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                <option value="ein">EIN</option>
+                <option value="ssn">SSN</option>
+              </select>
+              <input value={applicationData.businessInformation.taxIdValue} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, taxIdValue: event.target.value } }))} placeholder="Tax ID (EIN/SSN)" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.ownershipType} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, ownershipType: event.target.value } }))} placeholder="Type of Ownership" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.industryMcc} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, industryMcc: event.target.value } }))} placeholder="Industry (MCC)" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+
+              <input value={applicationData.businessInformation.businessDescription} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, businessDescription: event.target.value } }))} placeholder="Business Description" className="md:col-span-2 px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input type="date" value={applicationData.businessInformation.businessStartDate} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, businessStartDate: event.target.value } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.businessPhone} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, businessPhone: event.target.value } }))} placeholder="Business Phone" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+
+              <input value={applicationData.businessInformation.website} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, website: event.target.value } }))} placeholder="Website" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.quasiCash} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, quasiCash: event.target.value } }))} placeholder="Quasi Cash" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.stockExchange} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, stockExchange: event.target.value } }))} placeholder="Stock Exchange" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.businessInformation.stockTickerSymbol} onChange={(event) => setApplicationData((current) => ({ ...current, businessInformation: { ...current.businessInformation, stockTickerSymbol: event.target.value } }))} placeholder="Stock Ticker Symbol" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Business Address & Legal Mailing Address</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Business Address</p>
+                <input value={applicationData.businessAddress.street1} onChange={(event) => setApplicationData((current) => ({ ...current, businessAddress: { ...current.businessAddress, street1: event.target.value } }))} placeholder="Street Address 1" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                <input value={applicationData.businessAddress.street2 || ''} onChange={(event) => setApplicationData((current) => ({ ...current, businessAddress: { ...current.businessAddress, street2: event.target.value } }))} placeholder="Street Address 2" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={applicationData.businessAddress.city} onChange={(event) => setApplicationData((current) => ({ ...current, businessAddress: { ...current.businessAddress, city: event.target.value } }))} placeholder="City" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                  <input value={applicationData.businessAddress.state} onChange={(event) => setApplicationData((current) => ({ ...current, businessAddress: { ...current.businessAddress, state: event.target.value } }))} placeholder="State" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={applicationData.businessAddress.zip} onChange={(event) => setApplicationData((current) => ({ ...current, businessAddress: { ...current.businessAddress, zip: event.target.value } }))} placeholder="ZIP" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                  <input value={applicationData.businessAddress.country} onChange={(event) => setApplicationData((current) => ({ ...current, businessAddress: { ...current.businessAddress, country: event.target.value } }))} placeholder="Country" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Business Legal Mailing Address</p>
+                <input value={applicationData.legalMailingAddress.street1} onChange={(event) => setApplicationData((current) => ({ ...current, legalMailingAddress: { ...current.legalMailingAddress, street1: event.target.value } }))} placeholder="Street Address 1" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                <input value={applicationData.legalMailingAddress.street2 || ''} onChange={(event) => setApplicationData((current) => ({ ...current, legalMailingAddress: { ...current.legalMailingAddress, street2: event.target.value } }))} placeholder="Street Address 2" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={applicationData.legalMailingAddress.city} onChange={(event) => setApplicationData((current) => ({ ...current, legalMailingAddress: { ...current.legalMailingAddress, city: event.target.value } }))} placeholder="City" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                  <input value={applicationData.legalMailingAddress.state} onChange={(event) => setApplicationData((current) => ({ ...current, legalMailingAddress: { ...current.legalMailingAddress, state: event.target.value } }))} placeholder="State" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={applicationData.legalMailingAddress.zip} onChange={(event) => setApplicationData((current) => ({ ...current, legalMailingAddress: { ...current.legalMailingAddress, zip: event.target.value } }))} placeholder="ZIP" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                  <input value={applicationData.legalMailingAddress.country} onChange={(event) => setApplicationData((current) => ({ ...current, legalMailingAddress: { ...current.legalMailingAddress, country: event.target.value } }))} placeholder="Country" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Business Owner Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input value={applicationData.ownerInformation.primaryOwner.firstName} onChange={(event) => setApplicationData((current) => ({ ...current, ownerInformation: { ...current.ownerInformation, primaryOwner: { ...current.ownerInformation.primaryOwner, firstName: event.target.value } } }))} placeholder="Primary Owner First Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.ownerInformation.primaryOwner.lastName} onChange={(event) => setApplicationData((current) => ({ ...current, ownerInformation: { ...current.ownerInformation, primaryOwner: { ...current.ownerInformation.primaryOwner, lastName: event.target.value } } }))} placeholder="Primary Owner Last Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.ownerInformation.primaryOwner.title || ''} onChange={(event) => setApplicationData((current) => ({ ...current, ownerInformation: { ...current.ownerInformation, primaryOwner: { ...current.ownerInformation.primaryOwner, title: event.target.value } } }))} placeholder="Title" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <input value={applicationData.ownerInformation.primaryOwner.ownershipPercent || ''} onChange={(event) => setApplicationData((current) => ({ ...current, ownerInformation: { ...current.ownerInformation, primaryOwner: { ...current.ownerInformation.primaryOwner, ownershipPercent: event.target.value } } }))} placeholder="Ownership %" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.ownerInformation.primaryOwner.ssn || ''} onChange={(event) => setApplicationData((current) => ({ ...current, ownerInformation: { ...current.ownerInformation, primaryOwner: { ...current.ownerInformation.primaryOwner, ssn: event.target.value } } }))} placeholder="SSN" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input type="date" value={applicationData.ownerInformation.primaryOwner.dateOfBirth || ''} onChange={(event) => setApplicationData((current) => ({ ...current, ownerInformation: { ...current.ownerInformation, primaryOwner: { ...current.ownerInformation.primaryOwner, dateOfBirth: event.target.value } } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.ownerInformation.primaryOwner.mobilePhone || ''} onChange={(event) => setApplicationData((current) => ({ ...current, ownerInformation: { ...current.ownerInformation, primaryOwner: { ...current.ownerInformation.primaryOwner, mobilePhone: event.target.value } } }))} placeholder="Mobile Phone" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+            <textarea
+              rows={4}
+              value={applicationData.ownerInformation.additionalOwners
+                .map((owner, index) => `Owner ${index + 2}: ${owner.firstName} ${owner.lastName} | % ${owner.ownershipPercent || ''} | SSN ${owner.ssn || ''} | DOB ${owner.dateOfBirth || ''}`)
+                .join('\n')}
+              onChange={(event) => {
+                const lines = event.target.value.split('\n');
+                const owners = [0, 1, 2, 3].map((index) => {
+                  const text = lines[index] || '';
+                  const noLabel = text.includes(':') ? text.split(':').slice(1).join(':').trim() : text.trim();
+                  const [namePart = '', ownershipPart = '', ssnPart = '', dobPart = ''] = noLabel.split('|').map((part) => part.trim());
+                  const [firstName = '', ...lastNameParts] = namePart.replace(/^Owner\s+\d+\s*/i, '').trim().split(' ').filter(Boolean);
+                  const lastName = lastNameParts.join(' ');
+                  const ownershipPercent = ownershipPart.replace(/^%\s*/i, '').trim();
+                  const ssn = ssnPart.replace(/^SSN\s*/i, '').trim();
+                  const dateOfBirth = dobPart.replace(/^DOB\s*/i, '').trim();
+                  return {
+                    ...emptyOwner(),
+                    firstName,
+                    lastName,
+                    ownershipPercent,
+                    ssn,
+                    dateOfBirth
+                  };
+                });
+                setApplicationData((current) => ({ ...current, ownerInformation: { ...current.ownerInformation, additionalOwners: owners } }));
+              }}
+              placeholder="Additional Business Owner (2-5) lines: First Last | % 25 | SSN XXX-XX-XXXX | DOB YYYY-MM-DD"
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
+            />
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Banking and Processing</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input value={applicationData.bankingAndProcessing.modeOfTransaction.inPerson} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, modeOfTransaction: { ...current.bankingAndProcessing.modeOfTransaction, inPerson: event.target.value } } }))} placeholder="In Person %" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.bankingAndProcessing.modeOfTransaction.telephone} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, modeOfTransaction: { ...current.bankingAndProcessing.modeOfTransaction, telephone: event.target.value } } }))} placeholder="Telephone %" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.bankingAndProcessing.modeOfTransaction.online} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, modeOfTransaction: { ...current.bankingAndProcessing.modeOfTransaction, online: event.target.value } } }))} placeholder="Online %" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <select value={applicationData.bankingAndProcessing.deliveryWindow} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, deliveryWindow: event.target.value as OnboardingApplicationData['bankingAndProcessing']['deliveryWindow'] } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                <option value="">Delivery Window</option>
+                <option value="same-day">Same Day</option>
+                <option value="0-7">0-7 Days</option>
+                <option value="8-14">8-14 Days</option>
+                <option value="15-30">15-30 Days</option>
+                <option value="30+">30+ Days</option>
+              </select>
+              <input value={applicationData.bankingAndProcessing.averageMonthlyCardVolume} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, averageMonthlyCardVolume: event.target.value } }))} placeholder="Average Monthly Card Volume" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.bankingAndProcessing.averageTransactionAmount} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, averageTransactionAmount: event.target.value } }))} placeholder="Average Transaction Amount" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">
+                <input type="checkbox" checked={applicationData.bankingAndProcessing.withdrawalSameAsDeposit} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, withdrawalSameAsDeposit: event.target.checked } }))} />
+                Withdrawal = Deposit Account
+              </label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <input value={applicationData.bankingAndProcessing.depositBankAccount.bankName} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, depositBankAccount: { ...current.bankingAndProcessing.depositBankAccount, bankName: event.target.value } } }))} placeholder="Deposit Bank Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <select value={applicationData.bankingAndProcessing.depositBankAccount.accountType} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, depositBankAccount: { ...current.bankingAndProcessing.depositBankAccount, accountType: event.target.value as 'checking' | 'savings' | '' } } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                <option value="">Deposit Account Type</option>
+                <option value="checking">Checking</option>
+                <option value="savings">Savings</option>
+              </select>
+              <input value={applicationData.bankingAndProcessing.depositBankAccount.routingNumber} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, depositBankAccount: { ...current.bankingAndProcessing.depositBankAccount, routingNumber: event.target.value } } }))} placeholder="Deposit Routing Number" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.bankingAndProcessing.depositBankAccount.accountNumber} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, depositBankAccount: { ...current.bankingAndProcessing.depositBankAccount, accountNumber: event.target.value } } }))} placeholder="Deposit Account Number" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+
+            {!applicationData.bankingAndProcessing.withdrawalSameAsDeposit && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <input value={applicationData.bankingAndProcessing.withdrawalBankAccount.bankName} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, withdrawalBankAccount: { ...current.bankingAndProcessing.withdrawalBankAccount, bankName: event.target.value } } }))} placeholder="Withdrawal Bank Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                <select value={applicationData.bankingAndProcessing.withdrawalBankAccount.accountType} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, withdrawalBankAccount: { ...current.bankingAndProcessing.withdrawalBankAccount, accountType: event.target.value as 'checking' | 'savings' | '' } } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                  <option value="">Withdrawal Account Type</option>
+                  <option value="checking">Checking</option>
+                  <option value="savings">Savings</option>
+                </select>
+                <input value={applicationData.bankingAndProcessing.withdrawalBankAccount.routingNumber} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, withdrawalBankAccount: { ...current.bankingAndProcessing.withdrawalBankAccount, routingNumber: event.target.value } } }))} placeholder="Withdrawal Routing Number" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+                <input value={applicationData.bankingAndProcessing.withdrawalBankAccount.accountNumber} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, withdrawalBankAccount: { ...current.bankingAndProcessing.withdrawalBankAccount, accountNumber: event.target.value } } }))} placeholder="Withdrawal Account Number" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">
+                <input type="checkbox" checked={applicationData.bankingAndProcessing.thirdPartyProvider.usesProvider} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, thirdPartyProvider: { ...current.bankingAndProcessing.thirdPartyProvider, usesProvider: event.target.checked } } }))} />
+                Uses Third Party Provider
+              </label>
+              <input value={applicationData.bankingAndProcessing.thirdPartyProvider.name || ''} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, thirdPartyProvider: { ...current.bankingAndProcessing.thirdPartyProvider, name: event.target.value } } }))} placeholder="TPP Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.bankingAndProcessing.thirdPartyProvider.email || ''} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, thirdPartyProvider: { ...current.bankingAndProcessing.thirdPartyProvider, email: event.target.value } } }))} placeholder="TPP Email" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.bankingAndProcessing.thirdPartyProvider.phone || ''} onChange={(event) => setApplicationData((current) => ({ ...current, bankingAndProcessing: { ...current.bankingAndProcessing, thirdPartyProvider: { ...current.bankingAndProcessing.thirdPartyProvider, phone: event.target.value } } }))} placeholder="TPP Phone" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Equipment, Pricing, and Agreement</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">
+                <input type="checkbox" checked={applicationData.equipment.cloverMenuRequested} onChange={(event) => setApplicationData((current) => ({ ...current, equipment: { ...current.equipment, cloverMenuRequested: event.target.checked } }))} />
+                Clover Menu Requested
+              </label>
+              <input value={applicationData.equipment.shipToAttention} onChange={(event) => setApplicationData((current) => ({ ...current, equipment: { ...current.equipment, shipToAttention: event.target.value } }))} placeholder="Ship To Attention" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.equipment.shipToEmail} onChange={(event) => setApplicationData((current) => ({ ...current, equipment: { ...current.equipment, shipToEmail: event.target.value } }))} placeholder="Ship To Email" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <select value={applicationData.pricingAndProgram.pricingModel} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, pricingModel: event.target.value as OnboardingApplicationData['pricingAndProgram']['pricingModel'] } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                <option value="">Pricing Model</option>
+                <option value="flat-rate">Flat Rate</option>
+                <option value="swiped-non-swiped">Swiped / Non-Swiped</option>
+                <option value="bill-back">Bill Back</option>
+                <option value="interchange-plus">Interchange Plus</option>
+                <option value="tiered">Tiered</option>
+              </select>
+              <select value={applicationData.pricingAndProgram.discountFrequency} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, discountFrequency: event.target.value as OnboardingApplicationData['pricingAndProgram']['discountFrequency'] } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                <option value="">Discount Frequency</option>
+                <option value="daily">Daily</option>
+                <option value="monthly">Monthly</option>
+              </select>
+              <select value={applicationData.pricingAndProgram.fundingRollup} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, fundingRollup: event.target.value as OnboardingApplicationData['pricingAndProgram']['fundingRollup'] } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                <option value="">Funding Rollup</option>
+                <option value="individual-batches">Individual Batches</option>
+                <option value="separate-fees-and-deposits">Separate Fees and Deposits</option>
+                <option value="net-fees-and-deposits">Net Fees and Deposits</option>
+              </select>
+              <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">
+                <input type="checkbox" checked={applicationData.pricingAndProgram.surchargeProgramEnabled} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, surchargeProgramEnabled: event.target.checked } }))} />
+                Merchant Surcharge Program
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input value={applicationData.pricingAndProgram.visaCreditDiscountFee} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, visaCreditDiscountFee: event.target.value } }))} placeholder="Visa Credit Card Discount Fee" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.pricingAndProgram.mastercardCreditDiscountFee} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, mastercardCreditDiscountFee: event.target.value } }))} placeholder="Mastercard Credit Card Discount Fee" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.pricingAndProgram.discoverCreditDiscountFee} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, discoverCreditDiscountFee: event.target.value } }))} placeholder="Discover Credit Card Discount Fee" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.pricingAndProgram.amexCreditDiscountFee} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, amexCreditDiscountFee: event.target.value } }))} placeholder="Amex Credit Card Discount Fee" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.pricingAndProgram.debitCardDiscountFee} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, debitCardDiscountFee: event.target.value } }))} placeholder="Debit Card Discount Fee" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.pricingAndProgram.debitCardTransactionFee} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, debitCardTransactionFee: event.target.value } }))} placeholder="Debit Card Transaction Fee" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+
+            <textarea value={applicationData.pricingAndProgram.monthlyAndMiscFees} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, monthlyAndMiscFees: event.target.value } }))} placeholder="Monthly and Miscellaneous Fees (statement, PCI, chargeback, gateway, etc.)" rows={3} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <input value={applicationData.agreement.signerName} onChange={(event) => setApplicationData((current) => ({ ...current, agreement: { ...current.agreement, signerName: event.target.value } }))} placeholder="Signer Name" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.agreement.signerTitle} onChange={(event) => setApplicationData((current) => ({ ...current, agreement: { ...current.agreement, signerTitle: event.target.value } }))} placeholder="Signer Title" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input type="date" value={applicationData.agreement.signatureDate} onChange={(event) => setApplicationData((current) => ({ ...current, agreement: { ...current.agreement, signatureDate: event.target.value } }))} className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.agreement.clientInitials} onChange={(event) => setApplicationData((current) => ({ ...current, agreement: { ...current.agreement, clientInitials: event.target.value } }))} placeholder="Client Initials" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+              <input value={applicationData.pricingAndProgram.consumerSurchargeRate} onChange={(event) => setApplicationData((current) => ({ ...current, pricingAndProgram: { ...current.pricingAndProgram, consumerSurchargeRate: event.target.value } }))} placeholder="Consumer Surcharge Rate" className="px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">
+                <input type="checkbox" checked={applicationData.agreement.earlyTerminationFeeAccepted} onChange={(event) => setApplicationData((current) => ({ ...current, agreement: { ...current.agreement, earlyTerminationFeeAccepted: event.target.checked } }))} />
+                Early Termination Fee acknowledged
+              </label>
+              <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">
+                <input type="checkbox" checked={applicationData.agreement.personalGuaranteeAccepted} onChange={(event) => setApplicationData((current) => ({ ...current, agreement: { ...current.agreement, personalGuaranteeAccepted: event.target.checked } }))} />
+                Personal Guarantee acknowledged
+              </label>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className={`text-xs font-semibold ${requiredChecklist.isReady ? 'text-green-700' : 'text-amber-700'}`}>
+              {requiredChecklist.isReady ? 'Application is ready for submission.' : 'Application is missing required fields before submission.'}
+            </p>
+            <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold">
+              Create Onboarding Package
+            </button>
+          </div>
         </form>
 
         <div className="overflow-x-auto">
