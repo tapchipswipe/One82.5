@@ -3,6 +3,8 @@ import { Search, ArrowUpDown, Filter, FileText, ExternalLink, TrendingUp, Trendi
 import { PortfolioMerchant } from '../services/simulationService';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 import MerchantProfile from './MerchantProfile';
+import { StorageService } from '../services/storage';
+import { MerchantInviteStrategy } from '../types';
 
 interface MerchantLedgerProps {
     merchants: PortfolioMerchant[];
@@ -47,6 +49,13 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
     const [sortField, setSortField] = useState<SortField>('name');
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
     const [selectedMerchant, setSelectedMerchant] = useState<PortfolioMerchant | null>(null);
+    const [inviteStrategy, setInviteStrategy] = useState<MerchantInviteStrategy>(StorageService.getMerchantInviteStrategy());
+    const [inviteCount, setInviteCount] = useState(StorageService.getMerchantInvites().length);
+    const [inviteLinkNotice, setInviteLinkNotice] = useState<string | null>(null);
+
+    const inviteLink = typeof window !== 'undefined'
+        ? `${window.location.origin}/?invite=merchant`
+        : 'https://one82-5.vercel.app/?invite=merchant';
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -79,6 +88,23 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
     const avgBps = Math.round(merchants.reduce((a, m) => a + m.bps, 0) / merchants.length);
     const projectedResidual = ((totalVolume * avgBps) / 10000).toFixed(0);
 
+    const updateInviteStrategy = async (strategy: MerchantInviteStrategy) => {
+        setInviteStrategy(strategy);
+        StorageService.saveMerchantInviteStrategy(strategy);
+        await StorageService.saveImportedDataResolved({ inviteStrategy: strategy });
+        setInviteCount(StorageService.getMerchantInvites().length);
+    };
+
+    const handleCopyInviteLink = async () => {
+        try {
+            await navigator.clipboard.writeText(inviteLink);
+            setInviteLinkNotice('Invite link copied. Share with merchants who should self-onboard.');
+            window.setTimeout(() => setInviteLinkNotice(null), 2500);
+        } catch {
+            setInviteLinkNotice('Unable to auto-copy. Manually copy the invite link shown below.');
+        }
+    };
+
     const SortHeader = ({ field, label }: { field: SortField; label: string }) => (
         <th
             className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-400 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left text-xs uppercase tracking-wide"
@@ -99,6 +125,56 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
                     onClose={() => setSelectedMerchant(null)}
                 />
             )}
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mt-8">
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+                    <h2 className="text-sm font-bold text-gray-900 dark:text-white">Merchant Invite Strategy</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Primary onboarding path is CSV import + auto-invite. Invite-link fallback remains available for edge cases.</p>
+                </div>
+
+                <div className="p-5 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onClick={() => { void updateInviteStrategy('csv-auto-invite'); }}
+                            className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${inviteStrategy === 'csv-auto-invite'
+                                ? 'bg-gray-900 text-white border-gray-900'
+                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                                }`}
+                        >
+                            CSV Import + Auto-Invite (Primary)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { void updateInviteStrategy('invite-link'); }}
+                            className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${inviteStrategy === 'invite-link'
+                                ? 'bg-gray-900 text-white border-gray-900'
+                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                                }`}
+                        >
+                            Invite Link (Fallback)
+                        </button>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                            Invite link: <span className="font-semibold break-all text-gray-700 dark:text-gray-200">{inviteLink}</span>
+                        </p>
+                        <div className="mt-2 flex items-center gap-3 flex-wrap">
+                            <button
+                                type="button"
+                                onClick={handleCopyInviteLink}
+                                className="px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
+                            >
+                                Copy Invite Link
+                            </button>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Invites sent: {inviteCount}</span>
+                        </div>
+                        {inviteLinkNotice && <p className="text-xs text-green-600 mt-2">{inviteLinkNotice}</p>}
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mt-8">
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row md:items-center justify-between gap-4">

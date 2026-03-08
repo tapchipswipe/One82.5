@@ -56,13 +56,7 @@ const Transactions: React.FC = () => {
             return;
         }
 
-    if (!StorageService.hasCredits(2)) {
-        alert("Insufficient credits. Bulk categorization requires 2 credits.");
-        return;
-    }
     setLoading(true);
-    // Deduct Credit with Reason
-    StorageService.updateCredits(2, 'Transaction Categorization');
 
     const updated = [...transactions];
     // Process first 5 for demo speed
@@ -167,7 +161,7 @@ const Transactions: React.FC = () => {
                 className="flex items-center px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
             >
                 <Wand2 className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Categorizing...' : 'AI Categorize (2 Cr)'}
+                {loading ? 'Categorizing...' : 'AI Categorize'}
             </button>
             <button 
                 onClick={handleExport}

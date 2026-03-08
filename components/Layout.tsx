@@ -114,6 +114,7 @@ const Layout: React.FC<LayoutProps> = ({
               <NavSection label="Portfolio" />
               {!DISABLE_AI_UI && <NavItem view="statements" icon={FileText} label="Statement Analysis" />}
               <NavItem view="portfolio" icon={Briefcase} label="Merchants" />
+              <NavItem view="onboarding" icon={Users} label="Onboarding" />
               <NavItem view="profitability" icon={DollarSign} label="Profitability" />
               <NavItem view="team" icon={Users} label="Team" />
               <NavSection label="Settings" />
@@ -152,7 +153,7 @@ const Layout: React.FC<LayoutProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-gray-900 truncate">{user?.name}</p>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wide">{user?.plan} · {user?.credits} credits</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wide">{user?.plan}</p>
             </div>
             <button
               onClick={(event) => {

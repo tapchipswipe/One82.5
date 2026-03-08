@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Building2, Calculator, CheckCircle2, Link2, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { Building2, Calculator, CheckCircle2, Link2, TrendingDown, TrendingUp, Users, SlidersHorizontal, X } from 'lucide-react';
 import { generateSalesReps, SalesRep, SimulationService, PortfolioMerchant } from '../services/simulationService';
 import { StorageService } from '../services/storage';
 import { CommissionLineItem, CommissionRun, Transaction } from '../types';
@@ -12,6 +12,32 @@ type RepAssignment = {
 interface TeamProps {
   onNavigate?: (view: string) => void;
 }
+
+type CommissionRules = {
+  baseRate: number;
+  highVolumeThreshold: number;
+  highVolumeRate: number;
+  lowVolumeThreshold: number;
+  lowVolumeRate: number;
+  merchantOverrides: Record<string, number>;
+};
+
+const COMMISSION_RULES_KEY = 'one82_commission_rules';
+
+const parseMerchantOverrides = (value: string): Record<string, number> => {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .reduce<Record<string, number>>((acc, line) => {
+      const [merchant, rate] = line.split('=');
+      if (!merchant || !rate) return acc;
+      const parsedRate = Number(rate.trim());
+      if (!Number.isFinite(parsedRate)) return acc;
+      acc[merchant.trim().toLowerCase()] = Math.max(0, Math.min(100, parsedRate)) / 100;
+      return acc;
+    }, {});
+};
 
 const formatCurrency = (value: number): string =>
   `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
@@ -58,9 +84,30 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
 
 const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   const isDemoMode = StorageService.getDataMode() === 'demo';
-  const [commissionRate, setCommissionRate] = useState(0.2);
   const [selectedPeriod, setSelectedPeriod] = useState(() => new Date().toISOString().slice(0, 7));
   const [commissionRuns, setCommissionRuns] = useState<CommissionRun[]>(() => StorageService.getCommissionRuns());
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [commissionRules, setCommissionRules] = useState<CommissionRules>(() => {
+    const userKey = StorageService.getUser()?.email || 'default';
+    const raw = localStorage.getItem(COMMISSION_RULES_KEY);
+    const allRules = raw ? (JSON.parse(raw) as Record<string, CommissionRules>) : {};
+    return allRules[userKey] || {
+      baseRate: 0.2,
+      highVolumeThreshold: 100000,
+      highVolumeRate: 0.24,
+      lowVolumeThreshold: 10000,
+      lowVolumeRate: 0.15,
+      merchantOverrides: {}
+    };
+  });
+  const [rulesDraft, setRulesDraft] = useState({
+    baseRatePercent: '',
+    highVolumeThreshold: '',
+    highVolumeRatePercent: '',
+    lowVolumeThreshold: '',
+    lowVolumeRatePercent: '',
+    merchantOverridesText: ''
+  });
 
   const reps = useMemo(() => {
     if (isDemoMode) return generateSalesReps();
@@ -147,7 +194,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
           merchantName: 'No assigned merchant data',
           volume: 0,
           residualRevenue: 0,
-          commissionRate,
+          commissionRate: commissionRules.baseRate,
           payout: 0,
           exception: 'Missing merchant assignment or transaction data'
         }];
@@ -156,20 +203,28 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
       return assignedMerchants.map((merchant) => {
         const volume = merchant.monthlyVolume;
         const residualRevenue = volume * 0.018;
-        const payout = residualRevenue * commissionRate;
+        const merchantOverride = commissionRules.merchantOverrides[merchant.name.trim().toLowerCase()];
+        const effectiveRate = Number.isFinite(merchantOverride)
+          ? merchantOverride
+          : volume >= commissionRules.highVolumeThreshold
+            ? commissionRules.highVolumeRate
+            : volume <= commissionRules.lowVolumeThreshold
+              ? commissionRules.lowVolumeRate
+              : commissionRules.baseRate;
+        const payout = residualRevenue * effectiveRate;
         return {
           id: `${rep.id}_${merchant.id}`,
           repName: rep.name,
           merchantName: merchant.name,
           volume,
           residualRevenue,
-          commissionRate,
+          commissionRate: effectiveRate,
           payout,
           exception: volume <= 0 ? 'No volume for selected period' : undefined
         };
       });
     });
-  }, [assignments, commissionRate]);
+  }, [assignments, commissionRules]);
 
   const draftTotals = useMemo(() => {
     const totalPayout = draftLineItems.reduce((sum, lineItem) => sum + lineItem.payout, 0);
@@ -193,6 +248,41 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
     const latestRuns = StorageService.getCommissionRuns();
     await StorageService.saveCommissionRunsResolved(latestRuns);
     setCommissionRuns(StorageService.getCommissionRuns());
+  };
+
+  const openRulesModal = () => {
+    const overridesText = Object.entries(commissionRules.merchantOverrides as Record<string, number>)
+      .map(([merchant, rate]) => `${merchant}=${Math.round(rate * 100)}`)
+      .join('\n');
+
+    setRulesDraft({
+      baseRatePercent: String(Math.round(commissionRules.baseRate * 100)),
+      highVolumeThreshold: String(commissionRules.highVolumeThreshold),
+      highVolumeRatePercent: String(Math.round(commissionRules.highVolumeRate * 100)),
+      lowVolumeThreshold: String(commissionRules.lowVolumeThreshold),
+      lowVolumeRatePercent: String(Math.round(commissionRules.lowVolumeRate * 100)),
+      merchantOverridesText: overridesText
+    });
+    setShowRulesModal(true);
+  };
+
+  const saveRules = () => {
+    const nextRules: CommissionRules = {
+      baseRate: Math.max(0, Math.min(1, Number(rulesDraft.baseRatePercent || '20') / 100)),
+      highVolumeThreshold: Math.max(0, Number(rulesDraft.highVolumeThreshold || '0')),
+      highVolumeRate: Math.max(0, Math.min(1, Number(rulesDraft.highVolumeRatePercent || '24') / 100)),
+      lowVolumeThreshold: Math.max(0, Number(rulesDraft.lowVolumeThreshold || '0')),
+      lowVolumeRate: Math.max(0, Math.min(1, Number(rulesDraft.lowVolumeRatePercent || '15') / 100)),
+      merchantOverrides: parseMerchantOverrides(rulesDraft.merchantOverridesText)
+    };
+
+    setCommissionRules(nextRules);
+    const userKey = StorageService.getUser()?.email || 'default';
+    const raw = localStorage.getItem(COMMISSION_RULES_KEY);
+    const allRules = raw ? (JSON.parse(raw) as Record<string, CommissionRules>) : {};
+    allRules[userKey] = nextRules;
+    localStorage.setItem(COMMISSION_RULES_KEY, JSON.stringify(allRules));
+    setShowRulesModal(false);
   };
 
   const trendBadge = (trend: SalesRep['trend']) => {
@@ -221,6 +311,107 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {showRulesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Commission Rules</h3>
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="text-xs text-gray-600">
+                Base Commission %
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={rulesDraft.baseRatePercent}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, baseRatePercent: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+              <label className="text-xs text-gray-600">
+                High-Volume Threshold ($)
+                <input
+                  type="number"
+                  min={0}
+                  value={rulesDraft.highVolumeThreshold}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, highVolumeThreshold: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+              <label className="text-xs text-gray-600">
+                High-Volume Commission %
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={rulesDraft.highVolumeRatePercent}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, highVolumeRatePercent: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+              <label className="text-xs text-gray-600">
+                Low-Volume Threshold ($)
+                <input
+                  type="number"
+                  min={0}
+                  value={rulesDraft.lowVolumeThreshold}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, lowVolumeThreshold: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+              <label className="text-xs text-gray-600 md:col-span-2">
+                Low-Volume Commission %
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={rulesDraft.lowVolumeRatePercent}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, lowVolumeRatePercent: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600 md:col-span-2">
+                Merchant Overrides (one per line: merchant=rate%)
+                <textarea
+                  rows={5}
+                  value={rulesDraft.merchantOverridesText}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, merchantOverridesText: event.target.value }))}
+                  placeholder="alpha grocery=30\ncity salon=18"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(false)}
+                className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveRules}
+                className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+              >
+                Save Rules
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <h1 className="text-2xl font-bold text-gray-900">Team</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -267,15 +458,14 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
               onChange={(event) => setSelectedPeriod(event.target.value)}
               className="px-3 py-2 rounded-lg border border-gray-300 text-sm"
             />
-            <label className="text-xs text-gray-600">Commission %</label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={Math.round(commissionRate * 100)}
-              onChange={(event) => setCommissionRate(Math.max(0.01, Math.min(1, Number(event.target.value || 20) / 100)))}
-              className="w-20 px-3 py-2 rounded-lg border border-gray-300 text-sm"
-            />
+            <span className="text-xs text-gray-600">Base rate: {Math.round(commissionRules.baseRate * 100)}%</span>
+            <button
+              type="button"
+              onClick={openRulesModal}
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" /> Set Rules
+            </button>
             <button
               type="button"
               onClick={() => { void createCommissionRun('draft'); }}

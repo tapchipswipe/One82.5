@@ -14,7 +14,7 @@
  */
 
 export type IntegrationCategory = 'POS & Payment' | 'ISO Processor' | 'AI';
-export const LIVE_INTEGRATIONS_ENABLED = import.meta.env.VITE_ENABLE_LIVE_INTEGRATIONS === 'true';
+export const LIVE_INTEGRATIONS_ENABLED = import.meta.env.VITE_ENABLE_LIVE_INTEGRATIONS !== 'false';
 
 export interface Integration {
     id: string;
@@ -148,7 +148,6 @@ export const INTEGRATIONS: Integration[] = [
 
 /** Returns the stored API key for an integration, or empty string if not set */
 export const getIntegrationKey = (id: string): string => {
-    if (!LIVE_INTEGRATIONS_ENABLED) return '';
     const integration = INTEGRATIONS.find(i => i.id === id);
     if (!integration) return '';
     return localStorage.getItem(integration.keyStorageKey) || '';
@@ -156,13 +155,11 @@ export const getIntegrationKey = (id: string): string => {
 
 /** Returns true if an integration has a key configured */
 export const isIntegrationConnected = (id: string): boolean => {
-    if (!LIVE_INTEGRATIONS_ENABLED) return false;
     return getIntegrationKey(id).length > 0;
 };
 
 /** Save a key for an integration */
 export const saveIntegrationKey = (id: string, key: string): void => {
-    if (!LIVE_INTEGRATIONS_ENABLED) return;
     const integration = INTEGRATIONS.find(i => i.id === id);
     if (!integration) return;
     if (key) {

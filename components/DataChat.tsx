@@ -70,13 +70,6 @@ const DataChat: React.FC = () => {
       return;
     }
 
-    if (!StorageService.hasCredits(1)) {
-        setMessages(prev => [...prev, { id: 'error', role: 'model', text: 'Out of credits.', timestamp: Date.now() }]);
-      markAiRun();
-        return;
-    }
-
-    StorageService.updateCredits(1, 'AI Streaming Chat');
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: input, timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');

@@ -3,13 +3,12 @@ import { CheckCircle, XCircle, ExternalLink, ChevronDown, ChevronUp, Eye, EyeOff
 import {
     INTEGRATIONS,
     IntegrationCategory,
-    LIVE_INTEGRATIONS_ENABLED,
     isIntegrationConnected,
     saveIntegrationKey,
     getIntegrationKey,
 } from '../services/integrationsConfig';
 import { StorageService } from '../services/storage';
-import { ImportAuditEntry, MerchantInvite, MerchantInviteStrategy, Transaction } from '../types';
+import { ImportAuditEntry, MerchantInvite, Transaction } from '../types';
 
 const CATEGORIES: IntegrationCategory[] = ['AI', 'POS & Payment', 'ISO Processor'];
 
@@ -225,9 +224,8 @@ const IntegrationCard = ({ integration, onSave }: {
                         <ExternalLink className="w-4 h-4" />
                     </a>
                     <button
-                        disabled={!LIVE_INTEGRATIONS_ENABLED}
                         onClick={() => setExpanded(!expanded)}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1"
                     >
                         {connected ? 'Manage' : 'Connect'}
                         {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -243,7 +241,6 @@ const IntegrationCard = ({ integration, onSave }: {
                     <div className="flex gap-2">
                         <div className="relative flex-1">
                             <input
-                                disabled={!LIVE_INTEGRATIONS_ENABLED}
                                 type={showKey ? 'text' : 'password'}
                                 value={apiKeyValue}
                                 onChange={(e) => setApiKeyValue(e.target.value)}
@@ -251,25 +248,22 @@ const IntegrationCard = ({ integration, onSave }: {
                                 className="w-full px-3 py-2 pr-10 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-gray-50 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
                             />
                             <button
-                                disabled={!LIVE_INTEGRATIONS_ENABLED}
                                 onClick={() => setShowKey(!showKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             >
                                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                         </div>
                         <button
-                            disabled={!LIVE_INTEGRATIONS_ENABLED}
                             onClick={handleSave}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition-colors"
                         >
                             Save & Connect
                         </button>
                         {connected && (
                             <button
-                                disabled={!LIVE_INTEGRATIONS_ENABLED}
                                 onClick={handleDisconnect}
-                                className="px-4 py-2 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 text-sm font-bold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                className="px-4 py-2 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 text-sm font-bold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
                             >
                                 Disconnect
                             </button>
@@ -297,9 +291,6 @@ const Integrations: React.FC = () => {
     const [isImporting, setIsImporting] = useState(false);
     const [merchantCount, setMerchantCount] = useState(0);
     const [teamCount, setTeamCount] = useState(0);
-    const [inviteCount, setInviteCount] = useState(0);
-    const [inviteStrategy, setInviteStrategy] = useState<MerchantInviteStrategy>(StorageService.getMerchantInviteStrategy());
-    const [inviteLinkNotice, setInviteLinkNotice] = useState<string | null>(null);
     const [syncAlert, setSyncAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
     const [lastImportErrorReport, setLastImportErrorReport] = useState<string | null>(null);
     const [importAuditLog, setImportAuditLog] = useState<ImportAuditEntry[]>([]);
@@ -346,8 +337,6 @@ const Integrations: React.FC = () => {
             const imported = await StorageService.getImportedDataResolved();
             setMerchantCount(imported.merchants.length);
             setTeamCount(imported.team.length);
-            setInviteCount(StorageService.getMerchantInvites().length);
-            setInviteStrategy(StorageService.getMerchantInviteStrategy());
             setImportAuditLog(StorageService.getImportAuditLog());
         };
 
@@ -375,20 +364,6 @@ const Integrations: React.FC = () => {
             errorMessage: payload.errorMessage
         });
         setImportAuditLog(StorageService.getImportAuditLog());
-    };
-
-    const inviteLink = typeof window !== 'undefined'
-        ? `${window.location.origin}/?invite=merchant`
-        : 'https://one82-5.vercel.app/?invite=merchant';
-
-    const handleCopyInviteLink = async () => {
-        try {
-            await navigator.clipboard.writeText(inviteLink);
-            setInviteLinkNotice('Invite link copied. Share it with merchants who should self-create profiles.');
-            window.setTimeout(() => setInviteLinkNotice(null), 2800);
-        } catch {
-            setInviteLinkNotice('Unable to copy automatically. Manually copy the invite link shown below.');
-        }
     };
 
     const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -500,6 +475,8 @@ const Integrations: React.FC = () => {
         setIsImporting(true);
 
         try {
+            const inviteStrategy = StorageService.getMerchantInviteStrategy();
+
             if (importType === 'transactions') {
                 const importedTransactions = transformImportedTransactions(importRows);
                 if (importedTransactions.length === 0) {
@@ -548,7 +525,6 @@ const Integrations: React.FC = () => {
                     inviteStrategy
                 });
                 setMerchantCount(importRows.length);
-                setInviteCount(mergedInvites.length);
                 setImportSummary(`Imported ${importRows.length} merchant record${importRows.length === 1 ? '' : 's'} from ${importFileName}. ${generatedInvites.length > 0 ? `Auto-invited ${generatedInvites.length} merchant contact${generatedInvites.length === 1 ? '' : 's'}. ` : ''}Data landed in ISO portfolio/merchant views.`);
                 logImportAudit({
                     importType,
@@ -560,7 +536,7 @@ const Integrations: React.FC = () => {
             }
 
             if (importType === 'team') {
-                await StorageService.saveImportedDataResolved({ team: importRows, inviteStrategy });
+                await StorageService.saveImportedDataResolved({ team: importRows });
                 setTeamCount(importRows.length);
                 setImportSummary(`Imported ${importRows.length} team member record${importRows.length === 1 ? '' : 's'} from ${importFileName}. Data landed in Team views and assignment context.`);
                 logImportAudit({
@@ -625,11 +601,9 @@ const Integrations: React.FC = () => {
                     Integrations
                 </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {LIVE_INTEGRATIONS_ENABLED
-                        ? isAuthTrialMode
-                            ? 'Auth/Trial mode uses real/imported data only. Connect APIs or import CSV to populate dashboards.'
-                            : 'Plug in your API keys to go live. Without keys, data can run in simulation mode.'
-                        : 'Demo phase lock: live integrations are disabled and the app runs in simulation mode.'}
+                    {isAuthTrialMode
+                        ? 'Auth/Trial mode uses real/imported data only. Connect APIs or import CSV to populate dashboards.'
+                        : 'Plug in your API keys to go live. Without keys, data can run in simulation mode.'}
                 </p>
             </div>
 
@@ -640,18 +614,14 @@ const Integrations: React.FC = () => {
                 }`}>
                 <div>
                     <p className="font-semibold text-sm text-gray-900 dark:text-white">
-                        {!LIVE_INTEGRATIONS_ENABLED
-                            ? 'Demo phase lock active'
-                            : connectedCount > 0
+                        {connectedCount > 0
                             ? `${connectedCount} integration${connectedCount > 1 ? 's' : ''} connected`
                             : isAuthTrialMode
                                 ? 'Auth/Trial mode ready for imports'
                                 : 'Running in simulation mode'}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                        {!LIVE_INTEGRATIONS_ENABLED
-                            ? 'Live integrations are disabled for this phase. Connect/manage actions are unavailable.'
-                            : connectedCount > 0
+                        {connectedCount > 0
                             ? 'Live data is now flowing into your dashboard.'
                             : isAuthTrialMode
                                 ? 'No simulated records are shown in Auth/Trial mode. Import a CSV or connect a processor.'
@@ -747,61 +717,6 @@ const Integrations: React.FC = () => {
                     ))}
                 </ul>
             </div>
-
-            {role === 'iso' && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-5 space-y-3">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Merchant Invite Strategy</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Primary path uses CSV import + auto-invite. Invite-link fallback remains available for edge cases.</p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                setInviteStrategy('csv-auto-invite');
-                                StorageService.saveMerchantInviteStrategy('csv-auto-invite');
-                                await StorageService.saveImportedDataResolved({ inviteStrategy: 'csv-auto-invite' });
-                            }}
-                            className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${inviteStrategy === 'csv-auto-invite'
-                                ? 'bg-gray-900 text-white border-gray-900'
-                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
-                                }`}
-                        >
-                            CSV Import + Auto-Invite (Primary)
-                        </button>
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                setInviteStrategy('invite-link');
-                                StorageService.saveMerchantInviteStrategy('invite-link');
-                                await StorageService.saveImportedDataResolved({ inviteStrategy: 'invite-link' });
-                            }}
-                            className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${inviteStrategy === 'invite-link'
-                                ? 'bg-gray-900 text-white border-gray-900'
-                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
-                                }`}
-                        >
-                            Invite Link (Fallback)
-                        </button>
-                    </div>
-
-                    <div className="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
-                        <p className="text-xs text-gray-600 dark:text-gray-300">
-                            Invite link: <span className="font-semibold break-all text-gray-700 dark:text-gray-200">{inviteLink}</span>
-                        </p>
-                        <div className="mt-2 flex items-center gap-3 flex-wrap">
-                            <button
-                                type="button"
-                                onClick={handleCopyInviteLink}
-                                className="px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
-                            >
-                                Copy Invite Link
-                            </button>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">Invites sent: {inviteCount}</span>
-                        </div>
-                        {inviteLinkNotice && <p className="text-xs text-green-600 mt-2">{inviteLinkNotice}</p>}
-                    </div>
-                </div>
-            )}
 
             {/* Import Hub */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-5 space-y-4">
@@ -999,9 +914,7 @@ const Integrations: React.FC = () => {
 
             {/* Footer note */}
             <div className="text-xs text-gray-400 dark:text-gray-600 text-center pb-4">
-                {LIVE_INTEGRATIONS_ENABLED
-                    ? 'All API keys are stored locally in your browser and are never transmitted to One82 servers. Keys are only used to call the respective integration\'s own API directly.'
-                    : 'Demo phase lock is enabled. Live integration connections are unavailable in this environment.'}
+                All API keys are stored locally in your browser and are never transmitted to One82 servers. Keys are only used to call the respective integration's own API directly.
             </div>
         </div>
     );

@@ -23,6 +23,7 @@ const loadAIReport = () => import('./components/AIReport');
 const loadCalendarPlanner = () => import('./components/CalendarPlanner');
 const loadCustomers = () => import('./components/Customers');
 const loadMerchantLedger = () => import('./components/MerchantLedger');
+const loadOnboardingHub = () => import('./components/OnboardingHub');
 const loadIntegrations = () => import('./components/Integrations');
 const loadProfitability = () => import('./components/Profitability');
 const loadExperimental = () => import('./components/Experimental');
@@ -46,6 +47,7 @@ const AIReport = lazy(loadAIReport);
 const CalendarPlanner = lazy(loadCalendarPlanner);
 const Customers = lazy(loadCustomers);
 const MerchantLedger = lazy(loadMerchantLedger);
+const OnboardingHub = lazy(loadOnboardingHub);
 const Integrations = lazy(loadIntegrations);
 const Profitability = lazy(loadProfitability);
 const Experimental = lazy(loadExperimental);
@@ -74,6 +76,7 @@ const PREFETCH_BY_ROLE: Record<UserRole, Record<string, Array<() => Promise<unkn
     dashboard: [loadStatementReader, loadMerchantLedger, loadProfitability],
     statements: [loadMerchantLedger, loadProfitability],
     portfolio: [loadProfitability, loadTeam],
+    onboarding: [loadTeam, loadIntegrations],
     profitability: [loadMerchantLedger, loadIntegrations],
     team: [loadIntegrations, loadProfile],
     integrations: [loadDashboard, loadStatementReader],
@@ -105,6 +108,7 @@ const VIEW_LOADERS: Record<string, () => Promise<unknown>> = {
   calendar: loadCalendarPlanner,
   customers: loadCustomers,
   portfolio: loadMerchantLedger,
+  onboarding: loadOnboardingHub,
   integrations: loadIntegrations,
   profitability: loadProfitability,
   experimental: loadExperimental,
@@ -464,13 +468,14 @@ const App: React.FC = () => {
             {activeView === 'dashboard' && <ISODashboard />}
             {activeView === 'statements' && (DISABLE_AI_UI ? <AiDisabledView /> : <StatementReader />)}
             {activeView === 'portfolio' && <div className="p-6"><MerchantLedger merchants={merchants} /></div>}
+            {activeView === 'onboarding' && <OnboardingHub />}
             {activeView === 'profitability' && <Profitability />}
             {activeView === 'team' && <Team onNavigate={handleNavigate} />}
             {activeView === 'integrations' && <Integrations />}
             {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
             {ENABLE_EXPERIMENTAL && activeView === 'experimental' && <Experimental role={user.role} />}
             {activeView === 'settings' && <Settings />}
-            {!['dashboard', 'statements', 'portfolio', 'profitability', 'team', 'integrations', 'experimental', 'settings', 'profile'].includes(activeView) && <ISODashboard />}
+            {!['dashboard', 'statements', 'portfolio', 'onboarding', 'profitability', 'team', 'integrations', 'experimental', 'settings', 'profile'].includes(activeView) && <ISODashboard />}
           </>
         )}
 

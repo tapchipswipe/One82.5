@@ -22,7 +22,6 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
   const [timeRange, setTimeRange] = useState<string>('Last 7 Days');
   const [displayMetrics, setDisplayMetrics] = useState<DailyMetric[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
-  const [hasCredits, setHasCredits] = useState(true);
   const [explanation, setExplanation] = useState<{ point: any, text: string } | null>(null);
   const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('dashboard'));
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState<number | null>(null);
@@ -74,7 +73,6 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
     }
 
     if (isAuthMode && !hasGeminiKey) {
-      setHasCredits(true);
       setInsight('AI dashboard insights are blocked in Auth Login until a Gemini API key is configured in Integrations.');
       markAiRun();
       setLoading(false);
@@ -82,36 +80,25 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
     }
 
     if (isAuthMode && filtered.length === 0) {
-      setHasCredits(true);
       setInsight('AI dashboard insights are blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
       markAiRun();
       setLoading(false);
       return;
     }
 
-    // AI Analysis
-    if (StorageService.hasCredits(1)) {
-      setHasCredits(true);
-      setLoading(true);
-      setInsight('');
-      StorageService.updateCredits(1, 'Dashboard Insights');
-      let fullText = '';
-      await streamDashboardInsights(filtered, businessType, timeRange, (text) => {
-        fullText += text;
-        setInsight(fullText);
-      });
-      const finalInsight = fullText.trim();
-      if (finalInsight) {
-        StorageService.setCachedInsight(cacheKey, finalInsight);
-      }
-      markAiRun();
-      setLoading(false);
-    } else {
-      setHasCredits(false);
-      setInsight("Insufficient credits.");
-      markAiRun();
-      setLoading(false);
+    setLoading(true);
+    setInsight('');
+    let fullText = '';
+    await streamDashboardInsights(filtered, businessType, timeRange, (text) => {
+      fullText += text;
+      setInsight(fullText);
+    });
+    const finalInsight = fullText.trim();
+    if (finalInsight) {
+      StorageService.setCachedInsight(cacheKey, finalInsight);
     }
+    markAiRun();
+    setLoading(false);
   }, [businessType, timeRange, cacheKey, markAiRun]); // Removed 'transactions' and 'settings' to prevent loop
 
   const staleDataHours = lastDataUpdateAt
@@ -178,7 +165,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
             <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
-        <p className={`text-lg leading-relaxed font-medium ${hasCredits ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'}`}>
+        <p className="text-lg leading-relaxed font-medium text-slate-700 dark:text-slate-300">
           {loading && !insight ? "One82 is thinking..." : insight}
         </p>
       </div>
