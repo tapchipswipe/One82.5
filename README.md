@@ -63,7 +63,7 @@ Transform manual processing into proactive portfolio management.
 
 ## 🚀 Current Technical State
 Built with a modern, high-performance stack:
-- **Core**: [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- **Core**: [Next.js App Router](https://nextjs.org/docs/app) + [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
 - **Intelligence**: [Google Gemini Pro](https://deepmind.google/technologies/gemini/) (via Google AI Studio)
 - **Styling**: Clean white theme with dark/light mode support
 - **Components**: Modular architecture including `ISODashboard`, `MerchantLedger`, `StatementReader`, `Profitability`, and more
@@ -189,7 +189,7 @@ Use this checklist before requesting review:
     ```
 
 ### Local Backend Mode (Dev)
-The dev server now includes in-memory API routes for backend mode:
+The Next dev server exposes API route handlers for backend mode at `/api/*`:
 - `POST /api/auth/login`
 - `GET /api/auth/session`
 - `POST /api/auth/logout`
@@ -285,7 +285,7 @@ ONE82_HEALTH_URL=https://one82-5.vercel.app npm run ops:health
 ```
 
 ### Vercel + Supabase Test Flow (Current)
-You can test backend auth/data on Vercel using the included serverless routes under `api/`:
+You can test backend auth/data on Vercel using the App Router route handlers under `app/api/` (which wrap legacy handlers in `api/`):
 
 - `POST /api/auth/login`
 - `GET /api/auth/session`

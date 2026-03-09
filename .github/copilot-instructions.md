@@ -1,7 +1,7 @@
 # Copilot Instructions for ONE82
 
 ## 1) Architecture at a glance
-- App type: single-page React + TypeScript + Vite app with role-driven rendering (not route-driven rendering).
+- App type: Next.js App Router shell hosting a role-driven React + TypeScript SPA experience (not route-driven rendering).
 - Main entry: `App.tsx` orchestrates auth bootstrap, data mode, marketing/login/onboarding gating, and role view fallback.
 - Shell/navigation: `components/Layout.tsx` owns global nav and role-specific view switching via `activeView` + `onNavigate`.
 

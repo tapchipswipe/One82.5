@@ -508,7 +508,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {showRulesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Commission Rules</h3>
               <button
@@ -520,9 +520,14 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 leading-relaxed">
+              <p className="font-semibold text-gray-800">Rule precedence</p>
+              <p className="mt-1">Deal override → Rep override → Merchant override → Volume tier. Excess payout is added on top of base payout.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="text-xs text-gray-600">
-                Base Commission %
+                Default Base Commission %
                 <input
                   type="number"
                   min={0}
@@ -533,7 +538,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                 />
               </label>
               <label className="text-xs text-gray-600">
-                High-Volume Threshold ($)
+                High-Volume Threshold ($ / month)
                 <input
                   type="number"
                   min={0}
@@ -543,7 +548,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                 />
               </label>
               <label className="text-xs text-gray-600">
-                High-Volume Commission %
+                High-Volume Base %
                 <input
                   type="number"
                   min={0}
@@ -554,7 +559,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                 />
               </label>
               <label className="text-xs text-gray-600">
-                Low-Volume Threshold ($)
+                Low-Volume Threshold ($ / month)
                 <input
                   type="number"
                   min={0}
@@ -564,7 +569,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                 />
               </label>
               <label className="text-xs text-gray-600 md:col-span-2">
-                Low-Volume Commission %
+                Low-Volume Base %
                 <input
                   type="number"
                   min={0}
@@ -575,38 +580,47 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                 />
               </label>
 
+              <div className="md:col-span-2 pt-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Overrides</p>
+              </div>
+
               <label className="text-xs text-gray-600 md:col-span-2">
-                Merchant Overrides (one per line: merchant=rate%)
+                Merchant Overrides (one per line: merchant=base%)
                 <textarea
                   rows={4}
                   value={rulesDraft.merchantOverridesText}
                   onChange={(event) => setRulesDraft((current) => ({ ...current, merchantOverridesText: event.target.value }))}
-                  placeholder="alpha grocery=30\ncity salon=18"
+                  placeholder="Northside Market=30\nCity Salon=18"
                   className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
                 />
               </label>
 
               <label className="text-xs text-gray-600 md:col-span-2">
-                Rep Overrides (one per line: rep=rate%)
+                Rep Overrides (one per line: rep=base%)
                 <textarea
                   rows={3}
                   value={rulesDraft.repOverridesText}
                   onChange={(event) => setRulesDraft((current) => ({ ...current, repOverridesText: event.target.value }))}
-                  placeholder="alex torres=32\njordan lee=28"
+                  placeholder="Alex Torres=32\nJordan Lee=28"
                   className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
                 />
               </label>
 
               <label className="text-xs text-gray-600 md:col-span-2">
-                Deal Overrides (one per line: rep|merchant=rate%)
+                Deal Overrides (one per line: rep|merchant=base%)
                 <textarea
                   rows={3}
                   value={rulesDraft.dealOverridesText}
                   onChange={(event) => setRulesDraft((current) => ({ ...current, dealOverridesText: event.target.value }))}
-                  placeholder="alex torres|northside market=35"
+                  placeholder="Alex Torres|Northside Market=35"
                   className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
                 />
+                <p className="mt-1 text-[11px] text-gray-500">Use exact names from Team and Merchant List for best matching.</p>
               </label>
+
+              <div className="md:col-span-2 pt-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Excess Fee Split</p>
+              </div>
 
               <label className="text-xs text-gray-600">
                 Excess Markup Threshold (bps)
@@ -668,7 +682,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                 onClick={saveRules}
                 className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
               >
-                Save Rules
+                Apply Rules
               </button>
             </div>
           </div>
@@ -762,30 +776,30 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full min-w-[980px] text-sm text-left">
             <thead className="bg-gray-50 border-y border-gray-200">
               <tr>
                 {['Rep', 'Merchant', 'Volume', 'Residual', 'Rate', 'Model', 'Payout', 'Exception'].map((header) => (
-                  <th key={header} className="px-3 py-2 text-xs uppercase tracking-wide text-gray-500 font-semibold">{header}</th>
+                  <th key={header} className="px-3 py-2 text-xs uppercase tracking-wide text-gray-500 font-semibold whitespace-nowrap">{header}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {draftLineItems.slice(0, 14).map((lineItem) => (
                 <tr key={lineItem.id}>
-                  <td className="px-3 py-2 text-gray-800">{lineItem.repName}</td>
-                  <td className="px-3 py-2 text-gray-800">{lineItem.merchantName}</td>
-                  <td className="px-3 py-2 font-mono text-gray-700">{formatCurrency(lineItem.volume)}</td>
-                  <td className="px-3 py-2 font-mono text-gray-700">{formatCurrency(lineItem.residualRevenue)}</td>
-                  <td className="px-3 py-2 text-gray-700">{Math.round(lineItem.commissionRate * 100)}%</td>
-                  <td className="px-3 py-2 text-gray-700">{lineItem.appliedRule || 'Base Tier'}</td>
-                  <td className="px-3 py-2 font-mono font-semibold text-indigo-700">
-                    {formatCurrency(lineItem.payout)}
-                    <span className="ml-2 text-[11px] font-normal text-gray-500">
+                  <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{lineItem.repName}</td>
+                  <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{lineItem.merchantName}</td>
+                  <td className="px-3 py-2 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(lineItem.volume)}</td>
+                  <td className="px-3 py-2 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(lineItem.residualRevenue)}</td>
+                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{Math.round(lineItem.commissionRate * 100)}%</td>
+                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{lineItem.appliedRule || 'Base Tier'}</td>
+                  <td className="px-3 py-2 font-mono font-semibold text-indigo-700 whitespace-nowrap">
+                    <span>{formatCurrency(lineItem.payout)}</span>
+                    <span className="ml-2 text-[11px] font-normal text-gray-500 whitespace-nowrap">
                       ({formatCurrency(lineItem.basePayout || lineItem.payout)} + {formatCurrency(lineItem.excessPayout || 0)})
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-amber-600">{lineItem.exception || '—'}</td>
+                  <td className="px-3 py-2 text-xs text-amber-600 max-w-[220px] truncate">{lineItem.exception || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -808,30 +822,30 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
           <h3 className="text-sm font-semibold text-gray-900">Rep Buy-Rate Rollups</h3>
           <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[920px] text-xs">
               <thead>
                 <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wide">
-                  <th className="py-2 pr-3 text-left font-semibold">Rep</th>
-                  <th className="py-2 pr-3 text-left font-semibold">Volume</th>
-                  <th className="py-2 pr-3 text-left font-semibold">Residual Base</th>
-                  <th className="py-2 pr-3 text-left font-semibold">Base Payout</th>
-                  <th className="py-2 pr-3 text-left font-semibold">Excess Payout</th>
-                  <th className="py-2 pr-3 text-left font-semibold">Commission Payout</th>
-                  <th className="py-2 pr-3 text-left font-semibold">Lines</th>
-                  <th className="py-2 text-left font-semibold">Exceptions</th>
+                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Rep</th>
+                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Volume</th>
+                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Residual Base</th>
+                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Base Payout</th>
+                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Excess Payout</th>
+                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Commission Payout</th>
+                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Lines</th>
+                  <th className="py-2 text-left font-semibold whitespace-nowrap">Exceptions</th>
                 </tr>
               </thead>
               <tbody>
                 {repRollups.map((rollup) => (
                   <tr key={rollup.repName} className="border-b border-gray-200/70">
-                    <td className="py-2 pr-3 text-gray-700">{rollup.repName}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.volume)}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.residual)}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.basePayout)}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.excessPayout)}</td>
-                    <td className="py-2 pr-3 font-mono font-semibold text-indigo-700">{formatCurrency(rollup.payout)}</td>
-                    <td className="py-2 pr-3 text-gray-700">{rollup.lineCount}</td>
-                    <td className="py-2 text-amber-600">{rollup.exceptions}</td>
+                    <td className="py-2 pr-3 text-gray-700 whitespace-nowrap">{rollup.repName}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(rollup.volume)}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(rollup.residual)}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(rollup.basePayout)}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(rollup.excessPayout)}</td>
+                    <td className="py-2 pr-3 font-mono font-semibold text-indigo-700 whitespace-nowrap">{formatCurrency(rollup.payout)}</td>
+                    <td className="py-2 pr-3 text-gray-700 whitespace-nowrap">{rollup.lineCount}</td>
+                    <td className="py-2 text-amber-600 whitespace-nowrap">{rollup.exceptions}</td>
                   </tr>
                 ))}
               </tbody>
