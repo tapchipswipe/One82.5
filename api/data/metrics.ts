@@ -6,7 +6,6 @@ import {
   saveStateForTenant,
   setApiResponseHeaders,
   sendMethodNotAllowed
-} from '../_lib/backend.js';
 } from '../_lib/backend';
 
 export const config = { runtime: 'nodejs' };
