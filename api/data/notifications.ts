@@ -1,4 +1,4 @@
-import { getStateForTenant, requireAuthorized, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend.js';
+import { getStateForTenant, requireAuthorized, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend';
 
 export const config = { runtime: 'nodejs' };
 

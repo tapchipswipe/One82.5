@@ -6,14 +6,33 @@ import {
     isIntegrationConnected,
     saveIntegrationKey,
     getIntegrationKey,
-} from '../services/integrationsConfig';
-import { stripeService } from '../services/processorService';
-import { StorageService } from '../services/storage';
-import { ImportAuditEntry, MerchantInvite, Transaction } from '../types';
+} from '@/services/integrationsConfig';
+import { stripeService } from '@/services/processorService';
+import { StorageService } from '@/services/storage';
+import { ImportAuditEntry, MerchantInvite, Transaction } from '@/types';
 
 const CATEGORIES: IntegrationCategory[] = ['AI', 'POS & Payment', 'ISO Processor'];
 
 type ImportType = 'transactions' | 'merchants' | 'team';
+
+const REQUIRED_FIELDS_BY_IMPORT: Record<ImportType, string[]> = {
+    transactions: ['amount', 'customer'],
+    merchants: ['name'],
+    team: ['name']
+};
+
+const FIELD_ALIASES: Record<ImportType, Record<string, string[]>> = {
+    transactions: {
+        amount: ['amount', 'transactionamount', 'total', 'value'],
+        customer: ['customer', 'customername', 'merchantname', 'name']
+    },
+    merchants: {
+        name: ['name', 'merchantname', 'businessname', 'company', 'customer']
+    },
+    team: {
+        name: ['name', 'repname', 'rep', 'owner', 'fullname']
+    }
+};
 
 const normalizeHeader = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -65,6 +84,29 @@ const parseCsvRows = (content: string): string[][] => {
     }
 
     return rows;
+};
+
+const inferColumnMappings = (headers: string[], importType: ImportType): Record<string, string> => {
+    const aliases = FIELD_ALIASES[importType];
+    return Object.entries(aliases).reduce<Record<string, string>>((acc, [requiredField, candidates]) => {
+        const match = candidates.find((candidate) => headers.includes(candidate));
+        if (match) {
+            acc[requiredField] = match;
+        }
+        return acc;
+    }, {});
+};
+
+const applyColumnMappings = (records: Record<string, string>[], mappings: Record<string, string>): Record<string, string>[] => {
+    if (Object.keys(mappings).length === 0) return records;
+    return records.map((record) => {
+        const next = { ...record };
+        Object.entries(mappings).forEach(([requiredField, sourceField]) => {
+            if (!sourceField) return;
+            next[requiredField] = record[sourceField] || '';
+        });
+        return next;
+    });
 };
 
 const pickValue = (record: Record<string, string>, keys: string[]): string => {
@@ -338,6 +380,7 @@ const Integrations: React.FC = () => {
     const [replaceTransactions, setReplaceTransactions] = useState(false);
     const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
     const [importHeaders, setImportHeaders] = useState<string[]>([]);
+    const [columnMappings, setColumnMappings] = useState<Record<string, string>>({});
     const [importFileName, setImportFileName] = useState('');
     const [importError, setImportError] = useState<string | null>(null);
     const [importSummary, setImportSummary] = useState<string | null>(null);
@@ -364,6 +407,9 @@ const Integrations: React.FC = () => {
 
     const stripeConnected = isIntegrationConnected('stripe');
     const retryCooldownSeconds = Math.max(0, Math.ceil((retryCooldownUntil - nowMs) / 1000));
+    const requiredMappingFields = REQUIRED_FIELDS_BY_IMPORT[importType];
+    const mappingRequired = requiredMappingFields.some((field) => !importHeaders.includes(field));
+    const missingMappedRequired = requiredMappingFields.filter((field) => !columnMappings[field]);
 
     useEffect(() => {
         if (retryCooldownUntil <= Date.now()) return;
@@ -373,7 +419,7 @@ const Integrations: React.FC = () => {
 
     const firstRunChecklist = role === 'iso'
         ? [
-            'Connect Stripe first (recommended production path)',
+            'Connect your preferred processor first',
             'Import transactions or connect at least one processor',
             'Import merchant roster to unlock portfolio context',
             'Import team members for rep assignment visibility',
@@ -468,30 +514,9 @@ const Integrations: React.FC = () => {
             return record;
         });
 
-        if (importType === 'transactions') {
-            const hasAmount = headers.some((header) => ['amount', 'transactionamount', 'total', 'value'].includes(header));
-            const hasCustomer = headers.some((header) => ['customer', 'customername', 'merchantname', 'name'].includes(header));
-
-            if (!hasAmount || !hasCustomer) {
-                const message = 'Transaction imports require at least amount and customer/name columns.';
-                setImportError(message);
-                setLastImportErrorReport(buildImportErrorReport(message));
-                logImportAudit({
-                    importType,
-                    fileName: file.name,
-                    rowCount: records.length,
-                    status: 'failed',
-                    errorMessage: message
-                });
-                setImportRows([]);
-                setImportHeaders(headers);
-                setImportFileName(file.name);
-                return;
-            }
-        }
-
         setImportHeaders(headers);
         setImportRows(records);
+        setColumnMappings(inferColumnMappings(headers, importType));
         setImportFileName(file.name);
     };
 
@@ -523,6 +548,20 @@ const Integrations: React.FC = () => {
             return;
         }
 
+        if (mappingRequired && missingMappedRequired.length > 0) {
+            const message = `Column mapping required before import. Map: ${missingMappedRequired.join(', ')}.`;
+            setImportError(message);
+            setLastImportErrorReport(buildImportErrorReport(message));
+            logImportAudit({
+                importType,
+                fileName: importFileName || 'N/A',
+                rowCount: importRows.length,
+                status: 'failed',
+                errorMessage: message
+            });
+            return;
+        }
+
         setImportError(null);
         setImportSummary(null);
         setLastImportErrorReport(null);
@@ -530,9 +569,10 @@ const Integrations: React.FC = () => {
 
         try {
             const inviteStrategy = StorageService.getMerchantInviteStrategy();
+            const mappedRows = applyColumnMappings(importRows, columnMappings);
 
             if (importType === 'transactions') {
-                const importedTransactions = transformImportedTransactions(importRows);
+                const importedTransactions = transformImportedTransactions(mappedRows);
                 if (importedTransactions.length === 0) {
                     const message = 'No valid transactions found. Include at least amount and customer columns.';
                     setImportError(message);
@@ -564,7 +604,7 @@ const Integrations: React.FC = () => {
             if (importType === 'merchants') {
                 const existingInvites = StorageService.getMerchantInvites();
                 const generatedInvites = role === 'iso' && inviteStrategy === 'csv-auto-invite'
-                    ? toMerchantInvitesFromRows(importRows)
+                    ? toMerchantInvitesFromRows(mappedRows)
                     : [];
 
                 const mergedInviteMap = new Map<string, MerchantInvite>();
@@ -574,29 +614,29 @@ const Integrations: React.FC = () => {
                 const mergedInvites = Array.from(mergedInviteMap.values());
 
                 await StorageService.saveImportedDataResolved({
-                    merchants: importRows,
+                    merchants: mappedRows,
                     merchantInvites: mergedInvites,
                     inviteStrategy
                 });
-                setMerchantCount(importRows.length);
-                setImportSummary(`Imported ${importRows.length} merchant record${importRows.length === 1 ? '' : 's'} from ${importFileName}. ${generatedInvites.length > 0 ? `Auto-invited ${generatedInvites.length} merchant contact${generatedInvites.length === 1 ? '' : 's'}. ` : ''}Data landed in ISO portfolio/merchant views.`);
+                setMerchantCount(mappedRows.length);
+                setImportSummary(`Imported ${mappedRows.length} merchant record${mappedRows.length === 1 ? '' : 's'} from ${importFileName}. ${generatedInvites.length > 0 ? `Auto-invited ${generatedInvites.length} merchant contact${generatedInvites.length === 1 ? '' : 's'}. ` : ''}Data landed in ISO portfolio and merchant views.`);
                 logImportAudit({
                     importType,
                     fileName: importFileName || 'N/A',
-                    rowCount: importRows.length,
+                    rowCount: mappedRows.length,
                     status: 'success'
                 });
                 raiseSyncAlert({ type: 'success', message: 'Merchant roster imported successfully. Portfolio sync context is up to date.' });
             }
 
             if (importType === 'team') {
-                await StorageService.saveImportedDataResolved({ team: importRows });
-                setTeamCount(importRows.length);
-                setImportSummary(`Imported ${importRows.length} team member record${importRows.length === 1 ? '' : 's'} from ${importFileName}. Data landed in Team views and assignment context.`);
+                await StorageService.saveImportedDataResolved({ team: mappedRows });
+                setTeamCount(mappedRows.length);
+                setImportSummary(`Imported ${mappedRows.length} team member record${mappedRows.length === 1 ? '' : 's'} from ${importFileName}. Data landed in Team views and assignment context.`);
                 logImportAudit({
                     importType,
                     fileName: importFileName || 'N/A',
-                    rowCount: importRows.length,
+                    rowCount: mappedRows.length,
                     status: 'success'
                 });
                 raiseSyncAlert({ type: 'success', message: 'Team import completed successfully.' });
@@ -752,9 +792,9 @@ const Integrations: React.FC = () => {
                 }`}>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Stripe-first production path</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Processor choice production path</p>
                         <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                            Recommended success criteria: Stripe connected, at least one successful transaction import/sync, and Dashboard metrics reflecting fresh records.
+                            Recommended success criteria: preferred processor connected, at least one successful transaction import/sync, and dashboard metrics reflecting fresh records.
                         </p>
                         {stripeLastSyncedAt && (
                             <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1">
@@ -879,6 +919,7 @@ const Integrations: React.FC = () => {
                                     setImportType(option.id as ImportType);
                                     setImportError(null);
                                     setImportSummary(null);
+                                    setColumnMappings({});
                                 }}
                                 className={`px-3 py-2 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${active
                                     ? 'bg-gray-900 text-white border-gray-900'
@@ -913,6 +954,30 @@ const Integrations: React.FC = () => {
                         />
                         Replace existing transactions instead of appending import rows
                     </label>
+                )}
+
+                {mappingRequired && importHeaders.length > 0 && (
+                    <div className="rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10 p-3">
+                        <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">Column mapping required</p>
+                        <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">Map required fields before importing this non-standard CSV.</p>
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {requiredMappingFields.map((field) => (
+                                <label key={field} className="text-xs text-amber-900 dark:text-amber-100">
+                                    <span className="block mb-1 font-semibold">{field}</span>
+                                    <select
+                                        value={columnMappings[field] || ''}
+                                        onChange={(event) => setColumnMappings((current) => ({ ...current, [field]: event.target.value }))}
+                                        className="w-full rounded-md border border-amber-300 dark:border-amber-800 bg-white dark:bg-gray-900 px-2 py-1"
+                                    >
+                                        <option value="">Select column...</option>
+                                        {importHeaders.map((header) => (
+                                            <option key={header} value={header}>{header}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
                 )}
 
                 {importHeaders.length > 0 && (

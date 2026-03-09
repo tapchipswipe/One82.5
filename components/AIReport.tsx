@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FileText, RotateCw, AlertTriangle } from 'lucide-react';
-import { StorageService } from '../services/storage';
-import { generateForecastInsights } from '../services/geminiService';
-import { getIntegrationKey } from '../services/integrationsConfig';
+import { StorageService } from '@/services/storage';
+import { generateForecastInsights } from '@/services/geminiService';
 import { SourceStatusText } from './ProvenanceIndicators';
 
 const formatCurrency = (value: number): string =>
@@ -25,7 +24,6 @@ const AIReport: React.FC<AIReportProps> = ({ onNavigate }) => {
 
   const mode = StorageService.getDataMode();
   const isAuthMode = mode === 'backend';
-  const hasGeminiKey = getIntegrationKey('gemini').length > 0;
   const metrics = StorageService.getMetrics();
   const transactions = StorageService.getTransactions();
 
@@ -59,11 +57,9 @@ const AIReport: React.FC<AIReportProps> = ({ onNavigate }) => {
 
   const hasTrustedData = metrics.length > 0 && transactions.length > 0;
   const blockedAction = isAuthMode
-    ? !hasGeminiKey
-      ? { label: 'Open Settings', target: 'settings' }
-      : !hasTrustedData
-        ? { label: 'Open Transactions', target: 'transactions' }
-        : null
+    ? !hasTrustedData
+      ? { label: 'Import Data', target: 'transactions' }
+      : null
     : null;
 
   const generateReport = useCallback(async (force = false) => {
@@ -82,9 +78,7 @@ const AIReport: React.FC<AIReportProps> = ({ onNavigate }) => {
     }
 
     setLoading(true);
-    const aiNarrative = isAuthMode && !hasGeminiKey
-      ? 'AI narrative is unavailable in Auth mode without a configured Gemini integration key. Connect Gemini in Integrations to enable live AI-generated report language.'
-      : await generateForecastInsights(metrics);
+    const aiNarrative = await generateForecastInsights(metrics);
 
     const composed = [
       `Executive summary: ${aiNarrative}`,
@@ -96,7 +90,7 @@ const AIReport: React.FC<AIReportProps> = ({ onNavigate }) => {
     markAiRun();
     StorageService.setCachedInsight(cacheKey, composed);
     setLoading(false);
-  }, [hasGeminiKey, hasTrustedData, isAuthMode, markAiRun, metrics, mode, summary.avgTicket, summary.topCategory, summary.totalRevenue, summary.totalTransactions]);
+  }, [hasTrustedData, markAiRun, metrics, mode, summary.avgTicket, summary.topCategory, summary.totalRevenue, summary.totalTransactions]);
 
   useEffect(() => {
     void generateReport(false);

@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', '.vercel/**', 'test 1/**']
+    ignores: ['dist/**', 'node_modules/**', '.vercel/**', '.next/**', 'coverage/**', 'test 1/**']
   },
   {
     files: ['**/*.{ts,tsx}'],
@@ -28,7 +28,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-empty': 'warn',
       'prefer-const': 'warn',
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }]
+      'react-refresh/only-export-components': 'off'
     }
   },
   {

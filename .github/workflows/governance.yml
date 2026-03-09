@@ -30,6 +30,15 @@ jobs:
               return;
             }
 
+            const openTrustBugs = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open label:P0-trust`
+            });
+
+            if ((openTrustBugs.data?.total_count || 0) > 0) {
+              core.setFailed('Merge blocked: open P0-trust issue(s) exist. Resolve or relabel them before merging.');
+              return;
+            }
+
             const trustPathPatterns = [
               /^api\//,
               /^services\/authService\.ts$/,
@@ -110,6 +119,15 @@ jobs:
             const before = context.payload.before;
             const after = context.payload.after;
             const branchRef = context.ref || '';
+
+            const openTrustBugs = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open label:P0-trust`
+            });
+
+            if ((openTrustBugs.data?.total_count || 0) > 0) {
+              core.setFailed('Direct push blocked: open P0-trust issue(s) exist. Resolve or relabel them first.');
+              return;
+            }
 
             if (!before || !after) {
               core.info('Push payload missing commit range; skipping direct-push governance check.');

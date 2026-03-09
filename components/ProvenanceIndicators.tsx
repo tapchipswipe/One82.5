@@ -1,5 +1,5 @@
 import React from 'react';
-import { StorageService } from '../services/storage';
+import { StorageService } from '@/services/storage';
 
 interface ProvenanceBadgesProps {
   showAiGenerated?: boolean;

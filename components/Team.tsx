@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, Calculator, CheckCircle2, Link2, TrendingDown, TrendingUp, Users, SlidersHorizontal, X } from 'lucide-react';
-import { generateSalesReps, SalesRep, SimulationService, PortfolioMerchant } from '../services/simulationService';
-import { StorageService } from '../services/storage';
-import { BuyRateProfile, CommissionLineItem, CommissionRun, Transaction } from '../types';
+import { generateSalesReps, SalesRep, SimulationService, PortfolioMerchant } from '@/services/simulationService';
+import { StorageService } from '@/services/storage';
+import { BuyRateProfile, CommissionLineItem, CommissionRun, Transaction } from '@/types';
 
 type RepAssignment = {
   rep: SalesRep;
@@ -20,23 +20,85 @@ type CommissionRules = {
   lowVolumeThreshold: number;
   lowVolumeRate: number;
   merchantOverrides: Record<string, number>;
+  repOverrides: Record<string, number>;
+  dealOverrides: Record<string, number>;
+  excessMarkupThresholdBps: number;
+  excessMarkupShare: number;
+  excessServiceFeeThreshold: number;
+  excessServiceFeeShare: number;
 };
 
 const COMMISSION_RULES_KEY = 'one82_commission_rules';
 
-const parseMerchantOverrides = (value: string): Record<string, number> => {
+const clampPercentToDecimal = (value: number, fallback = 0): number => {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
+};
+
+const parsePercentOverrides = (
+  value: string,
+  mapKey: (rawKey: string) => string
+): Record<string, number> => {
   return value
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
     .reduce<Record<string, number>>((acc, line) => {
-      const [merchant, rate] = line.split('=');
-      if (!merchant || !rate) return acc;
-      const parsedRate = Number(rate.trim());
+      const [rawKey, rawRate] = line.split('=');
+      if (!rawKey || !rawRate) return acc;
+      const parsedRate = Number(rawRate.trim());
       if (!Number.isFinite(parsedRate)) return acc;
-      acc[merchant.trim().toLowerCase()] = Math.max(0, Math.min(100, parsedRate)) / 100;
+      const nextKey = mapKey(rawKey.trim());
+      if (!nextKey) return acc;
+      acc[nextKey] = clampPercentToDecimal(parsedRate / 100);
       return acc;
     }, {});
+};
+
+const parseMerchantOverrides = (value: string): Record<string, number> =>
+  parsePercentOverrides(value, (key) => normalizeName(key));
+
+const parseRepOverrides = (value: string): Record<string, number> =>
+  parsePercentOverrides(value, (key) => normalizeName(key));
+
+const parseDealOverrides = (value: string): Record<string, number> =>
+  parsePercentOverrides(value, (key) => {
+    const [repName, merchantName] = key.split('|').map((part) => normalizeName(part || ''));
+    if (!repName || !merchantName) return '';
+    return `${repName}|${merchantName}`;
+  });
+
+const DEFAULT_COMMISSION_RULES: CommissionRules = {
+  baseRate: 0.2,
+  highVolumeThreshold: 100000,
+  highVolumeRate: 0.24,
+  lowVolumeThreshold: 10000,
+  lowVolumeRate: 0.15,
+  merchantOverrides: {},
+  repOverrides: {},
+  dealOverrides: {},
+  excessMarkupThresholdBps: 35,
+  excessMarkupShare: 0.5,
+  excessServiceFeeThreshold: 10,
+  excessServiceFeeShare: 0.5
+};
+
+const normalizeCommissionRules = (input?: Partial<CommissionRules>): CommissionRules => {
+  const source = input || {};
+  return {
+    baseRate: clampPercentToDecimal(source.baseRate ?? DEFAULT_COMMISSION_RULES.baseRate, DEFAULT_COMMISSION_RULES.baseRate),
+    highVolumeThreshold: Math.max(0, Number(source.highVolumeThreshold ?? DEFAULT_COMMISSION_RULES.highVolumeThreshold)),
+    highVolumeRate: clampPercentToDecimal(source.highVolumeRate ?? DEFAULT_COMMISSION_RULES.highVolumeRate, DEFAULT_COMMISSION_RULES.highVolumeRate),
+    lowVolumeThreshold: Math.max(0, Number(source.lowVolumeThreshold ?? DEFAULT_COMMISSION_RULES.lowVolumeThreshold)),
+    lowVolumeRate: clampPercentToDecimal(source.lowVolumeRate ?? DEFAULT_COMMISSION_RULES.lowVolumeRate, DEFAULT_COMMISSION_RULES.lowVolumeRate),
+    merchantOverrides: source.merchantOverrides || {},
+    repOverrides: source.repOverrides || {},
+    dealOverrides: source.dealOverrides || {},
+    excessMarkupThresholdBps: Math.max(0, Number(source.excessMarkupThresholdBps ?? DEFAULT_COMMISSION_RULES.excessMarkupThresholdBps)),
+    excessMarkupShare: clampPercentToDecimal(source.excessMarkupShare ?? DEFAULT_COMMISSION_RULES.excessMarkupShare, DEFAULT_COMMISSION_RULES.excessMarkupShare),
+    excessServiceFeeThreshold: Math.max(0, Number(source.excessServiceFeeThreshold ?? DEFAULT_COMMISSION_RULES.excessServiceFeeThreshold)),
+    excessServiceFeeShare: clampPercentToDecimal(source.excessServiceFeeShare ?? DEFAULT_COMMISSION_RULES.excessServiceFeeShare, DEFAULT_COMMISSION_RULES.excessServiceFeeShare)
+  };
 };
 
 const formatCurrency = (value: number): string =>
@@ -126,14 +188,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
     const userKey = StorageService.getUser()?.email || 'default';
     const raw = localStorage.getItem(COMMISSION_RULES_KEY);
     const allRules = raw ? (JSON.parse(raw) as Record<string, CommissionRules>) : {};
-    return allRules[userKey] || {
-      baseRate: 0.2,
-      highVolumeThreshold: 100000,
-      highVolumeRate: 0.24,
-      lowVolumeThreshold: 10000,
-      lowVolumeRate: 0.15,
-      merchantOverrides: {}
-    };
+    return normalizeCommissionRules(allRules[userKey]);
   });
   const [rulesDraft, setRulesDraft] = useState({
     baseRatePercent: '',
@@ -141,8 +196,16 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
     highVolumeRatePercent: '',
     lowVolumeThreshold: '',
     lowVolumeRatePercent: '',
-    merchantOverridesText: ''
+    merchantOverridesText: '',
+    repOverridesText: '',
+    dealOverridesText: '',
+    excessMarkupThresholdBps: '',
+    excessMarkupSharePercent: '',
+    excessServiceFeeThreshold: '',
+    excessServiceFeeSharePercent: ''
   });
+  const [repMerchantSearch, setRepMerchantSearch] = useState<Record<string, string>>({});
+  const [expandedRepIds, setExpandedRepIds] = useState<Set<string>>(new Set());
 
   const reps = useMemo(() => {
     if (isDemoMode) return generateSalesReps();
@@ -255,23 +318,62 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
         const markupBps = profile?.markupBps ?? 35;
         const serviceFeeMonthly = profile?.serviceFeeMonthly ?? 10;
         const residualRevenue = volume * (markupBps / 10000) + serviceFeeMonthly;
-        const merchantOverride = commissionRules.merchantOverrides[merchant.name.trim().toLowerCase()];
-        const effectiveRate = Number.isFinite(merchantOverride)
-          ? merchantOverride
-          : volume >= commissionRules.highVolumeThreshold
-            ? commissionRules.highVolumeRate
-            : volume <= commissionRules.lowVolumeThreshold
-              ? commissionRules.lowVolumeRate
-              : commissionRules.baseRate;
-        const payout = residualRevenue * effectiveRate;
+
+        const repKey = normalizeName(rep.name);
+        const merchantKey = normalizeName(merchant.name);
+        const dealKey = `${repKey}|${merchantKey}`;
+
+        const merchantOverride = commissionRules.merchantOverrides[merchantKey];
+        const repOverride = commissionRules.repOverrides[repKey];
+        const dealOverride = commissionRules.dealOverrides[dealKey];
+
+        const thresholdRate = volume >= commissionRules.highVolumeThreshold
+          ? commissionRules.highVolumeRate
+          : volume <= commissionRules.lowVolumeThreshold
+            ? commissionRules.lowVolumeRate
+            : commissionRules.baseRate;
+
+        const baseRate = Number.isFinite(dealOverride)
+          ? dealOverride
+          : Number.isFinite(repOverride)
+            ? repOverride
+            : Number.isFinite(merchantOverride)
+              ? merchantOverride
+              : thresholdRate;
+
+        const appliedRule = Number.isFinite(dealOverride)
+          ? 'Deal Override'
+          : Number.isFinite(repOverride)
+            ? 'Rep Override'
+            : Number.isFinite(merchantOverride)
+              ? 'Merchant Override'
+              : volume >= commissionRules.highVolumeThreshold
+                ? 'High Volume Tier'
+                : volume <= commissionRules.lowVolumeThreshold
+                  ? 'Low Volume Tier'
+                  : 'Base Tier';
+
+        const excessMarkupRevenue = volume * (Math.max(0, markupBps - commissionRules.excessMarkupThresholdBps) / 10000);
+        const excessServiceFeeRevenue = Math.max(0, serviceFeeMonthly - commissionRules.excessServiceFeeThreshold);
+        const basePayout = residualRevenue * baseRate;
+        const excessPayout =
+          excessMarkupRevenue * commissionRules.excessMarkupShare +
+          excessServiceFeeRevenue * commissionRules.excessServiceFeeShare;
+        const payout = basePayout + excessPayout;
+
         return {
           id: `${rep.id}_${merchant.id}`,
           repName: rep.name,
           merchantName: merchant.name,
           volume,
           residualRevenue,
-          commissionRate: effectiveRate,
+          commissionRate: baseRate,
           payout,
+          basePayout,
+          excessPayout,
+          excessMarkupRevenue,
+          excessServiceFeeRevenue,
+          appliedRule,
           exception: volume <= 0
             ? 'No volume for selected period'
             : profile
@@ -289,12 +391,14 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   }, [draftLineItems]);
 
   const repRollups = useMemo(() => {
-    const grouped = new Map<string, { volume: number; residual: number; payout: number; lineCount: number; exceptions: number }>();
+    const grouped = new Map<string, { volume: number; residual: number; payout: number; basePayout: number; excessPayout: number; lineCount: number; exceptions: number }>();
     draftLineItems.forEach((lineItem) => {
-      const current = grouped.get(lineItem.repName) || { volume: 0, residual: 0, payout: 0, lineCount: 0, exceptions: 0 };
+      const current = grouped.get(lineItem.repName) || { volume: 0, residual: 0, payout: 0, basePayout: 0, excessPayout: 0, lineCount: 0, exceptions: 0 };
       current.volume += lineItem.volume;
       current.residual += lineItem.residualRevenue;
       current.payout += lineItem.payout;
+      current.basePayout += lineItem.basePayout || lineItem.payout;
+      current.excessPayout += lineItem.excessPayout || 0;
       current.lineCount += 1;
       if (lineItem.exception) current.exceptions += 1;
       grouped.set(lineItem.repName, current);
@@ -324,8 +428,14 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   };
 
   const openRulesModal = () => {
-    const overridesText = Object.entries(commissionRules.merchantOverrides as Record<string, number>)
+    const merchantOverridesText = Object.entries(commissionRules.merchantOverrides as Record<string, number>)
       .map(([merchant, rate]) => `${merchant}=${Math.round(rate * 100)}`)
+      .join('\n');
+    const repOverridesText = Object.entries(commissionRules.repOverrides as Record<string, number>)
+      .map(([repName, rate]) => `${repName}=${Math.round(rate * 100)}`)
+      .join('\n');
+    const dealOverridesText = Object.entries(commissionRules.dealOverrides as Record<string, number>)
+      .map(([dealKey, rate]) => `${dealKey}=${Math.round(rate * 100)}`)
       .join('\n');
 
     setRulesDraft({
@@ -334,20 +444,32 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
       highVolumeRatePercent: String(Math.round(commissionRules.highVolumeRate * 100)),
       lowVolumeThreshold: String(commissionRules.lowVolumeThreshold),
       lowVolumeRatePercent: String(Math.round(commissionRules.lowVolumeRate * 100)),
-      merchantOverridesText: overridesText
+      merchantOverridesText,
+      repOverridesText,
+      dealOverridesText,
+      excessMarkupThresholdBps: String(commissionRules.excessMarkupThresholdBps),
+      excessMarkupSharePercent: String(Math.round(commissionRules.excessMarkupShare * 100)),
+      excessServiceFeeThreshold: String(commissionRules.excessServiceFeeThreshold),
+      excessServiceFeeSharePercent: String(Math.round(commissionRules.excessServiceFeeShare * 100))
     });
     setShowRulesModal(true);
   };
 
   const saveRules = () => {
-    const nextRules: CommissionRules = {
-      baseRate: Math.max(0, Math.min(1, Number(rulesDraft.baseRatePercent || '20') / 100)),
-      highVolumeThreshold: Math.max(0, Number(rulesDraft.highVolumeThreshold || '0')),
-      highVolumeRate: Math.max(0, Math.min(1, Number(rulesDraft.highVolumeRatePercent || '24') / 100)),
-      lowVolumeThreshold: Math.max(0, Number(rulesDraft.lowVolumeThreshold || '0')),
-      lowVolumeRate: Math.max(0, Math.min(1, Number(rulesDraft.lowVolumeRatePercent || '15') / 100)),
-      merchantOverrides: parseMerchantOverrides(rulesDraft.merchantOverridesText)
-    };
+    const nextRules = normalizeCommissionRules({
+      baseRate: Number(rulesDraft.baseRatePercent || '20') / 100,
+      highVolumeThreshold: Number(rulesDraft.highVolumeThreshold || '0'),
+      highVolumeRate: Number(rulesDraft.highVolumeRatePercent || '24') / 100,
+      lowVolumeThreshold: Number(rulesDraft.lowVolumeThreshold || '0'),
+      lowVolumeRate: Number(rulesDraft.lowVolumeRatePercent || '15') / 100,
+      merchantOverrides: parseMerchantOverrides(rulesDraft.merchantOverridesText),
+      repOverrides: parseRepOverrides(rulesDraft.repOverridesText),
+      dealOverrides: parseDealOverrides(rulesDraft.dealOverridesText),
+      excessMarkupThresholdBps: Number(rulesDraft.excessMarkupThresholdBps || '35'),
+      excessMarkupShare: Number(rulesDraft.excessMarkupSharePercent || '50') / 100,
+      excessServiceFeeThreshold: Number(rulesDraft.excessServiceFeeThreshold || '10'),
+      excessServiceFeeShare: Number(rulesDraft.excessServiceFeeSharePercent || '50') / 100
+    });
 
     setCommissionRules(nextRules);
     const userKey = StorageService.getUser()?.email || 'default';
@@ -456,10 +578,78 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
               <label className="text-xs text-gray-600 md:col-span-2">
                 Merchant Overrides (one per line: merchant=rate%)
                 <textarea
-                  rows={5}
+                  rows={4}
                   value={rulesDraft.merchantOverridesText}
                   onChange={(event) => setRulesDraft((current) => ({ ...current, merchantOverridesText: event.target.value }))}
                   placeholder="alpha grocery=30\ncity salon=18"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600 md:col-span-2">
+                Rep Overrides (one per line: rep=rate%)
+                <textarea
+                  rows={3}
+                  value={rulesDraft.repOverridesText}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, repOverridesText: event.target.value }))}
+                  placeholder="alex torres=32\njordan lee=28"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600 md:col-span-2">
+                Deal Overrides (one per line: rep|merchant=rate%)
+                <textarea
+                  rows={3}
+                  value={rulesDraft.dealOverridesText}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, dealOverridesText: event.target.value }))}
+                  placeholder="alex torres|northside market=35"
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Excess Markup Threshold (bps)
+                <input
+                  type="number"
+                  min={0}
+                  value={rulesDraft.excessMarkupThresholdBps}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, excessMarkupThresholdBps: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Excess Markup Rep Share %
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={rulesDraft.excessMarkupSharePercent}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, excessMarkupSharePercent: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Excess Service Fee Threshold ($)
+                <input
+                  type="number"
+                  min={0}
+                  value={rulesDraft.excessServiceFeeThreshold}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, excessServiceFeeThreshold: event.target.value }))}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Excess Service Fee Rep Share %
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={rulesDraft.excessServiceFeeSharePercent}
+                  onChange={(event) => setRulesDraft((current) => ({ ...current, excessServiceFeeSharePercent: event.target.value }))}
                   className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
                 />
               </label>
@@ -531,7 +721,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
               onChange={(event) => setSelectedPeriod(event.target.value)}
               className="px-3 py-2 rounded-lg border border-gray-300 text-sm"
             />
-            <span className="text-xs text-gray-600">Base rate: {Math.round(commissionRules.baseRate * 100)}%</span>
+            <span className="text-xs text-gray-600">Base rate: {Math.round(commissionRules.baseRate * 100)}% · Excess share: {Math.round(commissionRules.excessMarkupShare * 100)}% markup / {Math.round(commissionRules.excessServiceFeeShare * 100)}% fee</span>
             <button
               type="button"
               onClick={openRulesModal}
@@ -575,7 +765,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 border-y border-gray-200">
               <tr>
-                {['Rep', 'Merchant', 'Volume', 'Residual', 'Rate', 'Payout', 'Exception'].map((header) => (
+                {['Rep', 'Merchant', 'Volume', 'Residual', 'Rate', 'Model', 'Payout', 'Exception'].map((header) => (
                   <th key={header} className="px-3 py-2 text-xs uppercase tracking-wide text-gray-500 font-semibold">{header}</th>
                 ))}
               </tr>
@@ -588,7 +778,13 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                   <td className="px-3 py-2 font-mono text-gray-700">{formatCurrency(lineItem.volume)}</td>
                   <td className="px-3 py-2 font-mono text-gray-700">{formatCurrency(lineItem.residualRevenue)}</td>
                   <td className="px-3 py-2 text-gray-700">{Math.round(lineItem.commissionRate * 100)}%</td>
-                  <td className="px-3 py-2 font-mono font-semibold text-indigo-700">{formatCurrency(lineItem.payout)}</td>
+                  <td className="px-3 py-2 text-gray-700">{lineItem.appliedRule || 'Base Tier'}</td>
+                  <td className="px-3 py-2 font-mono font-semibold text-indigo-700">
+                    {formatCurrency(lineItem.payout)}
+                    <span className="ml-2 text-[11px] font-normal text-gray-500">
+                      ({formatCurrency(lineItem.basePayout || lineItem.payout)} + {formatCurrency(lineItem.excessPayout || 0)})
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-xs text-amber-600">{lineItem.exception || '—'}</td>
                 </tr>
               ))}
@@ -618,6 +814,8 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                   <th className="py-2 pr-3 text-left font-semibold">Rep</th>
                   <th className="py-2 pr-3 text-left font-semibold">Volume</th>
                   <th className="py-2 pr-3 text-left font-semibold">Residual Base</th>
+                  <th className="py-2 pr-3 text-left font-semibold">Base Payout</th>
+                  <th className="py-2 pr-3 text-left font-semibold">Excess Payout</th>
                   <th className="py-2 pr-3 text-left font-semibold">Commission Payout</th>
                   <th className="py-2 pr-3 text-left font-semibold">Lines</th>
                   <th className="py-2 text-left font-semibold">Exceptions</th>
@@ -629,6 +827,8 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                     <td className="py-2 pr-3 text-gray-700">{rollup.repName}</td>
                     <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.volume)}</td>
                     <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.residual)}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.basePayout)}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.excessPayout)}</td>
                     <td className="py-2 pr-3 font-mono font-semibold text-indigo-700">{formatCurrency(rollup.payout)}</td>
                     <td className="py-2 pr-3 text-gray-700">{rollup.lineCount}</td>
                     <td className="py-2 text-amber-600">{rollup.exceptions}</td>
@@ -675,7 +875,46 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {assignedMerchants.map((merchant) => (
+                {(() => {
+                  const query = (repMerchantSearch[rep.id] || '').trim().toLowerCase();
+                  const filteredMerchants = query
+                    ? assignedMerchants.filter((merchant) => {
+                      const haystack = [merchant.name, merchant.businessType, merchant.status, merchant.churnRisk]
+                        .join(' ')
+                        .toLowerCase();
+                      return haystack.includes(query);
+                    })
+                    : assignedMerchants;
+                  const isExpanded = expandedRepIds.has(rep.id);
+                  const visibleMerchants = isExpanded ? filteredMerchants : filteredMerchants.slice(0, 5);
+
+                  return (
+                    <>
+                      <div className="md:col-span-2 xl:col-span-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <input
+                          type="text"
+                          value={repMerchantSearch[rep.id] || ''}
+                          onChange={(event) => setRepMerchantSearch((current) => ({ ...current, [rep.id]: event.target.value }))}
+                          placeholder={`Search ${rep.name}'s merchants...`}
+                          className="w-full sm:max-w-xs px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                        />
+                        {filteredMerchants.length > 5 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedRepIds((current) => {
+                              const next = new Set(current);
+                              if (next.has(rep.id)) next.delete(rep.id);
+                              else next.add(rep.id);
+                              return next;
+                            })}
+                            className="inline-flex items-center rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            {isExpanded ? 'Show Top 5' : 'View All'}
+                          </button>
+                        )}
+                      </div>
+
+                      {visibleMerchants.map((merchant) => (
                   <article key={`${rep.id}_${merchant.id}`} className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-1.5">
                     <p className="font-semibold text-gray-900">{merchant.name}</p>
                     <p className="text-xs text-gray-600">{merchant.businessType}</p>
@@ -683,7 +922,10 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
                     <p className="text-xs text-gray-700">Churn Risk: {merchant.churnRisk}</p>
                     <p className="text-xs text-gray-700">Status: {merchant.status}</p>
                   </article>
-                ))}
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))}

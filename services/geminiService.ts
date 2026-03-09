@@ -1,12 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
-import { BusinessType, DailyMetric, Transaction, Review } from "../types";
+import { BusinessType, DailyMetric, MerchantStatementAnalysis, Review, Transaction } from "@/types";
+import { PortfolioMerchant } from "@/services/simulationService";
 
 // Helper to get API Key securely from LocalStorage
-const getApiKey = () => {
+const getApiKey = (): string => {
   return localStorage.getItem('GEMINI_API_KEY') || '';
 };
 
-const isTrialMode = () => localStorage.getItem('one82_data_mode') === 'backend';
+const isTrialMode = (): boolean => localStorage.getItem('one82_data_mode') === 'backend';
 
 const getTrialUnavailableMessage = (feature: string) =>
   `${feature} is unavailable in Auth Login until a Gemini API key is configured.`;
@@ -14,7 +15,7 @@ const getTrialUnavailableMessage = (feature: string) =>
 const getTrialDataRequiredMessage = (feature: string, action: string) =>
   `${feature} is blocked in Auth Login until trusted data is available. Next step: ${action}.`;
 
-const getUnavailableStatementAnalysis = (): import('../types').MerchantStatementAnalysis => ({
+const getUnavailableStatementAnalysis = (): MerchantStatementAnalysis => ({
   merchantName: 'Unavailable in Auth Login',
   mccCode: 'N/A',
   mccDescription: 'Live statement analysis requires a Gemini API key.',
@@ -63,7 +64,7 @@ export const streamDashboardInsights = async (
   businessType: BusinessType,
   timeRange: string,
   onChunk: (text: string) => void
-) => {
+): Promise<void> => {
   const apiKey = getApiKey();
 
   if (isTrialMode() && metrics.length === 0) {
@@ -82,7 +83,7 @@ export const streamDashboardInsights = async (
     const chunks = randomInsight.split(' ');
     for (const chunk of chunks) {
       onChunk(chunk + ' ');
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
     }
     return;
   }
@@ -99,8 +100,7 @@ export const streamDashboardInsights = async (
     for await (const chunk of result) {
       if (chunk.text) onChunk(chunk.text);
     }
-  } catch (error) {
-    console.error("Gemini Service Error:", error);
+  } catch {
     if (isTrialMode()) {
       onChunk(getTrialUnavailableMessage('AI dashboard insights'));
       return;
@@ -115,9 +115,9 @@ export const streamDashboardInsights = async (
  */
 export const chatWithDataStream = async (
   message: string,
-  contextData: any,
+  contextData: { metrics?: DailyMetric[]; transactions?: Transaction[] },
   onChunk: (text: string) => void
-) => {
+): Promise<void> => {
   const apiKey = getApiKey();
   const metrics = Array.isArray(contextData?.metrics) ? contextData.metrics : [];
   const transactions = Array.isArray(contextData?.transactions) ? contextData.transactions : [];
@@ -218,7 +218,7 @@ export const detectAnomalies = async (transactions: Transaction[]): Promise<{ ti
 /**
  * Step 8: Interactive Visualization Analysis
  */
-export const explainDataPoint = async (point: any, businessType: string): Promise<string> => {
+export const explainDataPoint = async (point: { revenue?: number; date?: string }, businessType: string): Promise<string> => {
   const apiKey = getApiKey();
   const revenue = Number(point?.revenue);
   if (isTrialMode() && !Number.isFinite(revenue)) {
@@ -235,7 +235,7 @@ export const explainDataPoint = async (point: any, businessType: string): Promis
   } catch { return "Analysis unavailable."; }
 };
 
-export const generateForecastInsights = async (historical: DailyMetric[]) => {
+export const generateForecastInsights = async (historical: DailyMetric[]): Promise<string> => {
   const apiKey = getApiKey();
   if (isTrialMode() && historical.length === 0) {
     return getTrialDataRequiredMessage('Forecast insights', 'import transactions/metrics or connect a live integration');
@@ -253,7 +253,7 @@ export const generateForecastInsights = async (historical: DailyMetric[]) => {
   } catch { return "Forecast offline."; }
 };
 
-export const analyzeSentiment = async (reviews: Review[]) => {
+export const analyzeSentiment = async (reviews: Review[]): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Sentiment analysis');
   if (!apiKey) return "Overall sentiment is **Positive (85%)**. Customers frequently mention 'Great service' and 'Clean environment'.";
@@ -268,7 +268,7 @@ export const analyzeSentiment = async (reviews: Review[]) => {
   } catch { return "Sentiment unavailable."; }
 };
 
-export const categorizeTransaction = async (transaction: Transaction) => {
+export const categorizeTransaction = async (transaction: Transaction): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey && isTrialMode()) return "Uncategorized";
   if (!apiKey) return transaction.amount > 500 ? "Inventory" : "Miscellaneous";
@@ -283,7 +283,7 @@ export const categorizeTransaction = async (transaction: Transaction) => {
   } catch { return "Uncategorized"; }
 };
 
-export const analyzeTransactionRisk = async (transaction: Transaction) => {
+export const analyzeTransactionRisk = async (transaction: Transaction): Promise<string> => {
   const apiKey = getApiKey();
   if (isTrialMode() && (!transaction || !Number.isFinite(transaction.amount))) {
     return getTrialDataRequiredMessage('Transaction risk analysis', 'open a valid transaction record and retry');
@@ -304,15 +304,15 @@ export const analyzeTransactionRisk = async (transaction: Transaction) => {
 /**
  * NEW: Analyze Portfolio for ISO
  */
-export const analyzePortfolio = async (merchants: any[]): Promise<string> => {
+export const analyzePortfolio = async (merchants: PortfolioMerchant[]): Promise<string> => {
   const apiKey = getApiKey();
 
   if (isTrialMode() && merchants.length === 0) {
     return getTrialDataRequiredMessage('Portfolio AI analysis', 'import merchant roster/transactions or connect a processor integration');
   }
 
-  const generateSimulatedAnalysis = () => {
-    const atRisk = merchants.filter(m => m.churnRisk === 'High').map(m => m.name);
+  const generateSimulatedAnalysis = (): string => {
+    const atRisk = merchants.filter((merchant) => merchant.churnRisk === 'High').map((merchant) => merchant.name);
     return `### ⚡️ AI Analysis (Offline Mode)
     
 1. **Critical Churn Prevention**: ${atRisk.length > 0 ? `Immediate attention needed for **${atRisk.join(', ')}**.` : "No immediate high-risk merchants detected."} Check their latest volume trends in the Ledger below.
@@ -324,8 +324,8 @@ export const analyzePortfolio = async (merchants: any[]): Promise<string> => {
   if (!apiKey) return generateSimulatedAnalysis();
 
   const ai = new GoogleGenAI({ apiKey });
-  const summary = merchants.map(m =>
-    `- ${m.name} (${m.businessType}): Vol $${m.monthlyVolume}, Risk ${m.churnRisk}, Trend ${m.trend}`
+  const summary = merchants.map((merchant) =>
+    `- ${merchant.name} (${merchant.businessType}): Vol $${merchant.monthlyVolume}, Risk ${merchant.churnRisk}, Trend ${merchant.trend}`
   ).join('\n');
 
   const prompt = `You are a payments ISO portfolio manager. Portolio: ${summary}. Identify top 3 critical actions.`;
@@ -363,10 +363,10 @@ export const decodeBase64 = (base64String: string): Uint8Array => {
 
 export const connectLiveAssistant = async ({ onopen, onmessage, onerror, onclose }: {
   onopen: () => void;
-  onmessage: (msg: any) => void;
-  onerror: (err: any) => void;
+  onmessage: (msg: unknown) => void;
+  onerror: (err: unknown) => void;
   onclose: () => void;
-}) => {
+}): Promise<{ sendRealtimeInput: (chunks: Array<{ media: { data: string; mimeType: string } }>) => void; close: () => void }> => {
   const apiKey = getApiKey();
   if (!apiKey) {
     if (isTrialMode()) {
@@ -388,7 +388,7 @@ export const connectLiveAssistant = async ({ onopen, onmessage, onerror, onclose
     const url = `wss://${HOST}/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
     const ws = new WebSocket(url);
 
-    return new Promise<any>((resolve) => {
+    return new Promise<{ sendRealtimeInput: (chunks: Array<{ media: { data: string; mimeType: string } }>) => void; close: () => void }>((resolve) => {
       ws.onopen = () => {
         ws.send(JSON.stringify({
           setup: {
@@ -405,7 +405,7 @@ export const connectLiveAssistant = async ({ onopen, onmessage, onerror, onclose
         }));
         onopen();
         resolve({
-          sendRealtimeInput: (chunks: any[]) => {
+          sendRealtimeInput: (chunks: Array<{ media: { data: string; mimeType: string } }>) => {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: chunks }], turnComplete: true } }));
             }
@@ -440,7 +440,7 @@ export const analyzeStatementFull = async (
     };
   }
 
-  const simulatedResult: import('../types').MerchantStatementAnalysis = {
+  const simulatedResult: MerchantStatementAnalysis = {
     merchantName: "Demo Merchant LLC",
     mccCode: "5812",
     mccDescription: "Eating Places & Restaurants",
@@ -507,11 +507,10 @@ export const analyzeStatementFull = async (
     });
     const text = response.text || '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]) as import('../types').MerchantStatementAnalysis;
+    if (jsonMatch) return JSON.parse(jsonMatch[0]) as MerchantStatementAnalysis;
     if (isTrialMode()) return getUnavailableStatementAnalysis();
     return simulatedResult;
-  } catch (e) {
-    console.error("Statement analysis failed, using simulation.", e);
+  } catch {
     if (isTrialMode()) return getUnavailableStatementAnalysis();
     return simulatedResult;
   }

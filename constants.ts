@@ -1,8 +1,15 @@
 
 import { DailyMetric, Transaction, Review } from './types';
 
-export const ENABLE_EXPERIMENTAL = import.meta.env.VITE_ENABLE_EXPERIMENTAL === 'true';
-export const DISABLE_AI_UI = import.meta.env.VITE_DISABLE_AI_UI === 'true';
+const readEnv = (key: string): string | undefined => {
+  const viteEnv = (typeof import.meta !== 'undefined' && (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env)
+    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+    : undefined;
+  return viteEnv?.[key] ?? process.env[key];
+};
+
+export const ENABLE_EXPERIMENTAL = readEnv('VITE_ENABLE_EXPERIMENTAL') === 'true';
+export const DISABLE_AI_UI = readEnv('VITE_DISABLE_AI_UI') === 'true';
 
 // Expanded to 30 days for a full month experience
 export const MOCK_METRICS: DailyMetric[] = [
@@ -95,6 +102,7 @@ export const BUSINESS_TYPES = [
   { id: 'Service', icon: '💇', label: 'Service Business' },
   { id: 'E-Commerce', icon: '💻', label: 'E-Commerce' },
   { id: 'Convenience Store', icon: '🏪', label: 'Convenience Store' },
+  { id: 'Auto Repair', icon: '🔧', label: 'Auto Repair Shop' },
 ];
 
 export const THEME_COLORS = {

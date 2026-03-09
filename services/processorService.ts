@@ -34,6 +34,37 @@ export interface ProcessorResidualReport {
     merchantCount: number;
 }
 
+interface StripeCharge {
+    id?: string;
+    created?: number;
+    amount?: number;
+    paid?: boolean;
+    customer?: string;
+    metadata?: { merchantId?: string };
+    payment_method_details?: {
+        card?: {
+            brand?: string;
+            present?: boolean;
+        };
+    };
+}
+
+interface StripeBalanceEntry {
+    amount?: number;
+}
+
+interface SquarePayment {
+    id: string;
+    created_at?: string;
+    amount_money?: { amount?: number };
+    card_details?: {
+        card?: { card_brand?: ProcessorTransaction['cardBrand'] };
+        entry_method?: string;
+    };
+    location_id?: string;
+    status?: string;
+}
+
 // ─────────────────────────────────────────────
 // SIMULATION DATA
 // ─────────────────────────────────────────────
@@ -86,8 +117,8 @@ export const stripeService = {
             throw new Error(`Stripe sync failed (${response.status}). Verify API key permissions and retry.`);
         }
 
-        const data = await response.json();
-        const rows = (Array.isArray(data?.data) ? data.data : []) as any[];
+        const data = (await response.json()) as { data?: StripeCharge[] };
+        const rows: StripeCharge[] = Array.isArray(data?.data) ? data.data : [];
 
         const normalized = rows.map((charge) => {
             const brandRaw = String(charge?.payment_method_details?.card?.brand || '').toLowerCase();
@@ -136,8 +167,8 @@ export const stripeService = {
         if (!response.ok) {
             throw new Error(`Stripe balance sync failed (${response.status}).`);
         }
-        const data = await response.json();
-        return data.data?.reduce((acc: number, t: any) => acc + t.amount / 100, 0) ?? 0;
+        const data = (await response.json()) as { data?: StripeBalanceEntry[] };
+        return data.data?.reduce((acc, transaction) => acc + (Number(transaction.amount) || 0) / 100, 0) ?? 0;
     },
 };
 
@@ -163,15 +194,15 @@ export const squareService = {
                 'Square-Version': '2024-01-17',
             },
         });
-        const data = await response.json();
-        return data.payments?.map((p: any) => ({
-            id: p.id,
-            date: p.created_at?.split('T')[0],
-            amount: (p.amount_money?.amount ?? 0) / 100,
-            cardBrand: p.card_details?.card?.card_brand || 'Visa',
-            method: p.card_details?.entry_method === 'SWIPED' ? 'Swiped' : 'Keyed',
-            merchantId: p.location_id,
-            status: p.status === 'COMPLETED' ? 'Settled' : 'Pending',
+        const data = (await response.json()) as { payments?: SquarePayment[] };
+        return data.payments?.map((payment) => ({
+            id: payment.id,
+            date: payment.created_at?.split('T')[0],
+            amount: (payment.amount_money?.amount ?? 0) / 100,
+            cardBrand: payment.card_details?.card?.card_brand || 'Visa',
+            method: payment.card_details?.entry_method === 'SWIPED' ? 'Swiped' : 'Keyed',
+            merchantId: payment.location_id || 'unknown',
+            status: payment.status === 'COMPLETED' ? 'Settled' : 'Pending',
         })) ?? [];
     },
 };
@@ -250,7 +281,7 @@ export const cloverService = {
      * LIVE: GET https://api.clover.com/v3/merchants/{mId}/orders
      * SIMULATION: Returns mock data
      */
-    getOrders: async (merchantId: string): Promise<any[]> => {
+    getOrders: async (merchantId: string): Promise<Array<{ id: string; total: number; createdTime: number; state: string }>> => {
         const key = getIntegrationKey('clover');
         if (!key) {
             if (isAuthTrialMode()) {

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ClipboardList, Send } from 'lucide-react';
-import { StorageService } from '../services/storage';
-import { OnboardingAddress, OnboardingApplicationData, OnboardingDeal, OnboardingOwnerProfile, ProcessorTarget } from '../types';
+import { StorageService } from '@/services/storage';
+import { OnboardingAddress, OnboardingApplicationData, OnboardingDeal, OnboardingOwnerProfile, ProcessorTarget } from '@/types';
 
 const PROCESSOR_DESTINATION_BY_TARGET: Record<ProcessorTarget, 'stripe-underwriting' | 'tsys-boarding' | 'fiserv-boarding' | 'worldpay-boarding' | 'global-boarding'> = {
   stripe: 'stripe-underwriting',

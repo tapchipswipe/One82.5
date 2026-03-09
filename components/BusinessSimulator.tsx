@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { SimulationService, SimulationScenario } from '../services/simulationService';
-import { DailyMetric } from '../types';
+import { SimulationService, SimulationScenario } from '@/services/simulationService';
+import { DailyMetric } from '@/types';
 
 interface BusinessSimulatorProps {
     currentMetrics?: DailyMetric[];

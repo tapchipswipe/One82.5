@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
   Upload, FileText, Loader2, File as FileIcon,
   TrendingUp, TrendingDown, Minus,
   CreditCard, DollarSign, Activity, ShieldCheck, BarChart2
 } from 'lucide-react';
-import { analyzeStatementFull } from '../services/geminiService';
-import { MerchantStatementAnalysis } from '../types';
+import { analyzeStatementFull } from '@/services/geminiService';
+import { MerchantStatementAnalysis } from '@/types';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis
 } from 'recharts';
-import { StorageService } from '../services/storage';
+import { StorageService } from '@/services/storage';
 
 const CARD_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#3b82f6'];
 
@@ -46,6 +47,7 @@ const StatementReader: React.FC = () => {
   const isAuthMode = StorageService.getDataMode() === 'backend';
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [fileValidationError, setFileValidationError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [data, setData] = useState<MerchantStatementAnalysis | null>(null);
   const [volumeToggle, setVolumeToggle] = useState<'daily' | 'monthly' | 'yearly'>('monthly');
@@ -58,14 +60,37 @@ const StatementReader: React.FC = () => {
   };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const f = e.target.files[0];
-      setFile(f);
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(f);
+    const nextFile = e.target.files?.[0];
+    if (!nextFile) return;
+
+    const allowedMimeTypes = new Set([
+      'application/pdf',
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/webp'
+    ]);
+
+    if (!allowedMimeTypes.has(nextFile.type)) {
+      setFile(null);
+      setPreview(null);
       setData(null);
+      setFileValidationError('Unsupported file type. Upload a PDF, PNG, JPG, or WEBP statement file.');
+      return;
     }
+
+    setFileValidationError(null);
+    setFile(nextFile);
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setFile(null);
+      setPreview(null);
+      setData(null);
+      setFileValidationError('File could not be read. Re-export the statement and upload again.');
+    };
+    reader.onloadend = () => setPreview(reader.result as string);
+    reader.readAsDataURL(nextFile);
+    setData(null);
   };
 
   const onAnalyze = async () => {
@@ -216,7 +241,18 @@ const StatementReader: React.FC = () => {
             <input id="stmt-upload" type="file" className="hidden" accept="image/*,application/pdf" onChange={onFileChange} />
             {file ? (
               <div className="text-center">
-                {file.type.includes('pdf') ? <FileIcon className="w-10 h-10 text-red-500 mx-auto mb-2" /> : <img src={preview!} className="max-h-24 rounded mb-2 mx-auto" />}
+                {file.type.includes('pdf') ? (
+                  <FileIcon className="w-10 h-10 text-red-500 mx-auto mb-2" />
+                ) : (
+                  <Image
+                    src={preview || ''}
+                    alt="Statement preview"
+                    width={96}
+                    height={96}
+                    unoptimized
+                    className="max-h-24 rounded mb-2 mx-auto"
+                  />
+                )}
                 <p className="text-sm font-bold truncate max-w-[180px] text-gray-700 dark:text-gray-300">{file.name}</p>
               </div>
             ) : (
@@ -228,7 +264,7 @@ const StatementReader: React.FC = () => {
           </div>
           <button
             onClick={() => void handlePrimaryAction()}
-            disabled={analyzing || (isAuthMode && !file)}
+            disabled={analyzing || (isAuthMode && !file) || Boolean(fileValidationError)}
             className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
           >
             {analyzing
@@ -239,6 +275,9 @@ const StatementReader: React.FC = () => {
                   ? 'Upload Statement Required'
                   : 'Run Demo Analysis'}
           </button>
+          {fileValidationError && (
+            <p className="mt-2 text-xs text-red-600">{fileValidationError}</p>
+          )}
         </div>
 
         {/* Merchant Overview */}

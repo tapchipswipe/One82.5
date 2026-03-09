@@ -1,8 +1,16 @@
-import { User, AppSettings, Transaction, DailyMetric, Review, AppNotification, CreditLog, ActionPlan, UserRole, SmartTask, CalendarEvent, MerchantInvite, MerchantInviteStrategy, ImportAuditEntry, OnboardingDeal, CommissionRun, BuyRateProfile } from '../types';
-import { MOCK_METRICS, MOCK_TRANSACTIONS, MOCK_REVIEWS } from '../constants';
+import { User, AppSettings, Transaction, DailyMetric, Review, AppNotification, CreditLog, ActionPlan, UserRole, SmartTask, CalendarEvent, MerchantInvite, MerchantInviteStrategy, ImportAuditEntry, OnboardingDeal, CommissionRun, BuyRateProfile } from '@/types';
+import { MOCK_METRICS, MOCK_TRANSACTIONS, MOCK_REVIEWS } from '@/constants';
+import { MerchantNote } from '@/services/simulationService';
+
+const readEnv = (key: string): string | undefined => {
+  const viteEnv = (typeof import.meta !== 'undefined' && (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env)
+    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+    : undefined;
+  return viteEnv?.[key] ?? process.env[key];
+};
 
 type DataMode = 'demo' | 'backend';
-const BACKEND_DATA_ENABLED = import.meta.env.VITE_ENABLE_BACKEND_DATA === 'true';
+const BACKEND_DATA_ENABLED = readEnv('VITE_ENABLE_BACKEND_DATA') === 'true';
 
 // Simulated Database Keys
 const STORAGE_KEYS = {
@@ -18,6 +26,7 @@ const STORAGE_KEYS = {
   ACTION_PLANS: 'one82_action_plans',
   SMART_TASKS: 'one82_smart_tasks',
   SMART_TASKS_SEEDED: 'one82_smart_tasks_seeded',
+  MERCHANT_NOTES: 'one82_merchant_notes',
   AI_LAST_RUNS: 'one82_ai_last_runs',
   IMPORT_AUDIT_LOG: 'one82_import_audit_log',
   CALENDAR_EVENTS: 'one82_calendar_events',
@@ -46,7 +55,7 @@ const RUNTIME_CACHE: {
   buyRateProfiles?: BuyRateProfile[];
 } = {};
 
-const DATA_API_BASE = (import.meta.env.VITE_DATA_API_BASE || '').replace(/\/$/, '');
+const DATA_API_BASE = (readEnv('VITE_DATA_API_BASE') || '').replace(/\/$/, '');
 
 const getDataApiUrl = (path: string): string => {
   if (!DATA_API_BASE) return path;
@@ -62,9 +71,8 @@ const normalizeDataMode = (mode: DataMode): DataMode => {
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
-  revenueGoal: 10000,
   notifications: true,
-  theme: 'system',
+  theme: 'dark',
   primaryColor: 'green',
   aiResponseStyle: 50, // Default to Balanced
   showAiConfidenceInProjections: true
@@ -98,6 +106,12 @@ const getIsoOpsScopeKey = (): string => {
   const user = StorageService.getUser();
   const identity = user?.id || user?.email || 'guest';
   return `${identity}::iso_ops`;
+};
+
+const getMerchantNotesScopeKey = (): string => {
+  const user = StorageService.getUser();
+  const identity = user?.id || user?.email || 'guest';
+  return `${identity}::merchant_notes`;
 };
 
 export const StorageService = {
@@ -471,6 +485,25 @@ export const StorageService = {
     const seededByScope = data ? (JSON.parse(data) as Record<string, boolean>) : {};
     seededByScope[getTaskScopeKey(role)] = true;
     localStorage.setItem(STORAGE_KEYS.SMART_TASKS_SEEDED, JSON.stringify(seededByScope));
+  },
+
+  getMerchantNotes: (merchantId: string, fallbackNotes: MerchantNote[] = []): MerchantNote[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.MERCHANT_NOTES);
+    if (!data) return fallbackNotes;
+
+    const allNotes = JSON.parse(data) as Record<string, Record<string, MerchantNote[]>>;
+    const scopedNotes = allNotes[getMerchantNotesScopeKey()] || {};
+    return scopedNotes[merchantId] || fallbackNotes;
+  },
+
+  saveMerchantNotes: (merchantId: string, notes: MerchantNote[]): void => {
+    const data = localStorage.getItem(STORAGE_KEYS.MERCHANT_NOTES);
+    const allNotes = data ? (JSON.parse(data) as Record<string, Record<string, MerchantNote[]>>) : {};
+    const scopeKey = getMerchantNotesScopeKey();
+    const scopedNotes = allNotes[scopeKey] || {};
+    scopedNotes[merchantId] = notes;
+    allNotes[scopeKey] = scopedNotes;
+    localStorage.setItem(STORAGE_KEYS.MERCHANT_NOTES, JSON.stringify(allNotes));
   },
 
   getCalendarEvents: (role: UserRole): CalendarEvent[] => {

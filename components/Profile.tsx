@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Save, User as UserIcon, Building2, Mail, Briefcase } from 'lucide-react';
-import { BUSINESS_TYPES } from '../constants';
-import { User } from '../types';
+import { BUSINESS_TYPES } from '@/constants';
+import { User } from '@/types';
 
 interface ProfileProps {
   user: User;

@@ -1,3 +1,5 @@
+import { env } from '../../config/env';
+
 type UserRole = 'merchant' | 'iso' | 'overseer';
 
 type User = {
@@ -165,19 +167,19 @@ const DEFAULT_NOTIFICATIONS: AppNotification[] = [];
 
 const DEFAULT_TRANSACTIONS: Transaction[] = [];
 
-const OVERSEER_EMAIL = (process.env.VITE_OVERSEER_EMAIL || 'owner@one82.io').toLowerCase();
+const OVERSEER_EMAIL = env.app.overseerEmail;
 const SESSION_COOKIE = 'one82_backend_session';
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const STATE_TABLE = process.env.ONE82_SUPABASE_STATE_TABLE || 'one82_state';
-const LOGIN_USERS_TABLE = process.env.ONE82_SUPABASE_LOGIN_USERS_TABLE || 'one82_login_users';
-const LOGIN_SESSIONS_TABLE = process.env.ONE82_SUPABASE_LOGIN_SESSIONS_TABLE || 'one82_login_sessions';
-const TENANTS_TABLE = process.env.ONE82_SUPABASE_TENANTS_TABLE || 'one82_tenants';
-const MERCHANTS_TABLE = process.env.ONE82_SUPABASE_MERCHANTS_TABLE || 'one82_merchants';
-const TEAM_MEMBERS_TABLE = process.env.ONE82_SUPABASE_TEAM_MEMBERS_TABLE || 'one82_team_members';
-const PROCESSOR_TRANSACTIONS_TABLE = process.env.ONE82_SUPABASE_PROCESSOR_TRANSACTIONS_TABLE || 'one82_processor_transactions';
-const IMPORT_JOBS_TABLE = process.env.ONE82_SUPABASE_IMPORT_JOBS_TABLE || 'one82_import_jobs';
+const SUPABASE_URL = env.supabase.url;
+const SUPABASE_SERVICE_ROLE_KEY = env.supabase.serviceRoleKey;
+const SUPABASE_ANON_KEY = env.supabase.anonKey;
+const STATE_TABLE = env.tables.state;
+const LOGIN_USERS_TABLE = env.tables.loginUsers;
+const LOGIN_SESSIONS_TABLE = env.tables.loginSessions;
+const TENANTS_TABLE = env.tables.tenants;
+const MERCHANTS_TABLE = env.tables.merchants;
+const TEAM_MEMBERS_TABLE = env.tables.teamMembers;
+const PROCESSOR_TRANSACTIONS_TABLE = env.tables.processorTransactions;
+const IMPORT_JOBS_TABLE = env.tables.importJobs;
 
 const getMemoryStore = (): Map<string, TenantState> => {
   const globalValue = globalThis as typeof globalThis & { __one82MemStore?: Map<string, TenantState> };

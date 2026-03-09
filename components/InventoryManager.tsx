@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, Truck, Search } from 'lucide-react';
-import { InventoryService } from '../services/inventoryService';
-import { StorageService } from '../services/storage';
-import { InventoryItem } from '../types';
+import { InventoryService } from '@/services/inventoryService';
+import { StorageService } from '@/services/storage';
+import { InventoryItem } from '@/types';
 
 const InventoryManager: React.FC = () => {
     const isAuthTrialMode = StorageService.getDataMode() === 'backend';

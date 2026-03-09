@@ -75,7 +75,7 @@ Built with a modern, high-performance stack:
 | Role-based app shell, dashboards, and navigation | **Live** | Available in current front-end experience |
 | Statement upload + AI-assisted analysis UX | **Live (AI-Assisted)** | Analysis quality depends on model response and input quality |
 | Portfolio/merchant metrics in demo mode | **Simulated** | Seeded/generated data for product walkthroughs |
-| Processor integrations (Stripe/Square/Clover/TSYS/Fiserv/etc.) | **Stripe-first Live / Mixed** | Stripe now supports explicit in-app live sync; remaining processors are phased rollout |
+| Processor integrations (Stripe/Square/Clover/TSYS/Fiserv/etc.) | **Live / Mixed** | ISO can choose preferred processor path; Stripe sync remains available |
 | Per-rep profitability from live processor data | **Live (Buy-Rate-Aware)** | Deterministic rep assignment + buy-rate rollups are active in Team/Profitability |
 | Churn detection and health scoring on live portfolio streams | **Roadmap** | Current alerts are demo/simulation-driven |
 | Merchant inventory intelligence from live POS data | **Roadmap** | Current experience is prototype intelligence UX |
@@ -89,7 +89,7 @@ This is the primary implementation focus before expanding additional feature sur
 Implementation and roadmap decisions must align with [docs/vision-lock-v1.md](docs/vision-lock-v1.md).
 
 - **ISO-first GTM:** primary paid customer is the ISO; avoid merchant-direct self-serve assumptions for production flows.
-- **Pilot execution lock:** prioritize 1-3 design-partner ISOs and Stripe as the first full production integration path.
+- **Pilot execution lock:** prioritize 1-3 design-partner ISOs with processor-choice-first onboarding.
 - **Auth/data trust model:** in auth/backend mode, browser cache is convenience only (never source of truth); enforce backend tenant isolation, API-layer RBAC, and full session revocation on logout.
 - **Provenance + AI safety:** show source context on major analytics surfaces, hard-block AI in auth mode when required provenance is missing/unknown, never fabricate values when inputs are incomplete, and do not substitute simulated AI output in auth mode.
 - **Priority order (90 days):** integration reliability and statement reader accuracy outrank net-new AI surface area.
@@ -108,7 +108,7 @@ Use this checklist before requesting review:
 - [ ] Logout/session flows preserve full session revocation behavior.
 - [ ] AI features are provenance-gated where required and avoid fabricated outputs on missing inputs.
 - [ ] Integration-driven views surface sync failures and freshness signals where relevant.
-- [ ] Stripe-first onboarding/integration path remains explicit as the recommended production path.
+- [ ] Onboarding/integration supports processor choice based on ISO preference.
 - [ ] Change does not prioritize net-new AI surface over integration reliability or statement-reader accuracy.
 - [ ] AI customization changes (if any) stay in Settings-based patterns.
 - [ ] Auth-mode AI flows hard-block (with clear next actions) when required provenance/data is missing.
@@ -128,6 +128,15 @@ Use this checklist before requesting review:
 - Integrations includes a `Run Stripe Sync` action with normalization, dedupe, audit logging, and persisted transaction landing.
 - Team + Profitability now include deterministic commission mapping and rep/portfolio buy-rate rollups.
 - Health checks now support deployment-protected Vercel environments via authenticated fallback in `scripts/check-health.mjs`.
+
+### Decision Update (2026-03-09)
+- CSV contract remains flexible for now; import template provided at `test-data/csv-import-template.csv`.
+- Buy-rate v1 includes guardrails: markup floor enforcement is enabled.
+- Activation KPI bundle for small ISO orgs tracks:
+  - first AI insight generated,
+  - first merchant onboarded,
+  - first sync + dashboard viewed.
+- Mobile target for pilot is near-desktop parity on critical workflows.
 
 ---
 
@@ -207,6 +216,10 @@ To test end-to-end backend mode locally:
 3. Sign in with any email (use an email containing `iso` to auto-map ISO role)
 
 No separate backend process is required for this local dev flow.
+
+### CSV Starter Template
+- Use `test-data/csv-import-template.csv` as a starting point for transaction, merchant, and team imports.
+- Keep provided lowercase headers to reduce mapping prompts.
 
 ### Backend Implementation Artifacts (Supabase)
 - Supabase migration: [supabase/migrations/0001_one82_state.sql](supabase/migrations/0001_one82_state.sql)

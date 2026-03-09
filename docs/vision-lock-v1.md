@@ -259,6 +259,15 @@ Implementation update (2026-03-09):
 - Commission automation is deterministic and buy-rate-informed, with persisted run outputs.
 - Buy-rate visibility now includes merchant, rep, and portfolio rollups.
 
+Decision update (2026-03-09):
+- Processor strategy is now processor-choice-first (ISO preference), not Stripe-first-only.
+- CSV contract remains flexible for now; starter template path is available for predictable imports.
+- Buy-rate v1 includes analytics plus markup-floor guardrails.
+- Activation KPI bundle for small ISO orgs is: first AI insight, first merchant onboarded, and first sync + dashboard viewed.
+- Mobile target for pilot is near-desktop parity on key workflows.
+- Tenant isolation checklist is required and recorded for each release.
+- RBAC + logout revocation verification is required pre-release.
+
 ### Process / Governance
 1. Manual reviewer signoff required for trust/auth PRs.
 2. Pause net-new feature work when P0 trust bug exists.

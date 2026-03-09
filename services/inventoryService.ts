@@ -1,4 +1,4 @@
-import { InventoryItem, Order, Supplier } from '../types';
+import { InventoryItem, Order, Supplier } from '@/types';
 import { StorageService } from './storage';
 
 const isAuthTrialMode = (): boolean => StorageService.getDataMode() === 'backend';
@@ -37,7 +37,6 @@ export const InventoryService = {
     },
 
     placeOrder: async (itemId: string, quantity: number): Promise<boolean> => {
-        console.log(`Placing order for item ${itemId}, qty: ${quantity}`);
         const order: Order = {
             id: `ord_${Date.now()}`,
             itemId,

@@ -1,11 +1,12 @@
-import { requireAuthorized, setApiResponseHeaders, sendMethodNotAllowed } from '../_lib/backend.js';
+import { requireAuthorized, setApiResponseHeaders, sendMethodNotAllowed } from '../_lib/backend';
+import { env } from '../../config/env';
 
 export const config = { runtime: 'nodejs' };
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SYNC_RUNS_TABLE = process.env.ONE82_SUPABASE_SYNC_RUNS_TABLE || 'one82_sync_runs';
-const EVENTS_TABLE = process.env.ONE82_SUPABASE_EVENTS_TABLE || 'one82_events';
+const SUPABASE_URL = env.supabase.url;
+const SUPABASE_SERVICE_ROLE_KEY = env.supabase.serviceRoleKey;
+const SYNC_RUNS_TABLE = env.tables.syncRuns;
+const EVENTS_TABLE = env.tables.events;
 
 const canUseSupabase = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 

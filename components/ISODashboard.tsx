@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import {
     AlertTriangle,
-    ArrowDownRight, Activity, Sparkles, CreditCard,
-    Zap, ArrowUpRight
+    Activity, Sparkles, CreditCard,
+    ArrowDownRight, ArrowUpRight
 } from 'lucide-react';
-import { SimulationService, PortfolioMerchant } from '../services/simulationService';
-import { analyzePortfolio } from '../services/geminiService';
+import { SimulationService, PortfolioMerchant } from '@/services/simulationService';
+import { analyzePortfolio } from '@/services/geminiService';
 import TodoList from './TodoList';
 import MerchantLedger from './MerchantLedger';
-import { StorageService } from '../services/storage';
-import { Transaction } from '../types';
-import { DISABLE_AI_UI } from '../constants';
+import { StorageService } from '@/services/storage';
+import { Transaction } from '@/types';
+import { DISABLE_AI_UI } from '@/constants';
 import { SourceStatusText } from './ProvenanceIndicators';
+
+const cleanAiOpportunityText = (value: string): string[] => {
+    return value
+        .split('\n')
+        .map((line) => line.replace(/[*`#>-]/g, '').replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+};
 
 const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioMerchant[] => {
     const grouped = new Map<string, Transaction[]>();
@@ -72,7 +79,11 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
     });
 };
 
-const ISODashboard: React.FC = () => {
+interface ISODashboardProps {
+    onNavigate?: (view: string) => void;
+}
+
+const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
     const isDemoMode = StorageService.getDataMode() === 'demo';
     const isAuthMode = StorageService.getDataMode() === 'backend';
     const [merchants, setMerchants] = useState<PortfolioMerchant[]>([]);
@@ -80,8 +91,6 @@ const ISODashboard: React.FC = () => {
     const [ccVolume, setCcVolume] = useState(243817.50);
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-    const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY') || '');
     const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('iso-portfolio'));
 
     const markAiRun = () => {
@@ -119,8 +128,6 @@ const ISODashboard: React.FC = () => {
         return () => { clearInterval(portfolioTicker); clearInterval(ccTicker); };
     }, [isDemoMode]);
 
-    const handleSaveApiKey = () => { localStorage.setItem('GEMINI_API_KEY', apiKey); setShowApiKeyInput(false); };
-
     const runAnalysis = async () => {
         if (DISABLE_AI_UI) {
             setAiAnalysis('AI features are temporarily disabled by admin. Use non-AI workflows until the incident toggle is lifted.');
@@ -128,14 +135,8 @@ const ISODashboard: React.FC = () => {
             return;
         }
 
-        if (isAuthMode && !apiKey.trim()) {
-            setAiAnalysis('Portfolio AI analysis is blocked in Auth Login until a Gemini API key is configured in Integrations.');
-            markAiRun();
-            return;
-        }
-
         if (isAuthMode && merchants.length === 0) {
-            setAiAnalysis('Portfolio AI analysis is blocked in Auth Login until trusted merchant/transaction data is available. Next step: import merchant roster/transactions or connect a processor integration.');
+            setAiAnalysis('Portfolio AI analysis is blocked in Auth Login until trusted merchant and transaction data is available. Import data to continue.');
             markAiRun();
             return;
         }
@@ -193,6 +194,13 @@ const ISODashboard: React.FC = () => {
                             <SourceStatusText className="text-xs text-indigo-300 mt-2" />
                             <p className="text-xs text-indigo-300 mt-1">Data freshness: {portfolioFreshness}</p>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => onNavigate?.('statements')}
+                            className="inline-flex items-center self-start rounded-lg border border-indigo-300/50 bg-indigo-500/20 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/30"
+                        >
+                            Upload Statement
+                        </button>
                     </div>
 
                     {/* Hero Stat Row */}
@@ -248,27 +256,8 @@ const ISODashboard: React.FC = () => {
             {/* ── Main Content ── */}
             <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
 
-                {/* AI Config Panel */}
-                {showApiKeyInput && (
-                    <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 shadow-sm">
-                        <h3 className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-indigo-500" /> Configure Gemini AI
-                        </h3>
-                        <div className="flex gap-2">
-                            <input
-                                type="password"
-                                value={apiKey}
-                                onChange={e => setApiKey(e.target.value)}
-                                placeholder="Paste Gemini API Key here..."
-                                className="flex-1 px-3 py-2 border rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white text-sm"
-                            />
-                            <button onClick={handleSaveApiKey} className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold text-sm">
-                                Save Key
-                            </button>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2">Key is stored locally in your browser.</p>
-                    </div>
-                )}
+                {/* Merchant List */}
+                <MerchantLedger merchants={merchants} />
 
                 {/* At Risk + AI Opportunities */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -342,13 +331,13 @@ const ISODashboard: React.FC = () => {
                                 </button>
                             </div>
                             {aiAnalysis ? (
-                                <div className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
-                                    {aiAnalysis.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+                                <div className="text-sm text-gray-700 dark:text-gray-200 space-y-2 leading-relaxed">
+                                    {cleanAiOpportunityText(aiAnalysis).map((line, i) => <p key={i}>{line}</p>)}
                                 </div>
                             ) : (
                                 <div className="text-center py-8">
                                     <Sparkles className="w-8 h-8 text-indigo-300 dark:text-indigo-700 mx-auto mb-2" />
-                                    <p className="text-xs text-gray-400 mb-3">Connect Gemini AI for real-time portfolio insights</p>
+                                    <p className="text-xs text-gray-400 mb-3">Run portfolio analysis on your available data</p>
                                     <button onClick={runAnalysis} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
                                         Run Analysis
                                     </button>
@@ -360,9 +349,6 @@ const ISODashboard: React.FC = () => {
                         <TodoList role="iso" className="h-[260px]" />
                     </div>
                 </div>
-
-                {/* Merchant Ledger */}
-                <MerchantLedger merchants={merchants} />
             </div>
         </div>
     );

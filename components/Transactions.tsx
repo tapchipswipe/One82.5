@@ -1,10 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Download, Wand2, ChevronRight, Plus, X } from 'lucide-react';
-import { StorageService } from '../services/storage';
-import { categorizeTransaction } from '../services/geminiService';
-import { Transaction } from '../types';
+import { StorageService } from '@/services/storage';
+import { categorizeTransaction } from '@/services/geminiService';
+import { Transaction } from '@/types';
 import TransactionDetail from './TransactionDetail';
 import { SourceStatusText } from './ProvenanceIndicators';
+
+const isTransactionCategory = (value: string): value is Transaction['category'] =>
+    value === 'Inventory' ||
+    value === 'Utilities' ||
+    value === 'Payroll' ||
+    value === 'Marketing' ||
+    value === 'Software' ||
+    value === 'Rent' ||
+    value === 'Miscellaneous' ||
+    value === 'Uncategorized';
+
+const isTransactionMethod = (value: string): value is Transaction['method'] =>
+    value === 'Visa' ||
+    value === 'MasterCard' ||
+    value === 'Amex' ||
+    value === 'Square' ||
+    value === 'Stripe' ||
+    value === 'Cash' ||
+    value === 'Apple Pay' ||
+    value === 'Wire';
 
 const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -23,7 +43,12 @@ const Transactions: React.FC = () => {
   });
 
   useEffect(() => {
-    setTransactions(StorageService.getTransactions());
+        const loadTransactions = async () => {
+            const resolved = await StorageService.getTransactionsResolved();
+            setTransactions(resolved);
+        };
+
+        void loadTransactions();
   }, []);
 
     const filteredTransactions = useMemo(() => {
@@ -31,12 +56,14 @@ const Transactions: React.FC = () => {
         if (!query) return transactions;
 
         return transactions.filter((tx) => {
+            const normalizedAmount = tx.amount.toFixed(2);
             const haystack = [
                 tx.id,
                 tx.customer,
                 tx.items.join(' '),
                 String(tx.amount),
-                tx.amount.toFixed(2),
+                normalizedAmount,
+                `$${normalizedAmount}`,
                 new Date(tx.date).toLocaleDateString(),
                 tx.date,
                 tx.category || 'Uncategorized',
@@ -45,7 +72,7 @@ const Transactions: React.FC = () => {
                 .join(' ')
                 .toLowerCase();
 
-            return haystack.includes(query);
+            return haystack.replace(/[,/]/g, '').includes(query.replace(/[,/]/g, ''));
         });
     }, [transactions, searchQuery]);
 
@@ -65,21 +92,13 @@ const Transactions: React.FC = () => {
     }, [dataMode, lastTransactionAt]);
 
   const handleCategorize = async () => {
-        const isAuthMode = StorageService.getDataMode() === 'backend';
-        const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
-
-        if (isAuthMode && !hasGeminiKey) {
-            alert('AI Categorize is blocked in Auth Login until a Gemini API key is configured in Integrations.');
-            return;
-        }
-
     setLoading(true);
 
     const updated = [...transactions];
     // Process first 5 for demo speed
     for (let i = 0; i < Math.min(updated.length, 5); i++) {
         const cat = await categorizeTransaction(updated[i]);
-        updated[i].category = cat as any;
+        updated[i].category = isTransactionCategory(cat) ? cat : 'Uncategorized';
     }
     setTransactions(updated);
     StorageService.saveTransactions(updated);
@@ -110,7 +129,7 @@ const Transactions: React.FC = () => {
         status: 'Completed',
         customer: newTx.customer || 'Walk-in',
         items: newTx.items.split(',').map(s => s.trim()),
-        method: newTx.method as any,
+        method: isTransactionMethod(newTx.method) ? newTx.method : 'Cash',
         category: 'Uncategorized'
     };
     StorageService.addTransaction(tx);
@@ -177,7 +196,7 @@ const Transactions: React.FC = () => {
             <button 
                 onClick={handleCategorize}
                 disabled={loading}
-                className="flex items-center px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+                className="flex items-center px-4 py-2 text-sm font-semibold text-indigo-900 bg-indigo-100 dark:bg-indigo-900/60 dark:text-indigo-100 border border-indigo-300 dark:border-indigo-700 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900/80"
             >
                 <Wand2 className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'Categorizing...' : 'AI Categorize'}

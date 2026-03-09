@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { CalendarDays, TrendingUp } from 'lucide-react';
-import { StorageService } from '../../services/storage';
+import { StorageService } from '@/services/storage';
 import { ProvenanceBadges } from '../ProvenanceIndicators';
 
 interface ForecastPoint {

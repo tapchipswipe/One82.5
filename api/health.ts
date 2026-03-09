@@ -1,8 +1,9 @@
-import { setApiResponseHeaders } from './_lib/backend.js';
+import { setApiResponseHeaders } from './_lib/backend';
+import { env } from '../config/env';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const STATE_TABLE = process.env.ONE82_SUPABASE_STATE_TABLE || 'one82_state';
+const SUPABASE_URL = env.supabase.url;
+const SUPABASE_SERVICE_ROLE_KEY = env.supabase.serviceRoleKey;
+const STATE_TABLE = env.tables.state;
 
 const canUseSupabase = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 
@@ -18,7 +19,14 @@ type HealthPayload = {
   };
 };
 
-export default async function handler(_req: any, res: any) {
+type ApiResponse = {
+  status: (code: number) => ApiResponse;
+  json: (body: unknown) => void;
+  setHeader: (name: string, value: string | string[]) => void;
+  end: (body?: string) => void;
+};
+
+export default async function handler(_req: unknown, res: ApiResponse): Promise<void> {
   setApiResponseHeaders(res, 'public-short');
 
   const payload: HealthPayload = {

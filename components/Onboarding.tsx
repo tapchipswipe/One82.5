@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { BUSINESS_TYPES } from '../constants';
-import { BusinessType, MerchantInviteStrategy, UserRole } from '../types';
+import { BUSINESS_TYPES } from '@/constants';
+import { BusinessType, MerchantInviteStrategy, UserRole } from '@/types';
 import { Store, Building2 } from 'lucide-react';
 
 interface OnboardingProps {
@@ -66,14 +66,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialRole }) => {
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">ISO / Agent</h3>
               <p className="text-slate-500 dark:text-slate-400">
-                I manage a portfolio of merchants and want to analyze statements.
+                I manage a portfolio of merchants and want to analyze my business.
               </p>
             </button>
           </div>
         )}
 
         {step === 2 && role === 'merchant' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {BUSINESS_TYPES.map((type) => (
               <button
                 key={type.id}
@@ -110,7 +110,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialRole }) => {
               />
 
               <div className="mb-4">
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">Merchant Onboarding Strategy</p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">Import Existing Merchant Data</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"

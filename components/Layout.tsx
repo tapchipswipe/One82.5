@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   LayoutDashboard, CreditCard, FileText, Settings, Menu, Moon, Sun,
   LogOut, MessageSquare, Briefcase, TrendingUp, Users, Plug2,
   DollarSign, Bell, ChevronRight, Package, Shield, FlaskConical, CalendarDays
 } from 'lucide-react';
-import { StorageService } from '../services/storage';
-import { AppNotification, User, UserRole } from '../types';
-import { DISABLE_AI_UI, ENABLE_EXPERIMENTAL } from '../constants';
+import type { LucideIcon } from 'lucide-react';
+import { StorageService } from '@/services/storage';
+import { AppNotification, User, UserRole } from '@/types';
+import { DISABLE_AI_UI, ENABLE_EXPERIMENTAL } from '@/constants';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -35,7 +37,7 @@ const Layout: React.FC<LayoutProps> = ({
     return () => window.removeEventListener('user-update', update);
   }, []);
 
-  const NavItem = ({ view, icon: Icon, label }: { view: string; icon: any; label: string }) => {
+  const NavItem = ({ view, icon: Icon, label }: { view: string; icon: LucideIcon; label: string }) => {
     const isActive = activeView === view;
     return (
       <button
@@ -80,9 +82,11 @@ const Layout: React.FC<LayoutProps> = ({
       `}>
         {/* Logo */}
         <div className="flex items-center h-16 px-5 border-b border-gray-200">
-          <img 
-            src="/logos/one82-logo-white-centered-v2.png" 
-            alt="ONE82" 
+          <Image
+            src="/logos/one82-logo-white-centered-v2.png"
+            alt="ONE82"
+            width={40}
+            height={40}
             className="h-10 w-10 object-contain"
           />
           <span className="ml-3 text-gray-900 font-bold text-lg tracking-tight">ONE82</span>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ListChecks } from 'lucide-react';
-import { ActionPlan, UserRole } from '../../types';
-import { StorageService } from '../../services/storage';
+import { ActionPlan, UserRole } from '@/types';
+import { StorageService } from '@/services/storage';
 import { ProvenanceBadges } from '../ProvenanceIndicators';
 
 interface SharedActionPlansDemoProps {

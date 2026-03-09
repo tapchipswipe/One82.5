@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { AuthService } from '../services/authService';
-import { AuthMode, User } from '../types';
+import Image from 'next/image';
+import { AuthService } from '@/services/authService';
+import { AuthMode, User } from '@/types';
 import { Loader2, TrendingUp, Shield, BarChart2, Gift, ArrowLeft } from 'lucide-react';
 
 interface LoginProps {
@@ -71,9 +72,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
         
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <img 
-            src="/logos/one82-logo-white-centered-v2.png" 
-            alt="ONE82" 
+          <Image
+            src="/logos/one82-logo-white-centered-v2.png"
+            alt="ONE82"
+            width={64}
+            height={64}
             className="h-16 w-16 object-contain"
           />
           <span className="text-gray-900 font-bold text-2xl tracking-tight">ONE82</span>
@@ -131,9 +134,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <img 
-              src="/logos/one82-logo-white-centered-v2.png" 
-              alt="ONE82" 
+            <Image
+              src="/logos/one82-logo-white-centered-v2.png"
+              alt="ONE82"
+              width={48}
+              height={48}
               className="h-12 w-12 object-contain"
             />
             <span className="text-gray-900 font-bold text-xl">ONE82</span>

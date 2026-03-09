@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
-import { Save, Bell, DollarSign, Monitor, User as UserIcon, Palette, Server, ShieldAlert, Database, Lock, BrainCircuit } from 'lucide-react';
-import { StorageService } from '../services/storage';
-import { AppSettings, User } from '../types';
-import { THEME_COLORS, BUSINESS_TYPES } from '../constants';
+import { Save, Bell, Monitor, User as UserIcon, Palette, Server, ShieldAlert, Database, Lock, BrainCircuit } from 'lucide-react';
+import { StorageService } from '@/services/storage';
+import { AppSettings, User } from '@/types';
+import { THEME_COLORS, BUSINESS_TYPES } from '@/constants';
+
+const isTheme = (value: string): value is AppSettings['theme'] =>
+    value === 'light' || value === 'dark';
 
 const Settings: React.FC = () => {
-  const [settings, setSettings] = useState<AppSettings>(StorageService.getSettings());
+    const [settings, setSettings] = useState<AppSettings>(() => {
+        const stored = StorageService.getSettings();
+        return {
+            ...stored,
+            theme: stored.theme === 'light' || stored.theme === 'dark' ? stored.theme : 'dark'
+        };
+    });
   const [user, setUser] = useState<User | null>(StorageService.getUser());
   const [saved, setSaved] = useState(false);
 
@@ -60,7 +69,7 @@ const Settings: React.FC = () => {
                         <label className="block text-xs font-medium text-slate-500 mb-1">Business Type</label>
                         <select 
                             value={user.businessType}
-                            onChange={(e) => setUser({...user, businessType: e.target.value as any})}
+                            onChange={(e) => setUser({ ...user, businessType: e.target.value as User['businessType'] })}
                             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
                         >
                             {BUSINESS_TYPES.map(t => (
@@ -81,6 +90,7 @@ const Settings: React.FC = () => {
                 AI Analysis Personality
             </h3>
             <p className="text-xs text-slate-500 mb-6">Choose how granular you want the One82 AI responses to be across the app.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">AI access is subscription-based for active accounts. One82 does not use or deduct AI credits.</p>
             
             <div className="space-y-4 px-2">
                 <div className="flex justify-between items-center mb-1">
@@ -164,23 +174,7 @@ const Settings: React.FC = () => {
 
         <hr className="border-slate-200 dark:border-slate-800" />
 
-        {isMerchant && (
-            <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
-                    <DollarSign className="w-4 h-4 mr-2" />
-                    Monthly Revenue Goal
-                </label>
-                <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                    <input 
-                        type="number" 
-                        value={settings.revenueGoal}
-                        onChange={(e) => setSettings({...settings, revenueGoal: Number(e.target.value)})}
-                        className="w-full pl-8 pr-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
-                    />
-                </div>
-            </div>
-        )}
+        {isMerchant && null}
 
         {/* Notifications */}
         <div className="flex items-center justify-between">
@@ -225,16 +219,19 @@ const Settings: React.FC = () => {
         <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
                 <Monitor className="w-4 h-4 mr-2" />
-                Dark Mode
+                Theme
             </label>
             <select 
                 value={settings.theme}
-                onChange={(e) => setSettings({...settings, theme: e.target.value as any})}
+                                onChange={(e) => {
+                                    const nextTheme = e.target.value;
+                                    if (!isTheme(nextTheme)) return;
+                                    setSettings({ ...settings, theme: nextTheme });
+                                }}
                 className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
             >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
-                <option value="system">System Default</option>
             </select>
         </div>
 

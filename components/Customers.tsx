@@ -4,12 +4,12 @@ import {
     Clock, User, Phone, Mail, ShoppingBag,
     ChevronDown, ChevronUp, AlertCircle, Sparkles
 } from 'lucide-react';
-import { generateCustomers, CustomerProfile } from '../services/simulationService';
+import { generateCustomers, CustomerProfile } from '@/services/simulationService';
 import {
     BarChart, Bar, XAxis, Tooltip,
     ResponsiveContainer
 } from 'recharts';
-import { StorageService } from '../services/storage';
+import { StorageService } from '@/services/storage';
 import { SourceStatusText } from './ProvenanceIndicators';
 
 const LoyaltyBar = ({ score }: { score: number }) => {

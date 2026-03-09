@@ -1,11 +1,27 @@
-import React, { useMemo } from 'react';
-import { TrendingUp, TrendingDown, Minus, Clock, AlertTriangle, Package, Sparkles } from 'lucide-react';
-import { StorageService } from '../services/storage';
-import { InventoryIntelligenceService, InventoryItem } from '../services/inventoryIntelligenceService';
+import React, { useMemo, useState } from 'react';
+import { TrendingUp, TrendingDown, Minus, Clock, AlertTriangle, Package, Sparkles, Search } from 'lucide-react';
+import { StorageService } from '@/services/storage';
+import { InventoryIntelligenceService, InventoryItem } from '@/services/inventoryIntelligenceService';
 
 const InventoryIntelligence: React.FC = () => {
+  const [searchQuery, setSearchQuery] = useState('');
   const transactions = useMemo(() => StorageService.getTransactions(), []);
   const insight = useMemo(() => InventoryIntelligenceService.analyzeInventory(transactions), [transactions]);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const filteredItems = useMemo(() => {
+    if (!normalizedQuery) return insight.items;
+    return insight.items.filter((item) => {
+      const haystack = [
+        item.name,
+        item.reorderRecommendation,
+        item.peakHours.join(' '),
+        String(item.totalSold),
+        String(item.avgDailyRate)
+      ].join(' ').toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [insight.items, normalizedQuery]);
 
   const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) => {
     if (trend === 'up') return <TrendingUp className="w-4 h-4 text-green-600" />;
@@ -98,6 +114,16 @@ const InventoryIntelligence: React.FC = () => {
         <p className="text-gray-600 dark:text-gray-300">
           Transaction-derived stock insights powered by AI pattern analysis
         </p>
+        <div className="mt-4 relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search items by name or recommendation..."
+            className="w-full md:w-[420px] rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-9 pr-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
       </div>
 
       {/* Summary Card */}
@@ -143,17 +169,24 @@ const InventoryIntelligence: React.FC = () => {
       )}
 
       {/* All Items */}
-      {insight.items.length > 0 && (
+      {filteredItems.length > 0 && (
         <div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <Package className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             All Items
           </h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {insight.items.map(item => (
+            {filteredItems.map(item => (
               <ItemRow key={item.name} item={item} />
             ))}
           </div>
+        </div>
+      )}
+
+      {insight.items.length > 0 && filteredItems.length === 0 && (
+        <div className="text-center py-8">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Matching Items</h3>
+          <p className="text-gray-600 dark:text-gray-300">Try a different item name or clear your search.</p>
         </div>
       )}
 

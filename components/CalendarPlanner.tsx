@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Edit3, Sparkles } from 'lucide-react';
-import { CalendarEvent } from '../types';
-import { StorageService } from '../services/storage';
+import { CalendarEvent } from '@/types';
+import { StorageService } from '@/services/storage';
 import { SourceStatusText } from './ProvenanceIndicators';
 
 const toDateKey = (date: Date): string => date.toISOString().slice(0, 10);

@@ -1,4 +1,4 @@
-import { clearSessionCookie, revokeAuthFromRequest, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend.js';
+import { clearSessionCookie, revokeAuthFromRequest, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend';
 
 export const config = { runtime: 'nodejs' };
 

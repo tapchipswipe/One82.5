@@ -1,16 +1,34 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, MicOff, Volume2, Bot, Loader2 } from 'lucide-react';
-import { connectLiveAssistant, decodeBase64, encodeBase64 } from '../services/geminiService';
+import { connectLiveAssistant, decodeBase64, encodeBase64 } from '@/services/geminiService';
 
 interface LiveAssistantProps {
   onClose: () => void;
 }
 
+type LiveAssistantSession = {
+  sendRealtimeInput: (chunks: Array<{ media: { data: string; mimeType: string } }>) => void;
+  close: () => void;
+};
+
+type LiveAssistantMessage = {
+  serverContent?: {
+    interrupted?: boolean;
+    modelTurn?: {
+      parts?: Array<{
+        inlineData?: {
+          data?: string;
+        };
+      }>;
+    };
+  };
+};
+
 const LiveAssistant: React.FC<LiveAssistantProps> = ({ onClose }) => {
   const [isActive, setIsActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
-  const sessionRef = useRef<any>(null);
+  const sessionRef = useRef<Promise<LiveAssistantSession> | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
@@ -29,7 +47,7 @@ const LiveAssistant: React.FC<LiveAssistantProps> = ({ onClose }) => {
   };
 
   const stopSession = useCallback(() => {
-    sessionRef.current?.then((s: any) => s.close());
+    sessionRef.current?.then((session) => session.close());
     inputAudioContextRef.current?.close();
     outputAudioContextRef.current?.close();
     setIsActive(false);
@@ -52,12 +70,16 @@ const LiveAssistant: React.FC<LiveAssistantProps> = ({ onClose }) => {
           const inputData = e.inputBuffer.getChannelData(0);
           const int16 = new Int16Array(inputData.length);
           for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
-          sessionPromise.then(s => s.sendRealtimeInput({ media: { data: encodeBase64(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' } }));
+          sessionPromise.then((session) =>
+            session.sendRealtimeInput([
+              { media: { data: encodeBase64(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' } }
+            ])
+          );
         };
         source.connect(scriptProcessorRef.current);
         scriptProcessorRef.current.connect(inputAudioContextRef.current!.destination);
       },
-      onmessage: async (message: any) => {
+      onmessage: async (message: LiveAssistantMessage) => {
         const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
         if (audioData) {
           const ctx = outputAudioContextRef.current!;
@@ -77,7 +99,7 @@ const LiveAssistant: React.FC<LiveAssistantProps> = ({ onClose }) => {
           nextStartTimeRef.current = 0;
         }
       },
-      onerror: (e: any) => console.error(e),
+      onerror: () => setIsActive(false),
       onclose: () => setIsActive(false),
     });
 

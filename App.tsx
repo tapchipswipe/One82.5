@@ -7,7 +7,7 @@ import MarketingLayout from './components/marketing/MarketingLayout';
 import { StorageService } from './services/storage';
 import { AuthService } from './services/authService';
 import { detectAnomalies } from './services/geminiService';
-import { SimulationService } from './services/simulationService';
+import { PortfolioMerchant, SimulationService } from './services/simulationService';
 import { User, BusinessType, MerchantInviteStrategy, UserRole, AuthMode, Transaction } from './types';
 import { DISABLE_AI_UI, ENABLE_EXPERIMENTAL, THEME_COLORS } from './constants';
 
@@ -154,7 +154,7 @@ const AiDisabledView: React.FC = () => (
   </div>
 );
 
-const buildPortfolioFromTransactions = (transactions: Transaction[]) => {
+const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioMerchant[] => {
   const grouped = new Map<string, Transaction[]>();
 
   transactions.forEach((transaction) => {
@@ -170,9 +170,9 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]) => {
     const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
     const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
     const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-    const trend = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
-    const riskLevel = trend === 'down' ? 'Medium' : 'Low';
-    const churnRisk = trend === 'down' ? 'Medium' : 'Low';
+    const trend: 'up' | 'down' | 'flat' = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
+    const riskLevel: 'Low' | 'Medium' | 'High' = trend === 'down' ? 'Medium' : 'Low';
+    const churnRisk: 'Low' | 'Medium' | 'High' = trend === 'down' ? 'Medium' : 'Low';
     const volumeHistory = Array.from({ length: 6 }, (_, offset) => {
       const start = Math.floor((offset * records.length) / 6);
       const end = Math.floor(((offset + 1) * records.length) / 6);
@@ -257,12 +257,17 @@ const App: React.FC = () => {
         }
 
         const settings = StorageService.getSettings();
-        if (settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) setDarkMode(true);
+        const resolvedTheme = settings.theme === 'dark'
+          ? 'dark'
+          : settings.theme === 'light'
+            ? 'light'
+            : 'dark';
+        setDarkMode(resolvedTheme === 'dark');
         const root = document.documentElement;
         const colorSet = THEME_COLORS[settings.primaryColor || 'charcoal'] as Record<string, string>;
         Object.entries(colorSet).forEach(([shade, value]) => root.style.setProperty(`--color-primary-${shade}`, value));
-      } catch (e) {
-        console.error("Initialization Failed:", e);
+      } catch {
+        setMarketingPage('home');
       } finally {
         setLoading(false);
       }
@@ -341,9 +346,6 @@ const App: React.FC = () => {
     appendNavigationPerfSample(sample);
     pendingNavigationRef.current = null;
 
-    if (import.meta.env.DEV) {
-      console.debug('[perf] navigation', sample);
-    }
   }, [activeView, user]);
 
   // Step 7: Proactive AI Guardrails (Background Anomaly Monitor) - MERCHANTS ONLY
@@ -423,9 +425,7 @@ const App: React.FC = () => {
       if (role === 'iso' && data.inviteStrategy) {
         StorageService.saveMerchantInviteStrategy(data.inviteStrategy);
       }
-      void AuthService.saveUserProfile(updated, authMode).catch((error) => {
-        console.error('Failed to persist onboarding profile:', error);
-      });
+      void AuthService.saveUserProfile(updated, authMode).catch(() => undefined);
 
       if (inviteIntent) {
         setInviteIntent(null);
@@ -440,9 +440,7 @@ const App: React.FC = () => {
     setUser(updatedUser);
     StorageService.saveUser(updatedUser);
     window.dispatchEvent(new Event('user-update'));
-    void AuthService.saveUserProfile(updatedUser, authMode).catch((error) => {
-      console.error('Failed to persist profile update:', error);
-    });
+    void AuthService.saveUserProfile(updatedUser, authMode).catch(() => undefined);
   };
 
   if (loading) return null;
@@ -496,7 +494,7 @@ const App: React.FC = () => {
 
         {user.role === 'iso' && (
           <>
-            {activeView === 'dashboard' && <ISODashboard />}
+            {activeView === 'dashboard' && <ISODashboard onNavigate={handleNavigate} />}
             {activeView === 'statements' && (DISABLE_AI_UI ? <AiDisabledView /> : <StatementReader />)}
             {activeView === 'portfolio' && <div className="p-6"><MerchantLedger merchants={merchants} /></div>}
             {activeView === 'onboarding' && <OnboardingHub />}
@@ -506,7 +504,7 @@ const App: React.FC = () => {
             {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}
             {ENABLE_EXPERIMENTAL && activeView === 'experimental' && <Experimental role={user.role} />}
             {activeView === 'settings' && <Settings />}
-            {!['dashboard', 'statements', 'portfolio', 'onboarding', 'profitability', 'team', 'integrations', 'experimental', 'settings', 'profile'].includes(activeView) && <ISODashboard />}
+            {!['dashboard', 'statements', 'portfolio', 'onboarding', 'profitability', 'team', 'integrations', 'experimental', 'settings', 'profile'].includes(activeView) && <ISODashboard onNavigate={handleNavigate} />}
           </>
         )}
 

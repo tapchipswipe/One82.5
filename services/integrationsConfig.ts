@@ -14,7 +14,15 @@
  */
 
 export type IntegrationCategory = 'POS & Payment' | 'ISO Processor' | 'AI';
-export const LIVE_INTEGRATIONS_ENABLED = import.meta.env.VITE_ENABLE_LIVE_INTEGRATIONS !== 'false';
+
+const readEnv = (key: string): string | undefined => {
+    const viteEnv = (typeof import.meta !== 'undefined' && (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env)
+        ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+        : undefined;
+    return viteEnv?.[key] ?? process.env[key];
+};
+
+export const LIVE_INTEGRATIONS_ENABLED = readEnv('VITE_ENABLE_LIVE_INTEGRATIONS') !== 'false';
 
 export interface Integration {
     id: string;

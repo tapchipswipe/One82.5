@@ -1,11 +1,18 @@
 import { StorageService } from './storage';
-import { AuthLoginInput, AuthLoginResult, AuthMode, AuthSession, User } from '../types';
+import { AuthLoginInput, AuthLoginResult, AuthMode, AuthSession, User } from '@/types';
+
+const readEnv = (key: string): string | undefined => {
+  const viteEnv = (typeof import.meta !== 'undefined' && (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env)
+    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+    : undefined;
+  return viteEnv?.[key] ?? process.env[key];
+};
 
 const AUTH_MODE_KEY = 'one82_auth_mode';
 const AUTH_SESSION_KEY = 'one82_auth_session';
-const AUTH_API_BASE = (import.meta.env.VITE_AUTH_API_BASE || '').replace(/\/$/, '');
-const BACKEND_AUTH_ENABLED = import.meta.env.VITE_ENABLE_BACKEND_AUTH === 'true';
-const OVERSEER_EMAIL = (import.meta.env.VITE_OVERSEER_EMAIL || 'owner@one82.io').toLowerCase();
+const AUTH_API_BASE = (readEnv('VITE_AUTH_API_BASE') || '').replace(/\/$/, '');
+const BACKEND_AUTH_ENABLED = readEnv('VITE_ENABLE_BACKEND_AUTH') === 'true';
+const OVERSEER_EMAIL = (readEnv('VITE_OVERSEER_EMAIL') || 'owner@one82.io').toLowerCase();
 
 const sessionStorage = {
   get: (): AuthSession | null => {

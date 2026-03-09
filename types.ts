@@ -1,5 +1,5 @@
 
-export type BusinessType = 'Retail' | 'Restaurant' | 'Service' | 'E-Commerce' | 'Convenience Store';
+export type BusinessType = 'Retail' | 'Restaurant' | 'Service' | 'E-Commerce' | 'Convenience Store' | 'Auto Repair';
 
 export type UserRole = 'merchant' | 'iso' | 'overseer';
 export type MerchantInviteStrategy = 'csv-auto-invite' | 'invite-link';
@@ -18,10 +18,9 @@ export interface User {
   plan: 'Free' | 'Pro' | 'Enterprise';
 }
 
-export type ThemeColor = 'green' | 'blue' | 'purple' | 'orange';
+export type ThemeColor = 'green' | 'blue' | 'purple' | 'orange' | 'charcoal';
 
 export interface AppSettings {
-  revenueGoal: number;
   notifications: boolean;
   theme: 'light' | 'dark' | 'system';
   primaryColor: ThemeColor;
@@ -419,6 +418,11 @@ export interface CommissionLineItem {
   residualRevenue: number;
   commissionRate: number;
   payout: number;
+  basePayout?: number;
+  excessPayout?: number;
+  excessMarkupRevenue?: number;
+  excessServiceFeeRevenue?: number;
+  appliedRule?: string;
   exception?: string;
 }
 

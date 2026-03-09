@@ -1,9 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User as UserIcon, Loader2 } from 'lucide-react';
-import { chatWithDataStream } from '../services/geminiService';
-import { StorageService } from '../services/storage';
-import { ChatMessage } from '../types';
+import { chatWithDataStream } from '@/services/geminiService';
+import { StorageService } from '@/services/storage';
+import { ChatMessage } from '@/types';
 
 interface DataChatProps {
   onNavigate?: (view: string) => void;
@@ -11,19 +11,16 @@ interface DataChatProps {
 
 const DataChat: React.FC<DataChatProps> = ({ onNavigate }) => {
   const isAuthMode = StorageService.getDataMode() === 'backend';
-  const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
   const hasTrustedData = StorageService.getMetrics().length > 0 || StorageService.getTransactions().length > 0;
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       role: 'model',
       text: isAuthMode
-        ? !hasGeminiKey
-          ? 'Data Chat is blocked in Auth Login until a Gemini API key is configured in Integrations.'
-          : !hasTrustedData
-            ? 'Data Chat is blocked in Auth Login until trusted data is available. Next step: import transactions or connect a live integration.'
-            : 'Data Chat is ready. Ask about your trusted business data.'
-        : 'Hello! I can analyze your business data in real-time. Ask me anything.',
+        ? !hasTrustedData
+          ? 'Data Chat is blocked in Auth Login until trusted data is available. Import transactions to continue.'
+          : 'Data Chat is ready. Ask about your trusted business data.'
+        : 'Hello! Demo mode is active. I can provide simulated AI analysis using local sample data.',
       timestamp: Date.now()
     }
   ]);
@@ -32,11 +29,9 @@ const DataChat: React.FC<DataChatProps> = ({ onNavigate }) => {
   const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('chat'));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const blockedAction = isAuthMode
-    ? !hasGeminiKey
-      ? { target: 'settings', label: 'Open Settings' }
-      : !hasTrustedData
-        ? { target: 'transactions', label: 'Open Transactions' }
-        : null
+    ? !hasTrustedData
+      ? { target: 'transactions', label: 'Import Data' }
+      : null
     : null;
 
   const markAiRun = () => {
@@ -54,27 +49,15 @@ const DataChat: React.FC<DataChatProps> = ({ onNavigate }) => {
     if (!input.trim() || isTyping) return;
 
     const isAuthMode = StorageService.getDataMode() === 'backend';
-    const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
     const metrics = StorageService.getMetrics();
     const transactions = StorageService.getTransactions().slice(0, 10);
     const hasTrustedData = metrics.length > 0 || transactions.length > 0;
-
-    if (isAuthMode && !hasGeminiKey) {
-      setMessages(prev => [...prev, {
-        id: `blocked_${Date.now()}`,
-        role: 'model',
-        text: 'Data Chat is blocked in Auth Login until a Gemini API key is configured in Integrations.',
-        timestamp: Date.now()
-      }]);
-      markAiRun();
-      return;
-    }
 
     if (isAuthMode && !hasTrustedData) {
       setMessages(prev => [...prev, {
         id: `blocked_${Date.now()}`,
         role: 'model',
-        text: 'Data Chat is blocked in Auth Login until trusted data is available. Next step: import transactions or connect a live integration.',
+        text: 'Data Chat is blocked in Auth Login until trusted data is available. Import transactions to continue.',
         timestamp: Date.now()
       }]);
       markAiRun();
@@ -93,7 +76,11 @@ const DataChat: React.FC<DataChatProps> = ({ onNavigate }) => {
     setMessages(prev => [...prev, { id: streamId, role: 'model', text: '', timestamp: Date.now(), isStreaming: true }]);
 
     await chatWithDataStream(userMsg.text, context, (text) => {
-        setMessages(prev => prev.map(m => m.id === streamId ? { ...m, text } : m));
+      setMessages(prev => prev.map((message) => {
+        if (message.id !== streamId) return message;
+        const nextText = text.startsWith(message.text) ? text : `${message.text}${text}`;
+        return { ...message, text: nextText };
+      }));
     });
     
     setMessages(prev => prev.map(m => m.id === streamId ? { ...m, isStreaming: false } : m));

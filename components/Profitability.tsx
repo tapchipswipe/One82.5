@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart2, DollarSign, TrendingUp, Activity } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { StorageService } from '../services/storage';
-import { BuyRateProfile, Transaction } from '../types';
+import { StorageService } from '@/services/storage';
+import { BuyRateProfile, Transaction } from '@/types';
 import { SourceStatusText } from './ProvenanceIndicators';
+
+const MIN_MARKUP_FLOOR_BPS = 22;
 
 type MerchantProfitRow = {
   name: string;
@@ -137,11 +139,13 @@ const Profitability: React.FC = () => {
   }, [filteredRows]);
 
   const upsertProfile = (row: MerchantProfitRow, updates: Partial<Pick<MerchantProfitRow, 'buyRateBps' | 'markupBps' | 'serviceFeeMonthly' | 'processorTarget'>>) => {
+    const nextMarkup = updates.markupBps ?? row.markupBps;
+    const enforcedMarkup = Math.max(MIN_MARKUP_FLOOR_BPS, nextMarkup);
     StorageService.upsertBuyRateProfile({
       merchantName: row.name,
       processorTarget: updates.processorTarget || row.processorTarget,
       buyRateBps: updates.buyRateBps ?? row.buyRateBps,
-      markupBps: updates.markupBps ?? row.markupBps,
+      markupBps: enforcedMarkup,
       serviceFeeMonthly: updates.serviceFeeMonthly ?? row.serviceFeeMonthly
     });
     const latestProfiles = StorageService.getBuyRateProfiles();
@@ -212,6 +216,7 @@ const Profitability: React.FC = () => {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Merchant-level buy-rate cost, markup, and margin analysis.
         </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Markup floor enforced at {MIN_MARKUP_FLOOR_BPS} bps for v1 guardrails.</p>
         <SourceStatusText className="text-xs text-gray-500 dark:text-gray-400 mt-2" />
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Data freshness: {profitabilityFreshness}</p>
         <div className="mt-3 flex items-center gap-2">
@@ -395,6 +400,7 @@ const Profitability: React.FC = () => {
                       type="number"
                       value={row.markupBps}
                       onChange={(event) => upsertProfile(row, { markupBps: Number(event.target.value || 0) })}
+                      min={MIN_MARKUP_FLOOR_BPS}
                       className="w-20 px-2 py-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs"
                     />
                     <span className="ml-1 text-xs text-gray-500">bps</span>

@@ -4,7 +4,8 @@ import {
     TrendingUp, TrendingDown, Minus, ShieldCheck,
     PlusCircle, Activity
 } from 'lucide-react';
-import { PortfolioMerchant } from '../services/simulationService';
+import { PortfolioMerchant } from '@/services/simulationService';
+import { StorageService } from '@/services/storage';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid
@@ -37,7 +38,7 @@ const RiskBadge = ({ level }: { level: 'Low' | 'Medium' | 'High' }) => {
 
 const MerchantProfile: React.FC<Props> = ({ merchant: m, onClose }) => {
     const [newNote, setNewNote] = useState('');
-    const [localNotes, setLocalNotes] = useState(m.notes);
+    const [localNotes, setLocalNotes] = useState(() => StorageService.getMerchantNotes(m.id, m.notes));
 
     const chartData = MONTHS.map((month, i) => ({ month, Volume: m.volumeHistory[i] }));
 
@@ -49,7 +50,9 @@ const MerchantProfile: React.FC<Props> = ({ merchant: m, onClose }) => {
             author: 'You',
             text: newNote.trim(),
         };
-        setLocalNotes([note, ...localNotes]);
+        const nextNotes = [note, ...localNotes];
+        setLocalNotes(nextNotes);
+        StorageService.saveMerchantNotes(m.id, nextNotes);
         setNewNote('');
     };
 

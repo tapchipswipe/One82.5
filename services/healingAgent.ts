@@ -10,9 +10,7 @@ export interface HealingAction {
 }
 
 export const HealingAgent = {
-    // Placeholder for autonomous financial repair logic
     scanForIssues: async (): Promise<HealingAction[]> => {
-        // TODO: Analyze transaction history for duplicate charges, unused subs, etc.
         return [
             {
                 id: 'fix_1',
@@ -27,9 +25,7 @@ export const HealingAgent = {
         ];
     },
 
-    executeAction: async (actionId: string): Promise<boolean> => {
-        console.log(`Executing healing action: ${actionId}`);
-        // TODO: Integrate with backend/banking API to perform the action
+    executeAction: async (_actionId: string): Promise<boolean> => {
         return true;
     }
 };

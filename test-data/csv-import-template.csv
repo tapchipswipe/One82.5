@@ -1,0 +1,16 @@
+# ONE82 CSV Import Template
+# Use this file as a starter for imports. Remove comment lines before upload.
+# Keep lowercase header names to avoid mapping prompts.
+
+# Transactions example (importType=transactions)
+date,customer,amount,status,method,category,items
+2026-03-01,Acme Coffee,245.92,Completed,Visa,Inventory,beans;milk
+2026-03-02,Acme Coffee,189.10,Pending,MasterCard,Utilities,electric bill
+
+# Merchants example (importType=merchants)
+name,email,ownerRepName,processorTarget,businessType
+Acme Coffee,owner@acmecoffee.com,Jordan Lee,stripe,Restaurant
+
+# Team example (importType=team)
+name,email,role
+Jordan Lee,jordan@isoexample.com,Rep

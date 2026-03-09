@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Search, ArrowUpDown, Filter, FileText, ExternalLink, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { PortfolioMerchant } from '../services/simulationService';
+import { PortfolioMerchant } from '@/services/simulationService';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 import MerchantProfile from './MerchantProfile';
-import { StorageService } from '../services/storage';
-import { MerchantInviteStrategy } from '../types';
+import { StorageService } from '@/services/storage';
+import { MerchantInviteStrategy } from '@/types';
 import { SourceStatusText } from './ProvenanceIndicators';
 
 interface MerchantLedgerProps {
@@ -32,7 +32,8 @@ const Sparkline = ({ data }: { data: number[] }) => {
                 <Line type="monotone" dataKey="v" stroke={isUp ? '#22c55e' : '#ef4444'} dot={false} strokeWidth={2} />
                 <Tooltip
                     formatter={(val: number) => [`$${Number(val).toLocaleString()}`, 'Vol']}
-                    contentStyle={{ fontSize: 10 }}
+                    contentStyle={{ fontSize: 10, zIndex: 70 }}
+                    wrapperStyle={{ zIndex: 70 }}
                 />
             </LineChart>
         </ResponsiveContainer>
@@ -195,7 +196,7 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
                     <div>
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <FileText className="w-5 h-5 text-indigo-500" />
-                            Merchant Ledger
+                            Merchant List
                         </h2>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             Portfolio rates, volume, MCC codes &amp; trend tracking
@@ -221,7 +222,7 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
                 </div>
 
                 {/* Table */}
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-visible">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gray-50 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700">
                             <tr>

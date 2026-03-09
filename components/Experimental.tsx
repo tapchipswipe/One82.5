@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { BrainCircuit, ChevronLeft, DollarSign, FlaskConical, ShieldCheck, Sparkles, Zap } from 'lucide-react';
-import { UserRole } from '../types';
+import { UserRole } from '@/types';
 import { ProvenanceBadges, SourceStatusText } from './ProvenanceIndicators';
-import { PortfolioMerchant, SimulationService } from '../services/simulationService';
+import { PortfolioMerchant, SimulationService } from '@/services/simulationService';
 import SharedActionPlansDemo from './experimental/SharedActionPlansDemo';
-import { StorageService } from '../services/storage';
+import { StorageService } from '@/services/storage';
 
 interface ExperimentalProps {
   role: UserRole;

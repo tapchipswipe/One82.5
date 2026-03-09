@@ -1,17 +1,23 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Sparkles, RotateCw } from 'lucide-react';
-import { StorageService } from '../services/storage';
-import { generateForecastInsights } from '../services/geminiService';
-import { CalendarEvent } from '../types';
+import { StorageService } from '@/services/storage';
+import { generateForecastInsights } from '@/services/geminiService';
+import { CalendarEvent } from '@/types';
 import { SourceStatusText } from './ProvenanceIndicators';
 
 interface ForecastProps {
   onNavigate?: (view: string) => void;
 }
 
+interface ForecastDataPoint {
+  date: string;
+  revenue: number;
+  type: 'historical' | 'projected';
+}
+
 const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<ForecastDataPoint[]>([]);
   const [insight, setInsight] = useState('Analyzing trends...');
   const [loading, setLoading] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
@@ -21,7 +27,6 @@ const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
 
   const settings = StorageService.getSettings();
   const isAuthMode = StorageService.getDataMode() === 'backend';
-  const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
   const cacheKey = useMemo(() => `forecast_insight_${settings.aiResponseStyle}`, [settings.aiResponseStyle]);
   const showConfidence = settings.showAiConfidenceInProjections;
 
@@ -45,12 +50,12 @@ const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
     
     // Simple mock projection logic
     const lastDay = historical[historical.length - 1];
-    const projected = [];
+    const projected: ForecastDataPoint[] = [];
     let baseRevenue = lastDay?.revenue ?? 0;
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     for(let i=0; i<7; i++) {
-        const randomDelta = Math.random() * 0.2 - 0.05;
+      const randomDelta = Math.random() * 0.04 - 0.01;
         const projectionDate = new Date();
         projectionDate.setDate(projectionDate.getDate() + i + 1);
         const projectionDateKey = projectionDate.toISOString().slice(0, 10);
@@ -63,7 +68,8 @@ const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
             return sum + directionalImpact / 100;
           }, 0);
 
-        baseRevenue = baseRevenue * (1 + randomDelta + eventImpact);
+        const combinedDelta = Math.max(-0.05, Math.min(0.08, randomDelta + eventImpact));
+        baseRevenue = baseRevenue * (1 + combinedDelta);
         projected.push({
             date: `Next ${days[i]}`,
             revenue: Math.round(baseRevenue),
@@ -72,24 +78,16 @@ const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
     }
 
     setData([
-        ...historical.map(h => ({...h, type: 'historical'})),
+        ...historical.map((h) => ({ ...h, type: 'historical' as const })),
         ...projected
     ]);
 
     const rawConfidence = 62 + Math.min(24, historical.length * 2) - Math.min(10, nearTermEvents.length * 2);
-    const adjustedConfidence = isAuthMode && !hasGeminiKey ? rawConfidence - 8 : rawConfidence;
-    setProjectionConfidence(Math.max(35, Math.min(95, Math.round(adjustedConfidence))));
-
-    if (isAuthMode && !hasGeminiKey) {
-      setInsight('Forecast AI is blocked in Auth Login until a Gemini API key is configured in Integrations.');
-      setBlockedAction({ label: 'Open Settings', target: 'settings' });
-      markAiRun();
-      return;
-    }
+    setProjectionConfidence(Math.max(35, Math.min(95, Math.round(rawConfidence))));
 
     if (isAuthMode && historical.length === 0) {
-      setInsight('Forecast AI is blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
-      setBlockedAction({ label: 'Open Transactions', target: 'transactions' });
+      setInsight('Forecast AI is blocked in Auth Login until trusted metrics are available. Import transactions to continue.');
+      setBlockedAction({ label: 'Import Data', target: 'transactions' });
       markAiRun();
       return;
     }
@@ -109,7 +107,7 @@ const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
     StorageService.setCachedInsight(cacheKey, text);
     markAiRun();
     setLoading(false);
-  }, [cacheKey, hasGeminiKey, isAuthMode, markAiRun]);
+  }, [cacheKey, isAuthMode, markAiRun]);
 
   useEffect(() => {
     fetchForecast();
@@ -133,12 +131,12 @@ const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
         </button>
       </div>
 
-      <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800 flex items-start gap-3">
+      <div className="bg-indigo-100 dark:bg-indigo-900/40 p-4 rounded-xl border border-indigo-300 dark:border-indigo-700 flex items-start gap-3">
         <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
         <div>
-            <h4 className="font-semibold text-indigo-900 dark:text-indigo-200 text-sm">AI Outlook</h4>
+            <h4 className="font-semibold text-indigo-950 dark:text-indigo-100 text-sm">AI Outlook</h4>
           {lastAiRunAt && <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mb-1">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</p>}
-            <p className="text-sm text-indigo-800 dark:text-indigo-300">{insight}</p>
+            <p className="text-sm text-indigo-900 dark:text-indigo-100">{insight}</p>
             {blockedAction && onNavigate && (
               <button
                 type="button"

@@ -4,14 +4,28 @@ import {
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { Sparkles, TrendingUp, DollarSign, Activity, X, RotateCw } from 'lucide-react';
-import { streamDashboardInsights, explainDataPoint } from '../services/geminiService';
-import { BusinessType, DailyMetric } from '../types';
-import { StorageService } from '../services/storage';
+import { streamDashboardInsights, explainDataPoint } from '@/services/geminiService';
+import { BusinessType, DailyMetric } from '@/types';
+import { StorageService } from '@/services/storage';
 import TodoList from './TodoList';
 
 interface DashboardProps {
   businessType: BusinessType;
   onNavigate?: (view: string) => void;
+}
+
+interface CategoryDatum {
+  name: string;
+  value: number;
+}
+
+interface ChartPayloadPoint {
+  date: string;
+  revenue: number;
+}
+
+interface ChartClickEvent {
+  activePayload?: Array<{ payload: ChartPayloadPoint }>;
 }
 
 const COLORS = ['#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444'];
@@ -22,8 +36,8 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [timeRange, setTimeRange] = useState<string>('Last 7 Days');
   const [displayMetrics, setDisplayMetrics] = useState<DailyMetric[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
-  const [explanation, setExplanation] = useState<{ point: any, text: string } | null>(null);
+  const [categoryData, setCategoryData] = useState<CategoryDatum[]>([]);
+  const [explanation, setExplanation] = useState<{ point: ChartPayloadPoint; text: string } | null>(null);
   const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('dashboard'));
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState<number | null>(null);
   const [blockedAction, setBlockedAction] = useState<{ label: string; target: string } | null>(null);
@@ -46,7 +60,6 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
     const allMetrics = StorageService.getMetrics();
     const transactions = StorageService.getTransactions();
     const isAuthMode = StorageService.getDataMode() === 'backend';
-    const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
 
     let filtered = [...allMetrics];
     if (timeRange === 'Last 30 Days') filtered = filtered.map(m => ({ ...m, revenue: m.revenue * 1.2 }));
@@ -75,17 +88,9 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
       return;
     }
 
-    if (isAuthMode && !hasGeminiKey) {
-      setInsight('AI dashboard insights are blocked in Auth Login until a Gemini API key is configured in Integrations.');
-      setBlockedAction({ label: 'Open Settings', target: 'settings' });
-      markAiRun();
-      setLoading(false);
-      return;
-    }
-
     if (isAuthMode && filtered.length === 0) {
-      setInsight('AI dashboard insights are blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
-      setBlockedAction({ label: 'Open Transactions', target: 'transactions' });
+      setInsight('AI is blocked in Auth Login until trusted metrics are available. Import transactions to continue.');
+      setBlockedAction({ label: 'Import Data', target: 'transactions' });
       markAiRun();
       setLoading(false);
       return;
@@ -96,8 +101,11 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
     setInsight('');
     let fullText = '';
     await streamDashboardInsights(filtered, businessType, timeRange, (text) => {
-      fullText += text;
-      setInsight(fullText);
+      setInsight((previous) => {
+        const next = text.startsWith(previous) ? text : `${previous}${text}`;
+        fullText = next;
+        return next;
+      });
     });
     const finalInsight = fullText.trim();
     if (finalInsight) {
@@ -116,9 +124,11 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
     fetchInsights();
   }, [fetchInsights]);
 
-  const onChartClick = async (point: any) => {
-    if (!point || !point.activePayload) return;
-    const data = point.activePayload[0].payload;
+  const onChartClick = async (point: unknown) => {
+    if (!point || typeof point !== 'object' || !('activePayload' in point)) return;
+    const activePayload = (point as ChartClickEvent).activePayload;
+    if (!activePayload || activePayload.length === 0) return;
+    const data = activePayload[0].payload;
     setExplanation({ point: data, text: "Analyzing data point..." });
     const text = await explainDataPoint(data, businessType);
     setExplanation({ point: data, text });
@@ -157,7 +167,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary-600" />
-            <h3 className="font-semibold text-primary-900 dark:text-primary-200">Real-time Analysis</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100">Real-time Analysis</h3>
           </div>
           {lastAiRunAt && (
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</p>
@@ -234,7 +244,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
           </div>
 
           {/* Smart To-Do List */}
-          <TodoList role="merchant" className="h flex-1" />
+          <TodoList role="merchant" className="h-[280px]" />
         </div>
       </div>
 

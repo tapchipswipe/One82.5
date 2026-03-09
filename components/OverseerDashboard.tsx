@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Bell, Building2, ClipboardList, CreditCard, Shield, ShieldCheck, Sparkles, Users, Wrench } from 'lucide-react';
-import { SimulationService } from '../services/simulationService';
-import { StorageService } from '../services/storage';
-import { INTEGRATIONS, getIntegrationKey, isIntegrationConnected, LIVE_INTEGRATIONS_ENABLED } from '../services/integrationsConfig';
+import { SimulationService } from '@/services/simulationService';
+import { StorageService } from '@/services/storage';
+import { INTEGRATIONS, isIntegrationConnected, LIVE_INTEGRATIONS_ENABLED } from '@/services/integrationsConfig';
 import { SourceStatusText } from './ProvenanceIndicators';
-import { DISABLE_AI_UI } from '../constants';
+import { DISABLE_AI_UI } from '@/constants';
 
 type InterventionStatus = 'open' | 'in_progress' | 'done';
 
@@ -15,6 +15,7 @@ interface InterventionItem {
   issue: string;
   slaHours: number;
   status: InterventionStatus;
+  owner: string;
 }
 
 interface PolicySettings {
@@ -89,7 +90,8 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
       target: "Joe's Pizza",
       issue: 'High churn risk and declining trend',
       slaHours: 12,
-      status: 'open'
+      status: 'open',
+      owner: 'Unassigned'
     },
     {
       id: 'iv-2',
@@ -97,7 +99,8 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
       target: 'Corner Market',
       issue: 'Health score below threshold',
       slaHours: 8,
-      status: 'in_progress'
+      status: 'in_progress',
+      owner: 'Unassigned'
     },
     {
       id: 'iv-3',
@@ -105,7 +108,8 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
       target: 'Boutique 82',
       issue: 'Flat trend with medium churn profile',
       slaHours: 24,
-      status: 'open'
+      status: 'open',
+      owner: 'Unassigned'
     }
   ]);
   const [opsSummary, setOpsSummary] = useState<OpsSummary>({
@@ -279,7 +283,6 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
       : null;
     const dataIsStale = isDemoMode ? false : (dataStaleHours === null || dataStaleHours >= 24);
 
-    const hasGeminiKey = getIntegrationKey('gemini').trim().length > 0;
     const hasTrustedData = transactions.length > 0 || StorageService.getMetrics().length > 0;
 
     let aiBlocked = false;
@@ -288,9 +291,6 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
     if (DISABLE_AI_UI) {
       aiBlocked = true;
       aiBlockedReason = 'Emergency AI UI kill switch is enabled.';
-    } else if (StorageService.getDataMode() === 'backend' && !hasGeminiKey) {
-      aiBlocked = true;
-      aiBlockedReason = 'Auth mode AI is blocked until Gemini is configured.';
     } else if (StorageService.getDataMode() === 'backend' && !hasTrustedData) {
       aiBlocked = true;
       aiBlockedReason = 'Auth mode AI is blocked until trusted imported/integration data is available.';
@@ -326,7 +326,20 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
   }, [integrationHealth, interventions, isDemoMode, riskRadar, scorecards]);
 
   const updateInterventionStatus = (id: string, status: InterventionStatus): void => {
-    setInterventions((current) => current.map((item) => item.id === id ? { ...item, status } : item));
+    setInterventions((current) => current.map((item) => {
+      if (item.id !== id) return item;
+      const ownerAssigned = item.owner.trim().length > 0 && item.owner !== 'Unassigned';
+      if (status === 'done' && !ownerAssigned) {
+        return item;
+      }
+      return { ...item, status };
+    }));
+  };
+
+  const updateInterventionOwner = (id: string, owner: string): void => {
+    const currentRole = StorageService.getUser()?.role;
+    if (currentRole !== 'overseer') return;
+    setInterventions((current) => current.map((item) => item.id === id ? { ...item, owner } : item));
   };
 
   const updatePolicy = (partial: Partial<PolicySettings>, description: string): void => {
@@ -484,10 +497,10 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => onNavigate?.('settings')}
+              onClick={() => onNavigate?.('transactions')}
               className="px-3 py-1.5 text-xs font-semibold rounded-md border border-gray-200 text-gray-700 hover:bg-white"
             >
-              Open Settings
+              Import Data
             </button>
             <button
               type="button"
@@ -574,18 +587,33 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{item.issue}</p>
-                      <p className="text-xs text-gray-500 mt-1">{item.isoName} · Target: {item.target} · SLA {item.slaHours}h</p>
+                      <p className="text-xs text-gray-500 mt-1">{item.isoName} · Target: {item.target} · SLA {item.slaHours}h · Owner: {item.owner}</p>
                     </div>
-                    <select
-                      value={item.status}
-                      onChange={(event) => updateInterventionStatus(item.id, event.target.value as InterventionStatus)}
-                      className="rounded-md border border-gray-300 px-2 py-1 text-xs"
-                    >
-                      <option value="open">Open</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="done">Done</option>
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={item.owner}
+                        onChange={(event) => updateInterventionOwner(item.id, event.target.value)}
+                        className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                      >
+                        <option value="Unassigned">Unassigned</option>
+                        <option value="Overseer">Overseer</option>
+                        <option value="ISO Lead">ISO Lead</option>
+                        <option value="Ops Analyst">Ops Analyst</option>
+                      </select>
+                      <select
+                        value={item.status}
+                        onChange={(event) => updateInterventionStatus(item.id, event.target.value as InterventionStatus)}
+                        className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                      >
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done</option>
+                      </select>
+                    </div>
                   </div>
+                  {item.owner === 'Unassigned' && (
+                    <p className="mt-2 text-xs text-red-600">Assign an owner before marking this intervention done.</p>
+                  )}
                 </div>
               ))
             ) : (
