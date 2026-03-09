@@ -5,6 +5,7 @@ import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 import MerchantProfile from './MerchantProfile';
 import { StorageService } from '../services/storage';
 import { MerchantInviteStrategy } from '../types';
+import { SourceStatusText } from './ProvenanceIndicators';
 
 interface MerchantLedgerProps {
     merchants: PortfolioMerchant[];
@@ -87,6 +88,19 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
     const totalVolume = merchants.reduce((a, m) => a + m.monthlyVolume, 0);
     const avgBps = Math.round(merchants.reduce((a, m) => a + m.bps, 0) / merchants.length);
     const projectedResidual = ((totalVolume * avgBps) / 10000).toFixed(0);
+    const isDemoMode = StorageService.getDataMode() === 'demo';
+    const latestTransactionAt = StorageService.getTransactions()
+        .map((tx) => new Date(tx.date).getTime())
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => b - a)[0] || null;
+    const freshness = isDemoMode
+        ? 'Simulated freshness'
+        : latestTransactionAt
+            ? (() => {
+                const hours = Math.floor((Date.now() - latestTransactionAt) / 3600000);
+                return hours >= 24 ? `Stale (${hours}h since latest transaction)` : `Fresh (${hours}h since latest transaction)`;
+            })()
+            : 'No recent trusted transaction data';
 
     const updateInviteStrategy = async (strategy: MerchantInviteStrategy) => {
         setInviteStrategy(strategy);
@@ -186,6 +200,8 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             Portfolio rates, volume, MCC codes &amp; trend tracking
                         </p>
+                        <SourceStatusText className="text-xs text-gray-500 dark:text-gray-400 mt-2" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Data freshness: {freshness}</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative">

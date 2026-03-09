@@ -24,5 +24,11 @@
 - [ ] Onboarding remains sales-led with ISO import + auto-invite primary, invite-link fallback
 - [ ] Role changes are reflected in [HIERARCHY_STRUCTURE.md](HIERARCHY_STRUCTURE.md) in the same PR
 
+## Trust Change Notes
+- Affected trust boundaries (auth/session, RBAC, tenant isolation, integrations, AI provenance):
+- Risk level and blast radius:
+- Rollback plan:
+- Monitoring/verification after deploy:
+
 ## Notes for Reviewers
 - Mention migrations, env changes, rollout risks, or follow-ups here.

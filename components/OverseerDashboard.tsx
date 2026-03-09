@@ -46,6 +46,8 @@ interface OpsSummary {
   events24h: number;
   latestEventType: string | null;
   latestEventAt: string | null;
+  scope: 'tenant' | 'global';
+  tenantCount: number;
 }
 
 interface OverseerDashboardProps {
@@ -113,7 +115,9 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
     runningSyncRuns: 0,
     events24h: 0,
     latestEventType: null,
-    latestEventAt: null
+    latestEventAt: null,
+    scope: 'tenant',
+    tenantCount: 0
   });
   const [opsAvailable, setOpsAvailable] = useState(false);
 
@@ -143,7 +147,7 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
 
     const loadOpsSummary = async () => {
       try {
-        const response = await fetch('/api/data/ops?limit=25');
+        const response = await fetch('/api/data/ops?limit=25&scope=all');
         if (!response.ok) {
           if (mounted) {
             setOpsAvailable(false);
@@ -151,11 +155,15 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
           return;
         }
 
-        const payload = await response.json() as { summary?: OpsSummary };
+        const payload = await response.json() as { summary?: Omit<OpsSummary, 'scope' | 'tenantCount'>; scope?: 'tenant' | 'global'; tenantCount?: number };
         if (!mounted) return;
 
         if (payload?.summary) {
-          setOpsSummary(payload.summary);
+          setOpsSummary({
+            ...payload.summary,
+            scope: payload.scope === 'global' ? 'global' : 'tenant',
+            tenantCount: Number.isFinite(payload.tenantCount) ? Number(payload.tenantCount) : 0
+          });
           setOpsAvailable(true);
           return;
         }
@@ -404,6 +412,9 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
             <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Latest Sync</p>
             <p className="text-lg font-bold text-gray-900 mt-1">{opsAvailable ? opsSummary.latestSyncStatus : 'N/A'}</p>
             <p className="text-xs text-gray-500 mt-1">{opsSummary.latestSyncAt ? new Date(opsSummary.latestSyncAt).toLocaleString() : 'No sync data yet'}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Scope: {opsAvailable ? (opsSummary.scope === 'global' ? `Global (${Math.max(opsSummary.tenantCount, 1)} tenants)` : 'Tenant') : 'N/A'}
+            </p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
             <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Failed Sync Runs</p>
@@ -445,12 +456,12 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
             <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Data Freshness</p>
             <p className={`text-lg font-bold mt-1 ${trustHealth.dataIsStale ? 'text-amber-700' : 'text-gray-900'}`}>
               {isDemoMode
-                ? 'Simulated'
+                ? 'Simulated freshness'
                 : trustHealth.dataStaleHours === null
-                  ? 'No Data'
+                  ? 'No recent trusted transaction data'
                   : trustHealth.dataIsStale
-                    ? `Stale (${trustHealth.dataStaleHours}h)`
-                    : `Fresh (${trustHealth.dataStaleHours}h)`}
+                    ? `Stale (${trustHealth.dataStaleHours}h since latest transaction)`
+                    : `Fresh (${trustHealth.dataStaleHours}h since latest transaction)`}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               {isDemoMode
@@ -592,7 +603,7 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
               <SnapshotRow label="Data mode" value={StorageService.getDataMode() === 'backend' ? 'Live Backend' : 'Simulated Demo'} />
               <SnapshotRow label="Total loaded transactions" value={transactions.length.toString()} />
               <SnapshotRow label="Unread notifications" value={StorageService.getNotifications().filter(n => !n.read).length.toString()} />
-              <SnapshotRow label="Overseer visibility" value="Merchant + ISO operation surface" />
+              <SnapshotRow label="Overseer visibility" value={opsSummary.scope === 'global' ? `Cross-tenant (${Math.max(opsSummary.tenantCount, 1)} tenants)` : 'Tenant-scoped'} />
             </div>
             <div id="overseer-integration-freshness" className="rounded-xl border border-gray-200 bg-gray-50">
               <div className="px-4 py-3 border-b border-gray-200">

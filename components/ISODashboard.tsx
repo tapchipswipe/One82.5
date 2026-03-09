@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Upload, AlertTriangle,
+    AlertTriangle,
     ArrowDownRight, Activity, Sparkles, CreditCard,
     Zap, ArrowUpRight
 } from 'lucide-react';
@@ -11,6 +11,7 @@ import MerchantLedger from './MerchantLedger';
 import { StorageService } from '../services/storage';
 import { Transaction } from '../types';
 import { DISABLE_AI_UI } from '../constants';
+import { SourceStatusText } from './ProvenanceIndicators';
 
 const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioMerchant[] => {
     const grouped = new Map<string, Transaction[]>();
@@ -149,6 +150,18 @@ const ISODashboard: React.FC = () => {
     const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
     const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
     const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
+    const latestPortfolioTransactionAt = merchants
+        .map((merchant) => merchant.lastTransaction)
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => b - a)[0] || null;
+    const portfolioFreshness = isDemoMode
+        ? 'Simulated freshness'
+        : latestPortfolioTransactionAt
+            ? (() => {
+                const hours = Math.floor((Date.now() - latestPortfolioTransactionAt) / 3600000);
+                return hours >= 24 ? `Stale (${hours}h since latest transaction)` : `Fresh (${hours}h since latest transaction)`;
+            })()
+            : 'No recent trusted transaction data';
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a12]">
@@ -177,6 +190,8 @@ const ISODashboard: React.FC = () => {
                             <p className="text-indigo-300 text-sm mt-1">
                                 {merchants.length} merchants across {uniqueIndustries} industries
                             </p>
+                            <SourceStatusText className="text-xs text-indigo-300 mt-2" />
+                            <p className="text-xs text-indigo-300 mt-1">Data freshness: {portfolioFreshness}</p>
                         </div>
                     </div>
 

@@ -254,6 +254,11 @@ Answers received: `1N 2Y 3N 4Y 5N 6Y 7N 8Y 9(Settings option) 10Y 11Y 12Y 13Y 14
   - Show gross-to-net margin visibility by account, rep, and ISO portfolio rollup.
   - Keep this analytics capability non-blocking to Stripe-first Day 1 production path.
 
+Implementation update (2026-03-09):
+- Centralized onboarding destination mapping and scoped rep onboarding controls are live.
+- Commission automation is deterministic and buy-rate-informed, with persisted run outputs.
+- Buy-rate visibility now includes merchant, rep, and portfolio rollups.
+
 ### Process / Governance
 1. Manual reviewer signoff required for trust/auth PRs.
 2. Pause net-new feature work when P0 trust bug exists.

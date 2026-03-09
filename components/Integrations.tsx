@@ -7,6 +7,7 @@ import {
     saveIntegrationKey,
     getIntegrationKey,
 } from '../services/integrationsConfig';
+import { stripeService } from '../services/processorService';
 import { StorageService } from '../services/storage';
 import { ImportAuditEntry, MerchantInvite, Transaction } from '../types';
 
@@ -160,6 +161,58 @@ const transformImportedTransactions = (records: Record<string, string>[]): Trans
         .filter((transaction): transaction is Transaction => Boolean(transaction));
 };
 
+const transformStripeTransactions = (records: Awaited<ReturnType<typeof stripeService.getTransactions>>): Transaction[] => {
+    return records
+        .map((record, index): Transaction | null => {
+            const parsedDate = new Date(record.date);
+            if (!Number.isFinite(record.amount) || record.amount <= 0) return null;
+
+            const method: Transaction['method'] =
+                record.cardBrand === 'Mastercard'
+                    ? 'MasterCard'
+                    : record.cardBrand === 'Amex'
+                        ? 'Amex'
+                        : 'Visa';
+
+            const status: Transaction['status'] =
+                record.status === 'Declined'
+                    ? 'Failed'
+                    : record.status === 'Pending'
+                        ? 'Pending'
+                        : 'Completed';
+
+            const nextRow: Transaction = {
+                id: `stripe_${record.id || index}`,
+                date: Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString(),
+                amount: Number(record.amount),
+                status,
+                customer: record.merchantId || 'Stripe Merchant',
+                items: ['Stripe charge'],
+                method,
+                category: 'Uncategorized'
+            };
+
+            return nextRow;
+        })
+        .filter((transaction): transaction is Transaction => Boolean(transaction));
+};
+
+const dedupeTransactions = (transactions: Transaction[]): Transaction[] => {
+    const bySignature = new Map<string, Transaction>();
+    transactions.forEach((transaction) => {
+        const signature = [
+            transaction.id,
+            transaction.date.slice(0, 10),
+            transaction.amount.toFixed(2),
+            transaction.customer.toLowerCase()
+        ].join('::');
+        bySignature.set(signature, transaction);
+    });
+    return Array.from(bySignature.values()).sort((left, right) =>
+        new Date(right.date).getTime() - new Date(left.date).getTime()
+    );
+};
+
 const IntegrationCard = ({ integration, onSave }: {
     integration: typeof INTEGRATIONS[0];
     onSave: (integrationId: string, connected: boolean) => void;
@@ -296,6 +349,7 @@ const Integrations: React.FC = () => {
     const [importAuditLog, setImportAuditLog] = useState<ImportAuditEntry[]>([]);
     const [retryCooldownUntil, setRetryCooldownUntil] = useState(0);
     const [nowMs, setNowMs] = useState(Date.now());
+    const [stripeLastSyncedAt, setStripeLastSyncedAt] = useState<number | null>(null);
     const isAuthTrialMode = StorageService.getDataMode() === 'backend';
     const role = StorageService.getUser()?.role || 'merchant';
 
@@ -579,6 +633,62 @@ const Integrations: React.FC = () => {
         });
     };
 
+    const handleStripeSync = async () => {
+        if (!stripeConnected || isImporting) return;
+
+        setImportError(null);
+        setImportSummary(null);
+        setIsImporting(true);
+
+        try {
+            const stripeTransactions = await stripeService.getTransactions();
+            const normalized = transformStripeTransactions(stripeTransactions);
+
+            if (normalized.length === 0) {
+                const message = 'Stripe returned no completed/pending transactions for sync.';
+                setImportError(message);
+                raiseSyncAlert({ type: 'info', message });
+                logImportAudit({
+                    importType: 'transactions',
+                    fileName: 'stripe-live-sync',
+                    rowCount: 0,
+                    status: 'failed',
+                    errorMessage: message
+                });
+                return;
+            }
+
+            const existing = await StorageService.getTransactionsResolved();
+            const merged = dedupeTransactions([...normalized, ...existing]);
+            await StorageService.saveTransactionsResolved(merged);
+            window.dispatchEvent(new Event('user-update'));
+
+            const syncedAt = Date.now();
+            setStripeLastSyncedAt(syncedAt);
+            setImportSummary(`Stripe sync imported ${normalized.length} transaction${normalized.length === 1 ? '' : 's'} and updated dashboard data.`);
+            raiseSyncAlert({ type: 'success', message: `Stripe sync completed (${normalized.length} transaction${normalized.length === 1 ? '' : 's'}).` });
+            logImportAudit({
+                importType: 'transactions',
+                fileName: 'stripe-live-sync',
+                rowCount: normalized.length,
+                status: 'success'
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Stripe sync failed. Please reconnect Stripe and retry.';
+            setImportError(message);
+            raiseSyncAlert({ type: 'error', message });
+            logImportAudit({
+                importType: 'transactions',
+                fileName: 'stripe-live-sync',
+                rowCount: 0,
+                status: 'failed',
+                errorMessage: message
+            });
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
     const handleDownloadImportErrorReport = () => {
         if (!lastImportErrorReport) return;
         const blob = new Blob([lastImportErrorReport], { type: 'text/plain;charset=utf-8' });
@@ -646,16 +756,32 @@ const Integrations: React.FC = () => {
                         <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                             Recommended success criteria: Stripe connected, at least one successful transaction import/sync, and Dashboard metrics reflecting fresh records.
                         </p>
+                        {stripeLastSyncedAt && (
+                            <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1">
+                                Last Stripe sync: {new Date(stripeLastSyncedAt).toLocaleString()}
+                            </p>
+                        )}
                     </div>
-                    {!stripeConnected && (
-                        <button
-                            type="button"
-                            onClick={() => document.getElementById('integration-stripe')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/20"
-                        >
-                            Connect Stripe
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {stripeConnected ? (
+                            <button
+                                type="button"
+                                onClick={() => { void handleStripeSync(); }}
+                                disabled={isImporting}
+                                className="px-3 py-1.5 text-xs font-semibold rounded-md border border-indigo-300 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isImporting ? 'Syncing Stripe…' : 'Run Stripe Sync'}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => document.getElementById('integration-stripe')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                                className="px-3 py-1.5 text-xs font-semibold rounded-md border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/20"
+                            >
+                                Connect Stripe
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

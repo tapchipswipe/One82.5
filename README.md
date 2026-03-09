@@ -116,6 +116,13 @@ Use this checklist before requesting review:
 - [ ] Role changes are reflected in [HIERARCHY_STRUCTURE.md](HIERARCHY_STRUCTURE.md) in the same PR.
 - [ ] `npm run check` passes locally.
 
+### Governance Automation
+- PRs that touch trust-boundary files (API/auth/storage/migrations/workflows/vision lock hierarchy) must include the `Trust Change Notes` section in the PR body and have reviewer assignment or approval.
+- Direct pushes to `main`/`master` that touch trust-boundary files must include a commit trailer:
+  - `Trust-Note: <what changed + risk/rollback summary>`
+  - Minimum content length for the note is 20 characters.
+- Successful `Quality Checks` runs on `main`/`master` automatically create rollback tags (`rollback-<branch>-<runid>-<sha7>`).
+
 ---
 
 ## 🛠 Getting Started

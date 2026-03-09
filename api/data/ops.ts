@@ -1,4 +1,4 @@
-import { getAuthFromRequest, setApiResponseHeaders, sendMethodNotAllowed, sendUnauthorized } from '../_lib/backend.js';
+import { requireAuthorized, setApiResponseHeaders, sendMethodNotAllowed } from '../_lib/backend.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -29,14 +29,8 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const auth = await getAuthFromRequest(req);
+  const auth = await requireAuthorized(req, res, ['iso', 'overseer']);
   if (!auth) {
-    sendUnauthorized(res);
-    return;
-  }
-
-  if (auth.user.role !== 'iso' && auth.user.role !== 'overseer') {
-    res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
@@ -46,10 +40,15 @@ export default async function handler(req: any, res: any) {
   }
 
   const limit = toLimit(req.query?.limit);
-  const tenantId = auth.session.tenantId;
+  const requestedScope = typeof req.query?.scope === 'string' ? req.query.scope : 'tenant';
+  const useGlobalScope = requestedScope === 'all' && auth.user.role === 'overseer';
+  const tenantFilter = useGlobalScope
+    ? ''
+    : `tenant_id=eq.${encodeURIComponent(auth.session.tenantId)}&`;
+  const tenantId = useGlobalScope ? null : auth.session.tenantId;
 
-  const syncRunsUrl = `${SUPABASE_URL}/rest/v1/${SYNC_RUNS_TABLE}?tenant_id=eq.${encodeURIComponent(tenantId)}&select=id,provider,started_at,completed_at,status,imported_count,failed_count,error_message,metadata,created_at,updated_at&order=started_at.desc&limit=${limit}`;
-  const eventsUrl = `${SUPABASE_URL}/rest/v1/${EVENTS_TABLE}?tenant_id=eq.${encodeURIComponent(tenantId)}&select=id,event_type,entity_type,entity_id,actor_user_id,occurred_at,payload,created_at&order=occurred_at.desc&limit=${limit}`;
+  const syncRunsUrl = `${SUPABASE_URL}/rest/v1/${SYNC_RUNS_TABLE}?${tenantFilter}select=id,tenant_id,provider,started_at,completed_at,status,imported_count,failed_count,error_message,metadata,created_at,updated_at&order=started_at.desc&limit=${limit}`;
+  const eventsUrl = `${SUPABASE_URL}/rest/v1/${EVENTS_TABLE}?${tenantFilter}select=id,tenant_id,event_type,entity_type,entity_id,actor_user_id,occurred_at,payload,created_at&order=occurred_at.desc&limit=${limit}`;
 
   const [syncRunsResponse, eventsResponse] = await Promise.all([
     fetch(syncRunsUrl, {
@@ -81,8 +80,27 @@ export default async function handler(req: any, res: any) {
       }).length
     : 0;
   const latestEvent = Array.isArray(events) && events.length > 0 ? events[0] : null;
+  const uniqueTenantIds = new Set<string>();
+
+  if (Array.isArray(syncRuns)) {
+    syncRuns.forEach((run: any) => {
+      if (typeof run?.tenant_id === 'string' && run.tenant_id.trim().length > 0) {
+        uniqueTenantIds.add(run.tenant_id);
+      }
+    });
+  }
+
+  if (Array.isArray(events)) {
+    events.forEach((event: any) => {
+      if (typeof event?.tenant_id === 'string' && event.tenant_id.trim().length > 0) {
+        uniqueTenantIds.add(event.tenant_id);
+      }
+    });
+  }
 
   res.status(200).json({
+    scope: useGlobalScope ? 'global' : 'tenant',
+    tenantCount: uniqueTenantIds.size,
     tenantId,
     summary: {
       latestSyncStatus: latestSync?.status || 'none',

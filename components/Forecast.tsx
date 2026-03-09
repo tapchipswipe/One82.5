@@ -4,18 +4,26 @@ import { Sparkles, RotateCw } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { generateForecastInsights } from '../services/geminiService';
 import { CalendarEvent } from '../types';
+import { SourceStatusText } from './ProvenanceIndicators';
 
-const Forecast: React.FC = () => {
+interface ForecastProps {
+  onNavigate?: (view: string) => void;
+}
+
+const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
   const [data, setData] = useState<any[]>([]);
   const [insight, setInsight] = useState('Analyzing trends...');
   const [loading, setLoading] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('forecast'));
+  const [blockedAction, setBlockedAction] = useState<{ label: string; target: string } | null>(null);
+  const [projectionConfidence, setProjectionConfidence] = useState<number | null>(null);
 
   const settings = StorageService.getSettings();
   const isAuthMode = StorageService.getDataMode() === 'backend';
   const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
   const cacheKey = useMemo(() => `forecast_insight_${settings.aiResponseStyle}`, [settings.aiResponseStyle]);
+  const showConfidence = settings.showAiConfidenceInProjections;
 
   const markAiRun = useCallback(() => {
     const timestamp = Date.now();
@@ -68,18 +76,25 @@ const Forecast: React.FC = () => {
         ...projected
     ]);
 
+    const rawConfidence = 62 + Math.min(24, historical.length * 2) - Math.min(10, nearTermEvents.length * 2);
+    const adjustedConfidence = isAuthMode && !hasGeminiKey ? rawConfidence - 8 : rawConfidence;
+    setProjectionConfidence(Math.max(35, Math.min(95, Math.round(adjustedConfidence))));
+
     if (isAuthMode && !hasGeminiKey) {
       setInsight('Forecast AI is blocked in Auth Login until a Gemini API key is configured in Integrations.');
+      setBlockedAction({ label: 'Open Settings', target: 'settings' });
       markAiRun();
       return;
     }
 
     if (isAuthMode && historical.length === 0) {
       setInsight('Forecast AI is blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
+      setBlockedAction({ label: 'Open Transactions', target: 'transactions' });
       markAiRun();
       return;
     }
 
+    setBlockedAction(null);
     // Check Cache
     const cached = StorageService.getCachedInsight(cacheKey);
     if (cached && !force) {
@@ -106,6 +121,7 @@ const Forecast: React.FC = () => {
         <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Revenue Forecast</h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">AI-powered projection for the next 7 days.</p>
+            <SourceStatusText className="text-xs text-slate-500 dark:text-slate-400 mt-2" />
         </div>
         <button 
             onClick={() => fetchForecast(true)}
@@ -123,6 +139,20 @@ const Forecast: React.FC = () => {
             <h4 className="font-semibold text-indigo-900 dark:text-indigo-200 text-sm">AI Outlook</h4>
           {lastAiRunAt && <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mb-1">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</p>}
             <p className="text-sm text-indigo-800 dark:text-indigo-300">{insight}</p>
+            {blockedAction && onNavigate && (
+              <button
+                type="button"
+                onClick={() => onNavigate(blockedAction.target)}
+                className="mt-2 inline-flex items-center rounded-lg bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-slate-700"
+              >
+                {blockedAction.label}
+              </button>
+            )}
+            {showConfidence && projectionConfidence !== null && (
+              <p className="mt-2 text-xs font-semibold text-indigo-800 dark:text-indigo-200">
+                Model confidence: {projectionConfidence}%
+              </p>
+            )}
             {upcomingEvents.length > 0 && (
               <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-2">
                 Forecast adjusted using {upcomingEvents.length} upcoming calendar event{upcomingEvents.length === 1 ? '' : 's'}.

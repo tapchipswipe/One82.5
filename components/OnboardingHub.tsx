@@ -3,6 +3,28 @@ import { ClipboardList, Send } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { OnboardingAddress, OnboardingApplicationData, OnboardingDeal, OnboardingOwnerProfile, ProcessorTarget } from '../types';
 
+const PROCESSOR_DESTINATION_BY_TARGET: Record<ProcessorTarget, 'stripe-underwriting' | 'tsys-boarding' | 'fiserv-boarding' | 'worldpay-boarding' | 'global-boarding'> = {
+  stripe: 'stripe-underwriting',
+  tsys: 'tsys-boarding',
+  fiserv: 'fiserv-boarding',
+  worldpay: 'worldpay-boarding',
+  global: 'global-boarding'
+};
+
+const inferRepNameFromTeamRow = (row: Record<string, string>): string => {
+  const candidates = [row.name, row.repName, row.rep, row.owner, row.ownerRepName, row.fullName]
+    .map((value) => (value || '').trim())
+    .filter((value) => value.length > 0);
+  return candidates[0] || '';
+};
+
+const inferRepEmailFromTeamRow = (row: Record<string, string>): string => {
+  const candidates = [row.email, row.repEmail, row.ownerEmail, row.workEmail]
+    .map((value) => (value || '').trim().toLowerCase())
+    .filter((value) => value.length > 0);
+  return candidates[0] || '';
+};
+
 const emptyAddress = (): OnboardingAddress => ({
   street1: '',
   street2: '',
@@ -121,6 +143,10 @@ const OnboardingHub: React.FC = () => {
   const [repOptions, setRepOptions] = useState<string[]>([]);
   const [internalNotes, setInternalNotes] = useState('');
   const [applicationData, setApplicationData] = useState<OnboardingApplicationData>(() => emptyApplicationData());
+  const currentUser = StorageService.getUser();
+  const currentRole = currentUser?.role || 'merchant';
+  const currentUserEmail = (currentUser?.email || '').toLowerCase();
+  const [scopedRepName, setScopedRepName] = useState('');
 
   const requiredChecklist = useMemo(() => {
     const businessLegalNameReady = applicationData.businessInformation.legalName.trim().length > 0;
@@ -152,14 +178,17 @@ const OnboardingHub: React.FC = () => {
       setOnboardingDeals(await StorageService.getOnboardingDealsResolved());
       const importedTeam = StorageService.getImportedTeam();
       const teamReps = importedTeam
-        .map((row) => row.name || row.repName || row.rep || row.owner || '')
-        .map((name) => name.trim())
+        .map((row) => inferRepNameFromTeamRow(row))
         .filter((name) => name.length > 0);
       const deduped = Array.from(new Set(teamReps));
+
+      const repRowForUser = importedTeam.find((row) => inferRepEmailFromTeamRow(row) === currentUserEmail);
+      const inferredScopedRep = repRowForUser ? inferRepNameFromTeamRow(repRowForUser) : '';
+      setScopedRepName(inferredScopedRep);
       setRepOptions(deduped);
       setMerchantIdentity((current) => ({
         ...current,
-        ownerRepName: current.ownerRepName || deduped[0] || ''
+        ownerRepName: inferredScopedRep || current.ownerRepName || deduped[0] || ''
       }));
     };
 
@@ -169,7 +198,14 @@ const OnboardingHub: React.FC = () => {
     };
     window.addEventListener('user-update', onUpdate);
     return () => window.removeEventListener('user-update', onUpdate);
-  }, []);
+  }, [currentUserEmail]);
+
+  const isScopedRep = currentRole !== 'overseer' && scopedRepName.trim().length > 0;
+  const visibleDeals = useMemo(() => {
+    if (!isScopedRep) return onboardingDeals;
+    const scoped = scopedRepName.trim().toLowerCase();
+    return onboardingDeals.filter((deal) => deal.ownerRepName.trim().toLowerCase() === scoped);
+  }, [isScopedRep, onboardingDeals, scopedRepName]);
 
   const createOnboardingDeal = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -186,15 +222,27 @@ const OnboardingHub: React.FC = () => {
       requiredChecklist.agreementReady ? null : 'Signature Name/Date'
     ].filter(Boolean);
 
+    const normalizedMissingFields = missingFields.filter((field): field is string => typeof field === 'string');
+    const resolvedOwnerRepName = isScopedRep
+      ? scopedRepName.trim()
+      : merchantIdentity.ownerRepName.trim() || 'Unassigned Rep';
+
     StorageService.addOnboardingDeal({
       merchantName,
       merchantEmail,
-      ownerRepName: merchantIdentity.ownerRepName.trim() || 'Unassigned Rep',
+      ownerRepName: resolvedOwnerRepName,
       processorTarget: merchantIdentity.processorTarget,
       status,
       packageSummary: requiredChecklist.isReady
-        ? `${merchantIdentity.processorTarget.toUpperCase()} package complete for underwriting review`
-        : `Missing required fields: ${missingFields.join(', ')}`,
+        ? `${merchantIdentity.processorTarget.toUpperCase()} package mapped to ${PROCESSOR_DESTINATION_BY_TARGET[merchantIdentity.processorTarget]} and ready for underwriting review`
+        : `Missing required fields: ${normalizedMissingFields.join(', ')}`,
+      onboardingPackage: {
+        processorTarget: merchantIdentity.processorTarget,
+        destinationSystem: PROCESSOR_DESTINATION_BY_TARGET[merchantIdentity.processorTarget],
+        readiness: requiredChecklist.isReady ? 'ready' : 'incomplete',
+        missingFields: normalizedMissingFields,
+        generatedAt: Date.now()
+      },
       notes: internalNotes.trim() || undefined,
       applicationData
     });
@@ -207,6 +255,12 @@ const OnboardingHub: React.FC = () => {
   };
 
   const updateDealStatus = async (dealId: string, status: OnboardingDeal['status']) => {
+    const targetDeal = onboardingDeals.find((deal) => deal.id === dealId);
+    if (!targetDeal) return;
+    if (isScopedRep && targetDeal.ownerRepName.trim().toLowerCase() !== scopedRepName.trim().toLowerCase()) {
+      return;
+    }
+
     StorageService.updateOnboardingDealStatus(dealId, status);
     await StorageService.saveOnboardingDealsResolved(StorageService.getOnboardingDeals());
     setOnboardingDeals(StorageService.getOnboardingDeals());
@@ -237,6 +291,7 @@ const OnboardingHub: React.FC = () => {
             <select
               value={merchantIdentity.ownerRepName}
               onChange={(event) => setMerchantIdentity((current) => ({ ...current, ownerRepName: event.target.value }))}
+              disabled={isScopedRep}
               className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
             >
               {repOptions.length === 0 && <option value="">Unassigned Rep</option>}
@@ -260,6 +315,9 @@ const OnboardingHub: React.FC = () => {
               className="px-3 py-2 rounded-xl border border-gray-200 text-sm"
             />
           </div>
+          {isScopedRep && (
+            <p className="text-xs text-indigo-700">Scoped rep mode: this user can only create and manage onboarding deals assigned to {scopedRepName}.</p>
+          )}
 
           <div className="rounded-xl border border-gray-200 p-4 space-y-3">
             <h3 className="text-sm font-semibold text-gray-900">Contact Information</h3>
@@ -515,13 +573,13 @@ const OnboardingHub: React.FC = () => {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                {['Merchant', 'Rep Owner', 'Processor', 'Package', 'Status', 'Action'].map((header) => (
+                {['Merchant', 'Rep Owner', 'Processor', 'Destination', 'Package', 'Status', 'Action'].map((header) => (
                   <th key={header} className="px-4 py-3 text-xs uppercase tracking-wide text-gray-500 font-semibold">{header}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {onboardingDeals.slice(0, 12).map((deal) => (
+              {visibleDeals.slice(0, 12).map((deal) => (
                 <tr key={deal.id} className="hover:bg-indigo-50/30 transition-colors">
                   <td className="px-4 py-3">
                     <p className="font-semibold text-gray-900">{deal.merchantName}</p>
@@ -529,6 +587,7 @@ const OnboardingHub: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-gray-700">{deal.ownerRepName}</td>
                   <td className="px-4 py-3 text-gray-700 uppercase">{deal.processorTarget}</td>
+                  <td className="px-4 py-3 text-xs text-gray-700">{deal.onboardingPackage?.destinationSystem || PROCESSOR_DESTINATION_BY_TARGET[deal.processorTarget]}</td>
                   <td className="px-4 py-3 text-xs text-gray-600">{deal.packageSummary}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${deal.status === 'submitted'
@@ -561,9 +620,9 @@ const OnboardingHub: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {onboardingDeals.length === 0 && (
+              {visibleDeals.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
                     No onboarding deals yet. Create the first merchant deal to start centralized intake.
                   </td>
                 </tr>

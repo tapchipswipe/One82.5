@@ -8,7 +8,11 @@ import { SourceStatusText } from './ProvenanceIndicators';
 const formatCurrency = (value: number): string =>
   `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
-const AIReport: React.FC = () => {
+interface AIReportProps {
+  onNavigate?: (view: string) => void;
+}
+
+const AIReport: React.FC<AIReportProps> = ({ onNavigate }) => {
   const [narrative, setNarrative] = useState('Generating report...');
   const [loading, setLoading] = useState(false);
   const [generatedAt, setGeneratedAt] = useState<number | null>(() => StorageService.getAiLastRunAt('report'));
@@ -54,6 +58,13 @@ const AIReport: React.FC = () => {
   }, [metrics, transactions]);
 
   const hasTrustedData = metrics.length > 0 && transactions.length > 0;
+  const blockedAction = isAuthMode
+    ? !hasGeminiKey
+      ? { label: 'Open Settings', target: 'settings' }
+      : !hasTrustedData
+        ? { label: 'Open Transactions', target: 'transactions' }
+        : null
+    : null;
 
   const generateReport = useCallback(async (force = false) => {
     if (!hasTrustedData) {
@@ -122,7 +133,18 @@ const AIReport: React.FC = () => {
       {!hasTrustedData && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10 p-4 text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 mt-0.5" />
-          <p>Report quality is limited until transactions and metrics are available. Import or connect data sources from Integrations.</p>
+          <div className="space-y-2">
+            <p>Report quality is limited until transactions and metrics are available. Import or connect data sources from Integrations.</p>
+            {blockedAction && onNavigate && (
+              <button
+                type="button"
+                onClick={() => onNavigate(blockedAction.target)}
+                className="inline-flex items-center rounded-lg border border-amber-300 dark:border-amber-800 px-2.5 py-1 text-xs font-semibold text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              >
+                {blockedAction.label}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

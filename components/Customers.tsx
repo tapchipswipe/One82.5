@@ -10,6 +10,7 @@ import {
     ResponsiveContainer
 } from 'recharts';
 import { StorageService } from '../services/storage';
+import { SourceStatusText } from './ProvenanceIndicators';
 
 const LoyaltyBar = ({ score }: { score: number }) => {
     const color = score >= 75 ? 'bg-green-500' : score >= 45 ? 'bg-yellow-500' : 'bg-red-500';
@@ -205,6 +206,18 @@ const Customers: React.FC = () => {
         ? Math.round(customers.reduce((a, c) => a + c.loyaltyScore, 0) / customers.length)
         : 0;
     const atRisk = customers.filter(c => c.retentionRisk === 'High').length;
+    const latestTransactionAt = StorageService.getTransactions()
+        .map((tx) => new Date(tx.date).getTime())
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => b - a)[0] || null;
+    const freshness = isDemoMode
+        ? 'Simulated freshness'
+        : latestTransactionAt
+            ? (() => {
+                const hours = Math.floor((Date.now() - latestTransactionAt) / 3600000);
+                return hours >= 24 ? `Stale (${hours}h since latest transaction)` : `Fresh (${hours}h since latest transaction)`;
+            })()
+            : 'No recent trusted transaction data';
 
     return (
         <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -217,6 +230,8 @@ const Customers: React.FC = () => {
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         Spend patterns, loyalty scores, and retention risk
                     </p>
+                    <SourceStatusText className="text-xs text-gray-500 dark:text-gray-400 mt-2" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Data freshness: {freshness}</p>
                 </div>
                 <span className="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/30 font-medium">
                     <Sparkles className="w-3 h-3 inline mr-1" />{isDemoMode ? 'Simulation Mode' : 'Auth Mode'}

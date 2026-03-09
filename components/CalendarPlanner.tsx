@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, Trash2, Edit3, Sparkles } from 'lucide-react';
 import { CalendarEvent } from '../types';
 import { StorageService } from '../services/storage';
+import { SourceStatusText } from './ProvenanceIndicators';
 
 const toDateKey = (date: Date): string => date.toISOString().slice(0, 10);
 
@@ -13,6 +14,7 @@ const monthLabel = (date: Date): string =>
   date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
 const CalendarPlanner: React.FC = () => {
+  const dataMode = StorageService.getDataMode();
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
@@ -77,6 +79,17 @@ const CalendarPlanner: React.FC = () => {
 
     return { total: upcoming.length, positive, negative };
   }, [events]);
+
+  const dataFreshness = useMemo(() => {
+    if (dataMode === 'demo') return 'Simulated freshness';
+    const latestEvent = events
+      .map((event) => event.updatedAt || event.createdAt)
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => b - a)[0] || null;
+    if (!latestEvent) return 'No recent trusted calendar events';
+    const hours = Math.floor((Date.now() - latestEvent) / 3600000);
+    return hours >= 24 ? `Stale (${hours}h since latest calendar update)` : `Fresh (${hours}h since latest calendar update)`;
+  }, [dataMode, events]);
 
   const saveEvents = (nextEvents: CalendarEvent[]) => {
     setEvents(nextEvents);
@@ -160,6 +173,8 @@ const CalendarPlanner: React.FC = () => {
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             Track operational events and quantify expected revenue impact for forecasting.
           </p>
+          <SourceStatusText className="text-xs text-slate-500 dark:text-slate-400 mt-2" />
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Data freshness: {dataFreshness}</p>
         </div>
 
         <button

@@ -3,6 +3,7 @@ import { BarChart2, DollarSign, TrendingUp, Activity } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { StorageService } from '../services/storage';
 import { BuyRateProfile, Transaction } from '../types';
+import { SourceStatusText } from './ProvenanceIndicators';
 
 type MerchantProfitRow = {
   name: string;
@@ -19,8 +20,32 @@ type MerchantProfitRow = {
   trend: 'up' | 'down' | 'flat';
 };
 
+type RepRollup = {
+  repName: string;
+  merchants: number;
+  volume: number;
+  processorCost: number;
+  estimatedMargin: number;
+};
+
 const formatCurrency = (value: number): string =>
   `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+
+const normalizeName = (value: string): string => value.trim().toLowerCase();
+
+const inferMerchantNameFromMerchantRow = (row: Record<string, string>): string => {
+  const candidates = [row.merchantName, row.name, row.businessName, row.company, row.customer]
+    .map((value) => (value || '').trim())
+    .filter((value) => value.length > 0);
+  return candidates[0] || '';
+};
+
+const inferRepNameFromMerchantRow = (row: Record<string, string>): string => {
+  const candidates = [row.ownerRepName, row.repName, row.rep, row.owner, row.accountManager, row.assignedRep]
+    .map((value) => (value || '').trim())
+    .filter((value) => value.length > 0);
+  return candidates[0] || '';
+};
 
 const getMerchantRows = (transactions: Transaction[], profiles: BuyRateProfile[]): MerchantProfitRow[] => {
   const grouped = new Map<string, Transaction[]>();
@@ -81,6 +106,36 @@ const Profitability: React.FC = () => {
     return merchantRows.filter((row) => row.processorTarget === processorFilter);
   }, [merchantRows, processorFilter]);
 
+  const repRollups = useMemo<RepRollup[]>(() => {
+    const importedMerchants = StorageService.getImportedMerchants();
+    const merchantToRep = new Map<string, string>();
+    importedMerchants.forEach((row) => {
+      const merchantName = inferMerchantNameFromMerchantRow(row);
+      const repName = inferRepNameFromMerchantRow(row);
+      if (!merchantName || !repName) return;
+      merchantToRep.set(normalizeName(merchantName), repName);
+    });
+
+    const grouped = new Map<string, RepRollup>();
+    filteredRows.forEach((row) => {
+      const repName = merchantToRep.get(normalizeName(row.name)) || 'Unassigned Rep';
+      const current = grouped.get(repName) || {
+        repName,
+        merchants: 0,
+        volume: 0,
+        processorCost: 0,
+        estimatedMargin: 0
+      };
+      current.merchants += 1;
+      current.volume += row.volume;
+      current.processorCost += row.processorCost;
+      current.estimatedMargin += row.estimatedMargin;
+      grouped.set(repName, current);
+    });
+
+    return Array.from(grouped.values()).sort((left, right) => right.estimatedMargin - left.estimatedMargin);
+  }, [filteredRows]);
+
   const upsertProfile = (row: MerchantProfitRow, updates: Partial<Pick<MerchantProfitRow, 'buyRateBps' | 'markupBps' | 'serviceFeeMonthly' | 'processorTarget'>>) => {
     StorageService.upsertBuyRateProfile({
       merchantName: row.name,
@@ -114,6 +169,17 @@ const Profitability: React.FC = () => {
     };
   }, [filteredRows]);
 
+  const profitabilityFreshness = useMemo(() => {
+    if (isDemoMode) return 'Simulated freshness';
+    const latest = transactions
+      .map((transaction) => new Date(transaction.date).getTime())
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => b - a)[0] || null;
+    if (!latest) return 'No recent trusted transaction data';
+    const hours = Math.floor((Date.now() - latest) / 3600000);
+    return hours >= 24 ? `Stale (${hours}h since latest transaction)` : `Fresh (${hours}h since latest transaction)`;
+  }, [isDemoMode, transactions]);
+
   if (!isDemoMode && filteredRows.length === 0) {
     return (
       <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -146,6 +212,8 @@ const Profitability: React.FC = () => {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Merchant-level buy-rate cost, markup, and margin analysis.
         </p>
+        <SourceStatusText className="text-xs text-gray-500 dark:text-gray-400 mt-2" />
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Data freshness: {profitabilityFreshness}</p>
         <div className="mt-3 flex items-center gap-2">
           <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Processor</label>
           <select
@@ -205,6 +273,52 @@ const Profitability: React.FC = () => {
         <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-800 p-4">
           <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Service Fee Model</p>
           <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">Default assumes monthly service fee pass-through; margin primarily comes from markup bps.</p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-800 p-4">
+        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Portfolio Rollup</p>
+        <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Gross Volume</p>
+            <p className="font-semibold text-gray-900 dark:text-white">{formatCurrency(totals.totalVolume)}</p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Processor Cost</p>
+            <p className="font-semibold text-gray-900 dark:text-white">{formatCurrency(totals.totalProcessorCost)}</p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Net Margin</p>
+            <p className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(totals.totalMargin)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-800 p-4">
+        <h3 className="font-bold text-gray-900 dark:text-white text-sm">Rep Margin Rollup</h3>
+        <div className="overflow-x-auto mt-2">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <th className="py-2 pr-3 text-left font-semibold">Rep</th>
+                <th className="py-2 pr-3 text-left font-semibold">Merchants</th>
+                <th className="py-2 pr-3 text-left font-semibold">Volume</th>
+                <th className="py-2 pr-3 text-left font-semibold">Processor Cost</th>
+                <th className="py-2 text-left font-semibold">Est. Margin</th>
+              </tr>
+            </thead>
+            <tbody>
+              {repRollups.map((rollup) => (
+                <tr key={rollup.repName} className="border-b border-gray-200/60 dark:border-gray-700/40">
+                  <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{rollup.repName}</td>
+                  <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{rollup.merchants}</td>
+                  <td className="py-2 pr-3 font-mono text-gray-700 dark:text-gray-300">{formatCurrency(rollup.volume)}</td>
+                  <td className="py-2 pr-3 font-mono text-gray-700 dark:text-gray-300">{formatCurrency(rollup.processorCost)}</td>
+                  <td className="py-2 font-mono font-semibold text-green-600 dark:text-green-400">{formatCurrency(rollup.estimatedMargin)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

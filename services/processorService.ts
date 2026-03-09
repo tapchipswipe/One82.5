@@ -82,16 +82,40 @@ export const stripeService = {
         const response = await fetch(`https://api.stripe.com/v1/charges?limit=100`, {
             headers: { Authorization: `Bearer ${key}` },
         });
+        if (!response.ok) {
+            throw new Error(`Stripe sync failed (${response.status}). Verify API key permissions and retry.`);
+        }
+
         const data = await response.json();
-        return data.data?.map((charge: any) => ({
-            id: charge.id,
-            date: new Date(charge.created * 1000).toISOString().split('T')[0],
-            amount: charge.amount / 100,
-            cardBrand: charge.payment_method_details?.card?.brand || 'Visa',
-            method: charge.payment_method_details?.card?.present ? 'Swiped' : 'Keyed',
-            merchantId: charge.metadata?.merchantId || 'unknown',
-            status: charge.paid ? 'Settled' : 'Pending',
-        })) ?? [];
+        const rows = (Array.isArray(data?.data) ? data.data : []) as any[];
+
+        const normalized = rows.map((charge) => {
+            const brandRaw = String(charge?.payment_method_details?.card?.brand || '').toLowerCase();
+            const cardBrand: ProcessorTransaction['cardBrand'] =
+                brandRaw.includes('master')
+                    ? 'Mastercard'
+                    : brandRaw.includes('amex')
+                        ? 'Amex'
+                        : brandRaw.includes('discover')
+                            ? 'Discover'
+                            : 'Visa';
+
+            return {
+                id: String(charge?.id || ''),
+                date: new Date((Number(charge?.created) || Date.now() / 1000) * 1000).toISOString().split('T')[0],
+                amount: (Number(charge?.amount) || 0) / 100,
+                cardBrand,
+                method: charge?.payment_method_details?.card?.present ? 'Swiped' : 'Keyed',
+                merchantId: String(charge?.metadata?.merchantId || charge?.customer || 'unknown'),
+                status: charge?.paid ? 'Settled' : 'Pending',
+            } as ProcessorTransaction;
+        });
+
+        if (merchantId) {
+            return normalized.filter((transaction) => transaction.merchantId === merchantId);
+        }
+
+        return normalized;
     },
 
     /**
@@ -109,6 +133,9 @@ export const stripeService = {
             `https://api.stripe.com/v1/balance/history?limit=100&created[gte]=${start}&created[lte]=${end}`,
             { headers: { Authorization: `Bearer ${key}` } }
         );
+        if (!response.ok) {
+            throw new Error(`Stripe balance sync failed (${response.status}).`);
+        }
         const data = await response.json();
         return data.data?.reduce((acc: number, t: any) => acc + t.amount / 100, 0) ?? 0;
     },

@@ -22,6 +22,10 @@ type AuthSession = {
 };
 
 type AuthMode = 'demo' | 'backend';
+type AuthContext = {
+  user: User;
+  session: AuthSession;
+};
 
 type AppNotification = {
   id: string;
@@ -79,6 +83,13 @@ type OnboardingDeal = {
   processorTarget: 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
   status: 'draft' | 'validation-required' | 'ready-to-submit' | 'submitted';
   packageSummary: string;
+  onboardingPackage?: {
+    processorTarget: 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
+    destinationSystem: 'stripe-underwriting' | 'tsys-boarding' | 'fiserv-boarding' | 'worldpay-boarding' | 'global-boarding';
+    readiness: 'ready' | 'incomplete';
+    missingFields: string[];
+    generatedAt: number;
+  };
   notes?: string;
   createdAt: number;
   updatedAt: number;
@@ -281,6 +292,7 @@ const getSupabaseHeaders = (): Record<string, string> => ({
 });
 
 const canUseSupabase = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+const ALL_USER_ROLES: readonly UserRole[] = ['merchant', 'iso', 'overseer'];
 const canUseSupabaseAuth = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 export const verifySupabaseCredentials = async (email: string, password: string): Promise<boolean> => {
@@ -820,7 +832,7 @@ export const clearSessionCookie = (res: ResponseLike): void => {
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 };
 
-export const getAuthFromRequest = async (req: RequestLike): Promise<{ user: User; session: AuthSession } | null> => {
+export const getAuthFromRequest = async (req: RequestLike): Promise<AuthContext | null> => {
   if (!canUseSupabase) return null;
 
   const cookieHeader = Array.isArray(req.headers.cookie) ? req.headers.cookie.join('; ') : req.headers.cookie;
@@ -907,6 +919,29 @@ export const sendMethodNotAllowed = (res: ResponseLike, allowed: string[]): void
 
 export const sendUnauthorized = (res: ResponseLike): void => {
   res.status(401).json({ error: 'Unauthorized' });
+};
+
+export const sendForbidden = (res: ResponseLike): void => {
+  res.status(403).json({ error: 'Forbidden' });
+};
+
+export const requireAuthorized = async (
+  req: RequestLike,
+  res: ResponseLike,
+  allowedRoles: readonly UserRole[] = ALL_USER_ROLES
+): Promise<AuthContext | null> => {
+  const auth = await getAuthFromRequest(req);
+  if (!auth) {
+    sendUnauthorized(res);
+    return null;
+  }
+
+  if (!allowedRoles.includes(auth.user.role)) {
+    sendForbidden(res);
+    return null;
+  }
+
+  return auth;
 };
 
 export const buildMetrics = (transactions: Transaction[]): DailyMetric[] => {

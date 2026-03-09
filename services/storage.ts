@@ -66,7 +66,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   notifications: true,
   theme: 'system',
   primaryColor: 'green',
-  aiResponseStyle: 50 // Default to Balanced
+  aiResponseStyle: 50, // Default to Balanced
+  showAiConfidenceInProjections: true
 };
 
 const getTaskScopeKey = (role: UserRole): string => {
@@ -196,7 +197,17 @@ export const StorageService = {
   // Settings
   getSettings: (): AppSettings => {
     const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    return data ? JSON.parse(data) : DEFAULT_SETTINGS;
+    if (!data) return DEFAULT_SETTINGS;
+
+    try {
+      const parsed = JSON.parse(data) as Partial<AppSettings>;
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsed
+      };
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
   },
 
   saveSettings: (settings: AppSettings): void => {

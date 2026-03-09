@@ -1,4 +1,4 @@
-import { getAuthFromRequest, sendMethodNotAllowed, sendUnauthorized, setApiResponseHeaders } from '../_lib/backend.js';
+import { requireAuthorized, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -10,9 +10,8 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const auth = await getAuthFromRequest(req);
+  const auth = await requireAuthorized(req, res);
   if (!auth) {
-    sendUnauthorized(res);
     return;
   }
 

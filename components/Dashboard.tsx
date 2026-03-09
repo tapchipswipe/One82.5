@@ -11,12 +11,13 @@ import TodoList from './TodoList';
 
 interface DashboardProps {
   businessType: BusinessType;
+  onNavigate?: (view: string) => void;
 }
 
 const COLORS = ['#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444'];
 const DATA_STALE_THRESHOLD_HOURS = 24;
 
-const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
+const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
   const [insight, setInsight] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [timeRange, setTimeRange] = useState<string>('Last 7 Days');
@@ -25,6 +26,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
   const [explanation, setExplanation] = useState<{ point: any, text: string } | null>(null);
   const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('dashboard'));
   const [lastDataUpdateAt, setLastDataUpdateAt] = useState<number | null>(null);
+  const [blockedAction, setBlockedAction] = useState<{ label: string; target: string } | null>(null);
 
   const settings = StorageService.getSettings();
 
@@ -67,6 +69,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
     const cached = StorageService.getCachedInsight(cacheKey);
     if (cached && !force) {
       setInsight(cached);
+      setBlockedAction(null);
       markAiRun();
       setLoading(false);
       return;
@@ -74,6 +77,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
 
     if (isAuthMode && !hasGeminiKey) {
       setInsight('AI dashboard insights are blocked in Auth Login until a Gemini API key is configured in Integrations.');
+      setBlockedAction({ label: 'Open Settings', target: 'settings' });
       markAiRun();
       setLoading(false);
       return;
@@ -81,11 +85,13 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
 
     if (isAuthMode && filtered.length === 0) {
       setInsight('AI dashboard insights are blocked in Auth Login until trusted metrics are available. Next step: import transactions/metrics or connect a live integration.');
+      setBlockedAction({ label: 'Open Transactions', target: 'transactions' });
       markAiRun();
       setLoading(false);
       return;
     }
 
+    setBlockedAction(null);
     setLoading(true);
     setInsight('');
     let fullText = '';
@@ -137,9 +143,9 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
           <p className={`text-xs mt-1 font-medium ${isDataStale ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>
             Data freshness: {isDataStale
               ? staleDataHours === null
-                ? 'stale (no recent sync/import detected)'
-                : `stale (${staleDataHours}h since last transaction)`
-              : `fresh (${staleDataHours}h since last transaction)`}
+                ? 'No recent trusted transaction data'
+                : `Stale (${staleDataHours}h since latest transaction)`
+              : `Fresh (${staleDataHours}h since latest transaction)`}
           </p>
         </div>
         <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg p-2.5 outline-none">
@@ -168,6 +174,15 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType }) => {
         <p className="text-lg leading-relaxed font-medium text-slate-700 dark:text-slate-300">
           {loading && !insight ? "One82 is thinking..." : insight}
         </p>
+        {blockedAction && onNavigate && (
+          <button
+            type="button"
+            onClick={() => onNavigate(blockedAction.target)}
+            className="mt-3 inline-flex items-center rounded-lg bg-white/90 dark:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-primary-700 dark:text-primary-200 border border-primary-200 dark:border-slate-600 hover:bg-white"
+          >
+            {blockedAction.label}
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

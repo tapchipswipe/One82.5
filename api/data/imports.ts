@@ -1,12 +1,11 @@
 import {
-  getAuthFromRequest,
   getStateForTenant,
   parseBody,
+  requireAuthorized,
   saveStateForTenant,
   syncImportedRowsToDomain,
   setApiResponseHeaders,
-  sendMethodNotAllowed,
-  sendUnauthorized
+  sendMethodNotAllowed
 } from '../_lib/backend.js';
 
 export const config = { runtime: 'nodejs' };
@@ -24,6 +23,13 @@ type Body = {
     processorTarget: 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
     status: 'draft' | 'validation-required' | 'ready-to-submit' | 'submitted';
     packageSummary: string;
+    onboardingPackage?: {
+      processorTarget: 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
+      destinationSystem: 'stripe-underwriting' | 'tsys-boarding' | 'fiserv-boarding' | 'worldpay-boarding' | 'global-boarding';
+      readiness: 'ready' | 'incomplete';
+      missingFields: string[];
+      generatedAt: number;
+    };
     notes?: string;
     createdAt: number;
     updatedAt: number;
@@ -48,9 +54,8 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const auth = await getAuthFromRequest(req);
+  const auth = await requireAuthorized(req, res, ['iso', 'overseer']);
   if (!auth) {
-    sendUnauthorized(res);
     return;
   }
 

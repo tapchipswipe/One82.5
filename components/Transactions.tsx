@@ -4,6 +4,7 @@ import { StorageService } from '../services/storage';
 import { categorizeTransaction } from '../services/geminiService';
 import { Transaction } from '../types';
 import TransactionDetail from './TransactionDetail';
+import { SourceStatusText } from './ProvenanceIndicators';
 
 const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -11,6 +12,7 @@ const Transactions: React.FC = () => {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+    const dataMode = StorageService.getDataMode();
 
   // Manual Entry State
   const [newTx, setNewTx] = useState({
@@ -46,6 +48,21 @@ const Transactions: React.FC = () => {
             return haystack.includes(query);
         });
     }, [transactions, searchQuery]);
+
+    const lastTransactionAt = useMemo(() => {
+        const timestamps = transactions
+            .map((tx) => new Date(tx.date).getTime())
+            .filter((value) => Number.isFinite(value));
+        if (timestamps.length === 0) return null;
+        return Math.max(...timestamps);
+    }, [transactions]);
+
+    const dataFreshness = useMemo(() => {
+        if (dataMode === 'demo') return 'Simulated freshness';
+        if (!lastTransactionAt) return 'No recent trusted transaction data';
+        const hours = Math.floor((Date.now() - lastTransactionAt) / 3600000);
+        return hours >= 24 ? `Stale (${hours}h since latest transaction)` : `Fresh (${hours}h since latest transaction)`;
+    }, [dataMode, lastTransactionAt]);
 
   const handleCategorize = async () => {
         const isAuthMode = StorageService.getDataMode() === 'backend';
@@ -146,6 +163,8 @@ const Transactions: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Transactions</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage and view all processing activity.</p>
+                    <SourceStatusText className="text-xs text-slate-500 dark:text-slate-400 mt-2" />
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Data freshness: {dataFreshness}</p>
         </div>
         <div className="flex flex-wrap gap-2">
             <button 

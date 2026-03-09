@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, Calculator, CheckCircle2, Link2, TrendingDown, TrendingUp, Users, SlidersHorizontal, X } from 'lucide-react';
 import { generateSalesReps, SalesRep, SimulationService, PortfolioMerchant } from '../services/simulationService';
 import { StorageService } from '../services/storage';
-import { CommissionLineItem, CommissionRun, Transaction } from '../types';
+import { BuyRateProfile, CommissionLineItem, CommissionRun, Transaction } from '../types';
 
 type RepAssignment = {
   rep: SalesRep;
@@ -41,6 +41,38 @@ const parseMerchantOverrides = (value: string): Record<string, number> => {
 
 const formatCurrency = (value: number): string =>
   `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+
+const normalizeName = (value: string): string => value.trim().toLowerCase();
+
+const inferRepNameFromTeamRow = (row: Record<string, string>): string => {
+  const candidates = [row.name, row.repName, row.rep, row.owner, row.ownerRepName, row.fullName]
+    .map((value) => (value || '').trim())
+    .filter((value) => value.length > 0);
+  return candidates[0] || '';
+};
+
+const inferRepNameFromMerchantRow = (row: Record<string, string>): string => {
+  const candidates = [row.ownerRepName, row.repName, row.rep, row.owner, row.accountManager, row.assignedRep]
+    .map((value) => (value || '').trim())
+    .filter((value) => value.length > 0);
+  return candidates[0] || '';
+};
+
+const inferMerchantNameFromMerchantRow = (row: Record<string, string>): string => {
+  const candidates = [row.merchantName, row.name, row.businessName, row.company, row.customer]
+    .map((value) => (value || '').trim())
+    .filter((value) => value.length > 0);
+  return candidates[0] || '';
+};
+
+const stableHash = (value: string): number => {
+  const normalized = normalizeName(value);
+  let hash = 0;
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash = ((hash << 5) - hash + normalized.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash);
+};
 
 const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioMerchant[] => {
   const grouped = new Map<string, Transaction[]>();
@@ -86,6 +118,9 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   const isDemoMode = StorageService.getDataMode() === 'demo';
   const [selectedPeriod, setSelectedPeriod] = useState(() => new Date().toISOString().slice(0, 7));
   const [commissionRuns, setCommissionRuns] = useState<CommissionRun[]>(() => StorageService.getCommissionRuns());
+  const [transactions, setTransactions] = useState<Transaction[]>(() => StorageService.getTransactions());
+  const [buyRateProfiles, setBuyRateProfiles] = useState<BuyRateProfile[]>(() => StorageService.getBuyRateProfiles());
+  const [importedMerchants, setImportedMerchants] = useState<Array<Record<string, string>>>(() => StorageService.getImportedMerchants());
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [commissionRules, setCommissionRules] = useState<CommissionRules>(() => {
     const userKey = StorageService.getUser()?.email || 'default';
@@ -114,7 +149,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
 
     const importedTeam = StorageService.getImportedTeam();
     const names = importedTeam
-      .map((row) => (row.name || row.repName || row.rep || '').trim())
+      .map((row) => inferRepNameFromTeamRow(row))
       .filter((name) => name.length > 0);
 
     if (names.length === 0) return generateSalesReps();
@@ -136,13 +171,32 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
 
   const merchants = useMemo(() => {
     if (isDemoMode) return SimulationService.generatePortfolio();
-    return buildPortfolioFromTransactions(StorageService.getTransactions());
-  }, [isDemoMode]);
+    return buildPortfolioFromTransactions(transactions);
+  }, [isDemoMode, transactions]);
+
+  const merchantRepMap = useMemo(() => {
+    const map = new Map<string, string>();
+    importedMerchants.forEach((row) => {
+      const merchantName = inferMerchantNameFromMerchantRow(row);
+      const repName = inferRepNameFromMerchantRow(row);
+      if (!merchantName || !repName) return;
+      map.set(normalizeName(merchantName), repName);
+    });
+    return map;
+  }, [importedMerchants]);
 
   useEffect(() => {
-    const updateRuns = () => setCommissionRuns(StorageService.getCommissionRuns());
+    const updateRuns = () => {
+      setCommissionRuns(StorageService.getCommissionRuns());
+      setTransactions(StorageService.getTransactions());
+      setBuyRateProfiles(StorageService.getBuyRateProfiles());
+      setImportedMerchants(StorageService.getImportedMerchants());
+    };
     window.addEventListener('user-update', updateRuns);
     void StorageService.getCommissionRunsResolved().then((runs) => setCommissionRuns(runs));
+    void StorageService.getTransactionsResolved().then((rows) => setTransactions(rows));
+    void StorageService.getBuyRateProfilesResolved().then((profiles) => setBuyRateProfiles(profiles));
+    void StorageService.getImportedDataResolved().then((payload) => setImportedMerchants(payload.merchants));
     return () => window.removeEventListener('user-update', updateRuns);
   }, []);
 
@@ -151,30 +205,25 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
       return reps.map((rep) => ({ rep, assignedMerchants: [] }));
     }
 
-    return reps.map((rep, repIndex) => {
-      const uniqueMerchants = new Map<string, PortfolioMerchant>();
-      const topMerchant = merchants.find((merchant) => merchant.name === rep.topMerchant);
+    const repNames = reps.map((rep) => rep.name);
+    const groupedByRep = new Map<string, PortfolioMerchant[]>();
+    repNames.forEach((name) => groupedByRep.set(name, []));
 
-      if (topMerchant) {
-        uniqueMerchants.set(topMerchant.id, topMerchant);
-      }
-
-      const additionalCount = (repIndex % 2) + 1;
-      const startIndex = repIndex % merchants.length;
-      let offset = 0;
-
-      while (uniqueMerchants.size < additionalCount + (topMerchant ? 1 : 0) && offset < merchants.length * 2) {
-        const merchant = merchants[(startIndex + offset) % merchants.length];
-        uniqueMerchants.set(merchant.id, merchant);
-        offset += 1;
-      }
-
-      return {
-        rep,
-        assignedMerchants: Array.from(uniqueMerchants.values()),
-      };
+    merchants.forEach((merchant) => {
+      const mappedRep = merchantRepMap.get(normalizeName(merchant.name));
+      const fallbackRep = repNames.length > 0 ? repNames[stableHash(merchant.name) % repNames.length] : undefined;
+      const targetRep = mappedRep || fallbackRep;
+      if (!targetRep) return;
+      const current = groupedByRep.get(targetRep) || [];
+      current.push(merchant);
+      groupedByRep.set(targetRep, current);
     });
-  }, [merchants, reps]);
+
+    return reps.map((rep) => ({
+      rep,
+      assignedMerchants: (groupedByRep.get(rep.name) || []).sort((left, right) => right.monthlyVolume - left.monthlyVolume)
+    }));
+  }, [merchantRepMap, merchants, reps]);
 
   const summary = useMemo(() => {
     const allAssignedIds = assignments.flatMap(({ assignedMerchants }) => assignedMerchants.map((merchant) => merchant.id));
@@ -202,7 +251,10 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
 
       return assignedMerchants.map((merchant) => {
         const volume = merchant.monthlyVolume;
-        const residualRevenue = volume * 0.018;
+        const profile = buyRateProfiles.find((entry) => normalizeName(entry.merchantName) === normalizeName(merchant.name));
+        const markupBps = profile?.markupBps ?? 35;
+        const serviceFeeMonthly = profile?.serviceFeeMonthly ?? 10;
+        const residualRevenue = volume * (markupBps / 10000) + serviceFeeMonthly;
         const merchantOverride = commissionRules.merchantOverrides[merchant.name.trim().toLowerCase()];
         const effectiveRate = Number.isFinite(merchantOverride)
           ? merchantOverride
@@ -220,16 +272,37 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
           residualRevenue,
           commissionRate: effectiveRate,
           payout,
-          exception: volume <= 0 ? 'No volume for selected period' : undefined
+          exception: volume <= 0
+            ? 'No volume for selected period'
+            : profile
+              ? undefined
+              : 'Using default buy-rate assumptions'
         };
       });
     });
-  }, [assignments, commissionRules]);
+  }, [assignments, buyRateProfiles, commissionRules]);
 
   const draftTotals = useMemo(() => {
     const totalPayout = draftLineItems.reduce((sum, lineItem) => sum + lineItem.payout, 0);
     const exceptions = draftLineItems.filter((lineItem) => Boolean(lineItem.exception)).length;
     return { totalPayout, exceptions, lineCount: draftLineItems.length };
+  }, [draftLineItems]);
+
+  const repRollups = useMemo(() => {
+    const grouped = new Map<string, { volume: number; residual: number; payout: number; lineCount: number; exceptions: number }>();
+    draftLineItems.forEach((lineItem) => {
+      const current = grouped.get(lineItem.repName) || { volume: 0, residual: 0, payout: 0, lineCount: 0, exceptions: 0 };
+      current.volume += lineItem.volume;
+      current.residual += lineItem.residualRevenue;
+      current.payout += lineItem.payout;
+      current.lineCount += 1;
+      if (lineItem.exception) current.exceptions += 1;
+      grouped.set(lineItem.repName, current);
+    });
+
+    return Array.from(grouped.entries())
+      .map(([repName, values]) => ({ repName, ...values }))
+      .sort((left, right) => right.payout - left.payout);
   }, [draftLineItems]);
 
   const createCommissionRun = async (status: CommissionRun['status']) => {
@@ -533,6 +606,36 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
               </div>
             ))}
             {commissionRuns.length === 0 && <p className="text-xs text-gray-500">No runs yet. Save draft or finalize the first monthly run.</p>}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <h3 className="text-sm font-semibold text-gray-900">Rep Buy-Rate Rollups</h3>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wide">
+                  <th className="py-2 pr-3 text-left font-semibold">Rep</th>
+                  <th className="py-2 pr-3 text-left font-semibold">Volume</th>
+                  <th className="py-2 pr-3 text-left font-semibold">Residual Base</th>
+                  <th className="py-2 pr-3 text-left font-semibold">Commission Payout</th>
+                  <th className="py-2 pr-3 text-left font-semibold">Lines</th>
+                  <th className="py-2 text-left font-semibold">Exceptions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repRollups.map((rollup) => (
+                  <tr key={rollup.repName} className="border-b border-gray-200/70">
+                    <td className="py-2 pr-3 text-gray-700">{rollup.repName}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.volume)}</td>
+                    <td className="py-2 pr-3 font-mono text-gray-700">{formatCurrency(rollup.residual)}</td>
+                    <td className="py-2 pr-3 font-mono font-semibold text-indigo-700">{formatCurrency(rollup.payout)}</td>
+                    <td className="py-2 pr-3 text-gray-700">{rollup.lineCount}</td>
+                    <td className="py-2 text-amber-600">{rollup.exceptions}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

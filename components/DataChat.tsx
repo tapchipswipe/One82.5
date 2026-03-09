@@ -5,7 +5,11 @@ import { chatWithDataStream } from '../services/geminiService';
 import { StorageService } from '../services/storage';
 import { ChatMessage } from '../types';
 
-const DataChat: React.FC = () => {
+interface DataChatProps {
+  onNavigate?: (view: string) => void;
+}
+
+const DataChat: React.FC<DataChatProps> = ({ onNavigate }) => {
   const isAuthMode = StorageService.getDataMode() === 'backend';
   const hasGeminiKey = Boolean(localStorage.getItem('GEMINI_API_KEY'));
   const hasTrustedData = StorageService.getMetrics().length > 0 || StorageService.getTransactions().length > 0;
@@ -27,6 +31,13 @@ const DataChat: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('chat'));
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const blockedAction = isAuthMode
+    ? !hasGeminiKey
+      ? { target: 'settings', label: 'Open Settings' }
+      : !hasTrustedData
+        ? { target: 'transactions', label: 'Open Transactions' }
+        : null
+    : null;
 
   const markAiRun = () => {
     const timestamp = Date.now();
@@ -96,6 +107,18 @@ const DataChat: React.FC = () => {
         <h2 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Bot className="w-5 h-5 text-primary-600" /> AI Streaming Assistant</h2>
         {lastAiRunAt && <p className="text-[11px] text-slate-500 dark:text-slate-400">Last AI run: {new Date(lastAiRunAt).toLocaleTimeString()}</p>}
       </div>
+
+      {blockedAction && onNavigate && (
+        <div className="px-4 py-2 border-b border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10">
+          <button
+            type="button"
+            onClick={() => onNavigate(blockedAction.target)}
+            className="text-xs font-semibold text-amber-800 dark:text-amber-200 underline underline-offset-2"
+          >
+            {blockedAction.label}
+          </button>
+        </div>
+      )}
       
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.map((msg) => (

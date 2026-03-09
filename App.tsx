@@ -479,13 +479,13 @@ const App: React.FC = () => {
       <Suspense fallback={<LoadingView />}>
         {user.role === 'merchant' && (
           <>
-            {activeView === 'dashboard' && <Dashboard businessType={user.businessType!} />}
+            {activeView === 'dashboard' && <Dashboard businessType={user.businessType!} onNavigate={handleNavigate} />}
             {activeView === 'transactions' && <Transactions />}
                 {activeView === 'inventory' && (DISABLE_AI_UI ? <AiDisabledView /> : <InventoryIntelligence />)}
             {activeView === 'settings' && <Settings />}
-                {activeView === 'chat' && (DISABLE_AI_UI ? <AiDisabledView /> : <DataChat />)}
-                {activeView === 'forecast' && (DISABLE_AI_UI ? <AiDisabledView /> : <Forecast />)}
-                {activeView === 'report' && (DISABLE_AI_UI ? <AiDisabledView /> : <AIReport />)}
+                {activeView === 'chat' && (DISABLE_AI_UI ? <AiDisabledView /> : <DataChat onNavigate={handleNavigate} />)}
+                {activeView === 'forecast' && (DISABLE_AI_UI ? <AiDisabledView /> : <Forecast onNavigate={handleNavigate} />)}
+                {activeView === 'report' && (DISABLE_AI_UI ? <AiDisabledView /> : <AIReport onNavigate={handleNavigate} />)}
             {activeView === 'calendar' && <CalendarPlanner />}
             {activeView === 'customers' && <Customers />}
             {activeView === 'profile' && <Profile user={user} onSaveProfile={handleSaveProfile} />}

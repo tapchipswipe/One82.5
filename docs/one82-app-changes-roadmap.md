@@ -3,6 +3,16 @@
 Date: 2026-03-03
 Input source: docs/One82 Information Base-changes.txt
 
+## Implementation Status (2026-03-09)
+
+Post-pilot ops expansion items are now implemented and validated in app flows:
+
+- Centralized onboarding hub now emits processor-destination package metadata and enforces scoped rep management where rep identity is known from imported team data.
+- Stripe-first integration path now includes explicit in-app live sync action, sync success/error alerts, audit log entries, and persisted transaction landing.
+- Commission automation now uses deterministic merchant-to-rep assignment (imported roster mapping first, stable fallback second) and buy-rate-aware residual base calculations.
+- Buy-rate tracking now surfaces portfolio and rep margin rollups in addition to merchant-level detail.
+- Validation status: `npm run check` passing on 2026-03-09 after these changes.
+
 ## Priority Legend
 - P0 = must fix before pilot trust
 - P1 = high-value UX and workflow improvements

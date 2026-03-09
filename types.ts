@@ -26,6 +26,7 @@ export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   primaryColor: ThemeColor;
   aiResponseStyle: number; // 0 (Simple) to 100 (Data-Driven)
+  showAiConfidenceInProjections: boolean;
   proxyEndpoint?: string;
 }
 
@@ -274,6 +275,14 @@ export interface PortfolioMetric {
 export type OnboardingDealStatus = 'draft' | 'validation-required' | 'ready-to-submit' | 'submitted';
 export type ProcessorTarget = 'stripe' | 'tsys' | 'fiserv' | 'worldpay' | 'global';
 
+export interface OnboardingPackage {
+  processorTarget: ProcessorTarget;
+  destinationSystem: 'stripe-underwriting' | 'tsys-boarding' | 'fiserv-boarding' | 'worldpay-boarding' | 'global-boarding';
+  readiness: 'ready' | 'incomplete';
+  missingFields: string[];
+  generatedAt: number;
+}
+
 export interface OnboardingAddress {
   street1: string;
   street2?: string;
@@ -394,6 +403,7 @@ export interface OnboardingDeal {
   processorTarget: ProcessorTarget;
   status: OnboardingDealStatus;
   packageSummary: string;
+  onboardingPackage?: OnboardingPackage;
   notes?: string;
   applicationData?: OnboardingApplicationData;
   createdAt: number;
