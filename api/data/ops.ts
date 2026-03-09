@@ -1,5 +1,5 @@
 import { requireAuthorized, setApiResponseHeaders, sendMethodNotAllowed } from '../_lib/backend.js';
-import { env } from '../../config/env';
+import { env } from '../../config/env.js';
 
 export const config = { runtime: 'nodejs' };
 
