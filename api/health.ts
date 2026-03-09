@@ -1,5 +1,5 @@
-import { setApiResponseHeaders } from './_lib/backend';
-import { env } from '../config/env';
+import { setApiResponseHeaders } from './_lib/backend.js';
+import { env } from '../config/env.js';
 
 const SUPABASE_URL = env.supabase.url;
 const SUPABASE_SERVICE_ROLE_KEY = env.supabase.serviceRoleKey;
