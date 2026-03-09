@@ -5,7 +5,7 @@ import {
   setApiResponseHeaders,
   setSessionCookie,
   verifySupabaseCredentials
-} from '../_lib/backend';
+} from '../_lib/backend.js';
 
 export const config = { runtime: 'nodejs' };
 

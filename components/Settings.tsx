@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Save, Bell, Monitor, User as UserIcon, Palette, Server, ShieldAlert, Database, Lock, BrainCircuit } from 'lucide-react';
+import { Save, Bell, Monitor, User as UserIcon, Server, ShieldAlert, Database, Lock, BrainCircuit } from 'lucide-react';
 import { StorageService } from '@/services/storage';
 import { AppSettings, User } from '@/types';
-import { THEME_COLORS, BUSINESS_TYPES } from '@/constants';
+import { BUSINESS_TYPES } from '@/constants';
 
 const isTheme = (value: string): value is AppSettings['theme'] =>
     value === 'light' || value === 'dark';
@@ -145,30 +145,6 @@ const Settings: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <hr className="border-slate-200 dark:border-slate-800" />
-
-        {/* Theme Color */}
-         <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center">
-                <Palette className="w-4 h-4 mr-2" />
-                Interface Color
-            </h3>
-            <div className="flex gap-4">
-                {(Object.keys(THEME_COLORS) as Array<keyof typeof THEME_COLORS>).map(color => (
-                    <button
-                        key={color}
-                        onClick={() => setSettings({...settings, primaryColor: color})}
-                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                            settings.primaryColor === color ? 'border-slate-900 dark:border-white scale-110' : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: `rgb(${THEME_COLORS[color][500]})` }}
-                    >
-                        {settings.primaryColor === color && <div className="w-2 h-2 bg-white rounded-full" />}
-                    </button>
-                ))}
             </div>
         </div>
 

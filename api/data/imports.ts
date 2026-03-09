@@ -6,7 +6,7 @@ import {
   syncImportedRowsToDomain,
   setApiResponseHeaders,
   sendMethodNotAllowed
-} from '../_lib/backend';
+} from '../_lib/backend.js';
 
 export const config = { runtime: 'nodejs' };
 

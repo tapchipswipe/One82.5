@@ -168,10 +168,10 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
         <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a12]">
 
             {/* ── Hero Banner ── */}
-            <div className="relative bg-gradient-to-r from-indigo-950 via-indigo-900 to-[#0f0f1a] overflow-hidden">
+            <div className="relative bg-gradient-to-r from-gray-900 via-gray-800 to-[#111827] overflow-hidden">
                 {/* Orb */}
-                <div className="absolute -top-20 -right-20 w-72 h-72 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none" />
-                <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-purple-500/10 rounded-full blur-[60px] pointer-events-none" />
+                <div className="absolute -top-20 -right-20 w-72 h-72 bg-gray-400/10 rounded-full blur-[80px] pointer-events-none" />
+                <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-gray-300/10 rounded-full blur-[60px] pointer-events-none" />
                 {/* Grid */}
                 <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
                     style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,0.5) 1px,transparent 1px)', backgroundSize: '32px 32px' }}
@@ -188,16 +188,16 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                                 <span className="text-xs font-mono text-green-400 tracking-widest">{isDemoMode ? 'LIVE · SIMULATION MODE' : 'LIVE · AUTH MODE'}</span>
                             </div>
                             <h1 className="text-3xl font-bold text-white">Portfolio Dashboard</h1>
-                            <p className="text-indigo-300 text-sm mt-1">
+                            <p className="text-gray-300 text-sm mt-1">
                                 {merchants.length} merchants across {uniqueIndustries} industries
                             </p>
-                            <SourceStatusText className="text-xs text-indigo-300 mt-2" />
-                            <p className="text-xs text-indigo-300 mt-1">Data freshness: {portfolioFreshness}</p>
+                            <SourceStatusText className="text-xs text-gray-300 mt-2" />
+                            <p className="text-xs text-gray-300 mt-1">Data freshness: {portfolioFreshness}</p>
                         </div>
                         <button
                             type="button"
                             onClick={() => onNavigate?.('statements')}
-                            className="inline-flex items-center self-start rounded-lg border border-indigo-300/50 bg-indigo-500/20 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/30"
+                            className="inline-flex items-center self-start rounded-lg border border-gray-300/50 bg-white/10 px-3 py-2 text-xs font-semibold text-gray-100 hover:bg-white/20"
                         >
                             Upload Statement
                         </button>
@@ -207,7 +207,7 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                         {/* Portfolio Volume */}
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
-                            <p className="text-xs text-indigo-300 uppercase tracking-widest mb-1">Portfolio Vol.</p>
+                            <p className="text-xs text-gray-300 uppercase tracking-widest mb-1">Portfolio Vol.</p>
                             <p className="text-2xl font-bold text-white font-mono tabular-nums">
                                 ${totalVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                             </p>
@@ -217,21 +217,21 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                         </div>
 
                         {/* Live CC Volume */}
-                        <div className="bg-indigo-600/30 border border-indigo-500/40 rounded-2xl p-5 backdrop-blur-sm">
-                            <p className="text-xs text-indigo-200 uppercase tracking-widest mb-1">CC Volume (Live)</p>
+                        <div className="bg-white/10 border border-white/20 rounded-2xl p-5 backdrop-blur-sm">
+                            <p className="text-xs text-gray-200 uppercase tracking-widest mb-1">CC Volume (Live)</p>
                             <p className="text-2xl font-bold text-white font-mono tabular-nums">
                                 ${ccVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                             </p>
-                            <div className="mt-2 flex items-center gap-1 text-[11px] text-indigo-300">
+                            <div className="mt-2 flex items-center gap-1 text-[11px] text-gray-300">
                                 <CreditCard className="w-3 h-3" /> processing now
                             </div>
                         </div>
 
                         {/* Est. Monthly Residual */}
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
-                            <p className="text-xs text-indigo-300 uppercase tracking-widest mb-1">Est. Residual</p>
+                            <p className="text-xs text-gray-300 uppercase tracking-widest mb-1">Est. Residual</p>
                             <p className="text-2xl font-bold text-white font-mono">
-                                ${Math.round(estMonthlyResidual).toLocaleString()}<span className="text-sm text-indigo-300 font-normal">/mo</span>
+                                ${Math.round(estMonthlyResidual).toLocaleString()}<span className="text-sm text-gray-300 font-normal">/mo</span>
                             </p>
                             <div className="mt-2 flex items-center gap-1 text-[11px] text-green-400">
                                 <ArrowUpRight className="w-3 h-3" /> across all merchants
@@ -240,7 +240,7 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
 
                         {/* Churn Risk */}
                         <div className={`rounded-2xl p-5 backdrop-blur-sm border ${atRiskCount > 0 ? 'bg-red-600/15 border-red-500/30' : 'bg-white/5 border-white/10'}`}>
-                            <p className="text-xs text-indigo-300 uppercase tracking-widest mb-1">Churn Risk</p>
+                            <p className="text-xs text-gray-300 uppercase tracking-widest mb-1">Churn Risk</p>
                             <p className={`text-2xl font-bold font-mono ${atRiskCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
                                 {atRiskCount} <span className="text-sm font-normal text-gray-400">merchants</span>
                             </p>

@@ -1,4 +1,4 @@
-import { requireAuthorized, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend';
+import { requireAuthorized, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend.js';
 
 export const config = { runtime: 'nodejs' };
 

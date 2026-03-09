@@ -1,4 +1,4 @@
-import { parseBody, requireAuthorized, saveLoginUser, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend';
+import { parseBody, requireAuthorized, saveLoginUser, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend.js';
 
 export const config = { runtime: 'nodejs' };
 
