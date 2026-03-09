@@ -407,6 +407,29 @@ export const StorageService = {
     }
   },
 
+  addNotification: (notification: { title: string; message: string; type: AppNotification['type'] }): AppNotification => {
+    const nextNotification: AppNotification = {
+      id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type,
+      read: false,
+      timestamp: Date.now()
+    };
+
+    const current = StorageService.getNotifications();
+    const next = [nextNotification, ...current].slice(0, 100);
+
+    if (shouldPersistBusinessDataLocally()) {
+      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+    } else {
+      RUNTIME_CACHE.notifications = next;
+    }
+
+    window.dispatchEvent(new Event('user-update'));
+    return nextNotification;
+  },
+
   // AI Cache Management
   getCachedInsight: (key: string): string | null => {
     const cache = localStorage.getItem(STORAGE_KEYS.AI_CACHE);

@@ -232,6 +232,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
         <div className="flex flex-col gap-6">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 h-[220px]">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Expense Distribution</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2 mb-2">Category mix based on tagged transaction history for the selected period.</p>
             <ResponsiveContainer width="100%" height="80%">
               <PieChart>
                 <Pie data={categoryData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">

@@ -215,10 +215,16 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
                                 className="pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all w-64"
                             />
                         </div>
-                        <button className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <button
+                            title="Filter options (funnel)"
+                            className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
                             <Filter className="w-4 h-4" />
                         </button>
                     </div>
+                </div>
+                <div className="px-5 py-2 border-b border-gray-100 dark:border-gray-700 text-[11px] text-gray-500 dark:text-gray-400 bg-gray-50/70 dark:bg-gray-900/20">
+                    Funnel icon = advanced filtering controls for narrowing the merchant list.
                 </div>
 
                 {/* Table */}

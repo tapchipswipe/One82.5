@@ -80,7 +80,10 @@ const TodoList: React.FC<TodoListProps> = ({ role, className = '' }) => {
                     </div>
                     <h3 className="font-bold text-gray-900 dark:text-white">Smart Tasks</h3>
                 </div>
-                <span className="text-xs font-mono text-gray-400">{tasks.filter(t => !t.completed).length} pending</span>
+                <div className="text-right">
+                    <span className="text-xs font-mono text-gray-400">{tasks.filter(t => !t.completed).length} pending</span>
+                    <p className="text-[10px] text-gray-400 mt-0.5 inline-flex items-center gap-1"><Zap className="w-3 h-3" /> = AI suggested</p>
+                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">

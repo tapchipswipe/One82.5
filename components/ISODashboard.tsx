@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     AlertTriangle,
-    Activity, Sparkles, CreditCard,
+    Activity, Sparkles, CreditCard, CalendarDays,
     ArrowDownRight, ArrowUpRight
 } from 'lucide-react';
 import { SimulationService, PortfolioMerchant } from '@/services/simulationService';
@@ -92,6 +92,7 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('iso-portfolio'));
+    const [lastHolidayDraftAt, setLastHolidayDraftAt] = useState<number | null>(null);
 
     const markAiRun = () => {
         const timestamp = Date.now();
@@ -146,6 +147,15 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
         catch { setAiAnalysis('Portfolio analysis currently unavailable.'); }
         markAiRun();
         setIsAnalyzing(false);
+    };
+
+    const createHolidayHubspotDraft = () => {
+        StorageService.addNotification({
+            title: 'Holiday Campaign Draft',
+            message: 'HubSpot holiday email draft queued for merchant outreach. Review in CRM before sending.',
+            type: 'info'
+        });
+        setLastHolidayDraftAt(Date.now());
     };
 
     const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
@@ -347,6 +357,34 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
 
                         {/* Smart Tasks */}
                         <TodoList role="iso" className="h-[260px]" />
+
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <CalendarDays className="w-4 h-4 text-indigo-500" /> Holiday Campaign Calendar
+                                </h3>
+                                {lastHolidayDraftAt && <span className="text-[11px] text-gray-500 dark:text-gray-400">Drafted {new Date(lastHolidayDraftAt).toLocaleTimeString()}</span>}
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-300">
+                                ISO holiday outreach should be sent through CRM (HubSpot). Use this quick action to draft a campaign and finalize in HubSpot.
+                            </p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={createHolidayHubspotDraft}
+                                    className="px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+                                >
+                                    Draft HubSpot Holiday Email
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onNavigate?.('integrations')}
+                                    className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40"
+                                >
+                                    Open Integrations
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

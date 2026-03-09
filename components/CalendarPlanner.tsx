@@ -173,6 +173,9 @@ const CalendarPlanner: React.FC = () => {
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             Track operational events and quantify expected revenue impact for forecasting.
           </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Example: race weekends, local festivals, and holiday rush periods can be scheduled to improve AI sales projections.
+          </p>
           <SourceStatusText className="text-xs text-slate-500 dark:text-slate-400 mt-2" />
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Data freshness: {dataFreshness}</p>
         </div>

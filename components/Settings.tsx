@@ -87,9 +87,10 @@ const Settings: React.FC = () => {
         <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 flex items-center">
                 <BrainCircuit className="w-4 h-4 mr-2 text-primary-600" />
-                AI Analysis Personality
+                AI Configuration (Response Style)
             </h3>
-            <p className="text-xs text-slate-500 mb-6">Choose how granular you want the One82 AI responses to be across the app.</p>
+            <p className="text-xs text-slate-500 mb-2">Choose how granular you want the One82 AI responses to be across the app.</p>
+            <p className="text-xs text-slate-500 mb-6">This does not change your source data. It only changes how AI explains the same data (concise vs detailed).</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">AI access is subscription-based for active accounts. One82 does not use or deduct AI credits.</p>
             
             <div className="space-y-4 px-2">
@@ -151,6 +152,12 @@ const Settings: React.FC = () => {
         <hr className="border-slate-200 dark:border-slate-800" />
 
         {isMerchant && null}
+
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 text-xs text-slate-600 dark:text-slate-300">
+            <p><span className="font-semibold">Credits:</span> Credits shown in legacy profile fields are informational demo metadata and do not gate core product usage.</p>
+        </div>
+
+        <hr className="border-slate-200 dark:border-slate-800" />
 
         {/* Notifications */}
         <div className="flex items-center justify-between">
