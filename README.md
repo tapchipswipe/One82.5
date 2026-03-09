@@ -68,15 +68,15 @@ Built with a modern, high-performance stack:
 - **Styling**: Clean white theme with dark/light mode support
 - **Components**: Modular architecture including `ISODashboard`, `MerchantLedger`, `StatementReader`, `Profitability`, and more
 
-### Capability Status (February 2026)
+### Capability Status (March 2026)
 
 | Capability | Status | Notes |
 |---|---|---|
 | Role-based app shell, dashboards, and navigation | **Live** | Available in current front-end experience |
 | Statement upload + AI-assisted analysis UX | **Live (AI-Assisted)** | Analysis quality depends on model response and input quality |
 | Portfolio/merchant metrics in demo mode | **Simulated** | Seeded/generated data for product walkthroughs |
-| Processor integrations (Stripe/Square/Clover/TSYS/Fiserv/etc.) | **Roadmap** | UI scaffolds exist; full live ingestion path is in progress |
-| Per-rep profitability from live processor data | **Roadmap** | End-to-end live source-of-truth still being implemented |
+| Processor integrations (Stripe/Square/Clover/TSYS/Fiserv/etc.) | **Stripe-first Live / Mixed** | Stripe now supports explicit in-app live sync; remaining processors are phased rollout |
+| Per-rep profitability from live processor data | **Live (Buy-Rate-Aware)** | Deterministic rep assignment + buy-rate rollups are active in Team/Profitability |
 | Churn detection and health scoring on live portfolio streams | **Roadmap** | Current alerts are demo/simulation-driven |
 | Merchant inventory intelligence from live POS data | **Roadmap** | Current experience is prototype intelligence UX |
 
@@ -122,6 +122,12 @@ Use this checklist before requesting review:
   - `Trust-Note: <what changed + risk/rollback summary>`
   - Minimum content length for the note is 20 characters.
 - Successful `Quality Checks` runs on `main`/`master` automatically create rollback tags (`rollback-<branch>-<runid>-<sha7>`).
+
+### Release Update (2026-03-09)
+- Centralized onboarding now emits processor destination metadata and supports scoped rep visibility/control.
+- Integrations includes a `Run Stripe Sync` action with normalization, dedupe, audit logging, and persisted transaction landing.
+- Team + Profitability now include deterministic commission mapping and rep/portfolio buy-rate rollups.
+- Health checks now support deployment-protected Vercel environments via authenticated fallback in `scripts/check-health.mjs`.
 
 ---
 
@@ -235,6 +241,7 @@ ONE82_HEALTH_URL=https://one82-5.vercel.app npm run ops:premises
 
 When `ONE82_HEALTH_URL` is set, `ops:premises` also checks live `/api/health` Supabase connectivity.
 - `ops:health` checks `/api/health` and fails fast if API/Supabase connectivity is unhealthy.
+- For deployment-protected Vercel URLs, `ops:health` now auto-falls back to authenticated `vercel curl` probing.
 - In-app nav timing samples are stored at localStorage key `one82_navigation_perf_samples` (rolling window, includes role/view/prefetch metadata) to track real navigation latency trends over time.
 - `supabase/migrations/0003_one82_performance.sql` adds query indexes and a session-pruning function for long-running auth performance.
 - `supabase/migrations/0004_one82_domain_foundation.sql` creates normalized domain tables (tenants, merchants, team members, processor transactions, import jobs, rep assignments, residual snapshots) for the trial/production data model.
@@ -250,6 +257,18 @@ For hosted checks, point health probe to Vercel:
 
 ```bash
 ONE82_HEALTH_URL=https://<your-deployment-domain> npm run ops:health
+```
+
+### Publish Flow (GitHub + Vercel + Supabase)
+Use this sequence for release pushes:
+
+```bash
+git add -A
+git commit -m "<summary>" -m "Trust-Note: <what changed + risk/rollback summary>"
+git push origin <branch>
+vercel deploy --prod --yes
+supabase db push
+ONE82_HEALTH_URL=https://one82-5.vercel.app npm run ops:health
 ```
 
 ### Vercel + Supabase Test Flow (Current)
