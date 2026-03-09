@@ -8,10 +8,17 @@ const readEnv = (key: string): string | undefined => {
   return viteEnv?.[key] ?? process.env[key];
 };
 
+const readBooleanEnv = (key: string): boolean => {
+  const rawValue = readEnv(key);
+  if (!rawValue) return false;
+  const normalized = rawValue.trim().replace(/^['"]|['"]$/g, '').toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes';
+};
+
 const AUTH_MODE_KEY = 'one82_auth_mode';
 const AUTH_SESSION_KEY = 'one82_auth_session';
 const AUTH_API_BASE = (readEnv('VITE_AUTH_API_BASE') || '').replace(/\/$/, '');
-const BACKEND_AUTH_ENABLED = readEnv('VITE_ENABLE_BACKEND_AUTH') === 'true';
+const BACKEND_AUTH_ENABLED = readBooleanEnv('VITE_ENABLE_BACKEND_AUTH');
 const OVERSEER_EMAIL = (readEnv('VITE_OVERSEER_EMAIL') || 'owner@one82.io').toLowerCase();
 
 const sessionStorage = {

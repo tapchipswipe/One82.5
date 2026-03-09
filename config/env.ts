@@ -23,7 +23,8 @@ const getOptional = (key: string, fallback = ''): string => {
 const getOptionalBoolean = (key: string, fallback = false): boolean => {
   const value = getEnv(key);
   if (!value) return fallback;
-  return value === 'true';
+  const normalized = value.trim().replace(/^['"]|['"]$/g, '').toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes';
 };
 
 const getRuntimeMode = (): RuntimeMode => {
