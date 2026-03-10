@@ -18,7 +18,7 @@ const readBooleanEnv = (key: string): boolean => {
 const AUTH_MODE_KEY = 'one82_auth_mode';
 const AUTH_SESSION_KEY = 'one82_auth_session';
 const AUTH_API_BASE = (readEnv('VITE_AUTH_API_BASE') || '').replace(/\/$/, '');
-const BACKEND_AUTH_ENABLED = readBooleanEnv('VITE_ENABLE_BACKEND_AUTH');
+const BACKEND_AUTH_ENABLED = true; // Enabled for production to make Auth Login available
 const OVERSEER_EMAIL = (readEnv('VITE_OVERSEER_EMAIL') || 'owner@one82.io').toLowerCase();
 
 const sessionStorage = {
