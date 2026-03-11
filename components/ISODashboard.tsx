@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     AlertTriangle,
     Activity, Sparkles, CreditCard, CalendarDays,
-    ArrowDownRight, ArrowUpRight
+    ArrowDownRight, ArrowUpRight, Users
 } from 'lucide-react';
 import { SimulationService, PortfolioMerchant } from '@/services/simulationService';
 import { analyzePortfolio } from '@/services/geminiService';
@@ -83,6 +83,46 @@ interface ISODashboardProps {
     onNavigate?: (view: string) => void;
 }
 
+type HeroMetricKey =
+    | 'portfolioVolume'
+    | 'merchantCount'
+    | 'ccVolume'
+    | 'estResidual'
+    | 'churnRisk'
+    | 'atRiskRate'
+    | 'decliningMerchants'
+    | 'avgMerchantVolume'
+    | 'avgBps'
+    | 'topMerchantVolume'
+    | 'activeMerchants'
+    | 'dataFreshness';
+
+const HERO_METRIC_STORAGE_KEY = 'one82_iso_hero_metric_slots';
+const DEFAULT_HERO_METRIC_SLOTS: HeroMetricKey[] = ['portfolioVolume', 'ccVolume', 'estResidual', 'churnRisk'];
+const HERO_METRIC_OPTIONS: Array<{ key: HeroMetricKey; label: string }> = [
+    { key: 'portfolioVolume', label: 'Portfolio Vol.' },
+    { key: 'merchantCount', label: 'Merchant Count' },
+    { key: 'ccVolume', label: 'CC Volume (Live)' },
+    { key: 'estResidual', label: 'Est. Residual' },
+    { key: 'churnRisk', label: 'Churn Risk' },
+    { key: 'atRiskRate', label: 'At-Risk Rate' },
+    { key: 'decliningMerchants', label: 'Declining Merchants' },
+    { key: 'avgMerchantVolume', label: 'Avg Merchant Vol.' },
+    { key: 'avgBps', label: 'Avg BPS' },
+    { key: 'topMerchantVolume', label: 'Top Merchant Vol.' },
+    { key: 'activeMerchants', label: 'Active Merchants' },
+    { key: 'dataFreshness', label: 'Data Freshness' }
+];
+
+const sanitizeHeroMetricSlots = (input: unknown): HeroMetricKey[] => {
+    if (!Array.isArray(input)) return DEFAULT_HERO_METRIC_SLOTS;
+    const allowed = new Set(HERO_METRIC_OPTIONS.map((option) => option.key));
+    const unique = input.filter((item): item is HeroMetricKey => typeof item === 'string' && allowed.has(item as HeroMetricKey));
+    const deduped = Array.from(new Set(unique));
+    const filled = [...deduped, ...DEFAULT_HERO_METRIC_SLOTS.filter((slot) => !deduped.includes(slot))];
+    return filled.slice(0, 4);
+};
+
 const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
     const isDemoMode = StorageService.getDataMode() === 'demo';
     const isAuthMode = StorageService.getDataMode() === 'backend';
@@ -91,6 +131,15 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
     const [ccVolume, setCcVolume] = useState(243817.50);
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [heroMetricSlots, setHeroMetricSlots] = useState<HeroMetricKey[]>(() => {
+        try {
+            const raw = localStorage.getItem(HERO_METRIC_STORAGE_KEY);
+            return raw ? sanitizeHeroMetricSlots(JSON.parse(raw)) : DEFAULT_HERO_METRIC_SLOTS;
+        } catch {
+            return DEFAULT_HERO_METRIC_SLOTS;
+        }
+    });
+    const [editingMetricSlot, setEditingMetricSlot] = useState<number | null>(null);
     const [lastAiRunAt, setLastAiRunAt] = useState<number | null>(() => StorageService.getAiLastRunAt('iso-portfolio'));
     const [lastHolidayDraftAt, setLastHolidayDraftAt] = useState<number | null>(null);
 
@@ -159,7 +208,13 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
     };
 
     const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
+    const decliningCount = merchants.filter(m => m.trend === 'down').length;
+    const activeMerchantCount = merchants.filter((merchant) => merchant.status === 'Active').length;
     const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
+    const avgMerchantVolume = merchants.length > 0 ? totalVolume / merchants.length : 0;
+    const avgBps = merchants.length > 0 ? merchants.reduce((sum, merchant) => sum + (merchant.bps || 0), 0) / merchants.length : 0;
+    const topMerchantVolume = merchants.length > 0 ? Math.max(...merchants.map((merchant) => merchant.monthlyVolume || 0)) : 0;
+    const atRiskRate = merchants.length > 0 ? (atRiskCount / merchants.length) * 100 : 0;
     const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
     const latestPortfolioTransactionAt = merchants
         .map((merchant) => merchant.lastTransaction)
@@ -173,18 +228,158 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                 return hours >= 24 ? `Stale (${hours}h since latest transaction)` : `Fresh (${hours}h since latest transaction)`;
             })()
             : 'No recent trusted transaction data';
+    const freshnessHours = latestPortfolioTransactionAt
+        ? Math.max(0, Math.floor((Date.now() - latestPortfolioTransactionAt) / 3600000))
+        : null;
+
+    useEffect(() => {
+        localStorage.setItem(HERO_METRIC_STORAGE_KEY, JSON.stringify(heroMetricSlots));
+    }, [heroMetricSlots]);
+
+    const updateHeroMetricSlot = (slotIndex: number, nextMetric: HeroMetricKey) => {
+        setHeroMetricSlots((current) => {
+            if (current[slotIndex] === nextMetric) return current;
+            const next = [...current];
+            const existingIndex = next.indexOf(nextMetric);
+            if (existingIndex >= 0) {
+                [next[slotIndex], next[existingIndex]] = [next[existingIndex], next[slotIndex]];
+                return next;
+            }
+            next[slotIndex] = nextMetric;
+            return next;
+        });
+    };
+
+    const heroMetricData: Record<HeroMetricKey, {
+        title: string;
+        value: string;
+        hint: string;
+        hintClassName: string;
+        route: string;
+        icon: React.ReactNode;
+        cardClassName: string;
+    }> = {
+        portfolioVolume: {
+            title: 'Portfolio Vol.',
+            value: `$${totalVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+            hint: 'live · ticking',
+            hintClassName: 'text-green-600',
+            route: 'portfolio',
+            icon: <Activity className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        },
+        merchantCount: {
+            title: 'Merchant Count',
+            value: merchants.length.toLocaleString(),
+            hint: `${uniqueIndustries} industries`,
+            hintClassName: 'text-gray-500',
+            route: 'portfolio',
+            icon: <Users className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        },
+        ccVolume: {
+            title: 'CC Volume (Live)',
+            value: `$${ccVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+            hint: 'processing now',
+            hintClassName: 'text-gray-500',
+            route: 'statements',
+            icon: <CreditCard className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        },
+        estResidual: {
+            title: 'Est. Residual',
+            value: `$${Math.round(estMonthlyResidual).toLocaleString()}/mo`,
+            hint: 'across all merchants',
+            hintClassName: 'text-green-600',
+            route: 'profitability',
+            icon: <ArrowUpRight className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        },
+        churnRisk: {
+            title: 'Churn Risk',
+            value: `${atRiskCount} merchants`,
+            hint: atRiskCount > 0 ? 'need attention' : 'portfolio healthy',
+            hintClassName: atRiskCount > 0 ? 'text-red-500' : 'text-green-600',
+            route: 'team',
+            icon: <AlertTriangle className="w-3 h-3" />,
+            cardClassName: atRiskCount > 0 ? 'bg-red-50 border border-red-200' : 'bg-white border border-gray-200'
+        },
+        atRiskRate: {
+            title: 'At-Risk Rate',
+            value: `${atRiskRate.toFixed(1)}%`,
+            hint: `${atRiskCount} high-risk merchants`,
+            hintClassName: atRiskRate > 0 ? 'text-red-500' : 'text-green-600',
+            route: 'team',
+            icon: <AlertTriangle className="w-3 h-3" />,
+            cardClassName: atRiskRate > 0 ? 'bg-red-50 border border-red-200' : 'bg-white border border-gray-200'
+        },
+        decliningMerchants: {
+            title: 'Declining Merchants',
+            value: decliningCount.toLocaleString(),
+            hint: `${merchants.length} merchants tracked`,
+            hintClassName: decliningCount > 0 ? 'text-red-500' : 'text-green-600',
+            route: 'portfolio',
+            icon: <ArrowDownRight className="w-3 h-3" />,
+            cardClassName: decliningCount > 0 ? 'bg-red-50 border border-red-200' : 'bg-white border border-gray-200'
+        },
+        avgMerchantVolume: {
+            title: 'Avg Merchant Vol.',
+            value: `$${Math.round(avgMerchantVolume).toLocaleString()}`,
+            hint: 'monthly average per merchant',
+            hintClassName: 'text-gray-500',
+            route: 'portfolio',
+            icon: <Activity className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        },
+        avgBps: {
+            title: 'Avg BPS',
+            value: avgBps.toFixed(1),
+            hint: 'blended portfolio rate',
+            hintClassName: 'text-gray-500',
+            route: 'profitability',
+            icon: <ArrowUpRight className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        },
+        topMerchantVolume: {
+            title: 'Top Merchant Vol.',
+            value: `$${Math.round(topMerchantVolume).toLocaleString()}`,
+            hint: 'largest single merchant volume',
+            hintClassName: 'text-gray-500',
+            route: 'portfolio',
+            icon: <Activity className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        },
+        activeMerchants: {
+            title: 'Active Merchants',
+            value: activeMerchantCount.toLocaleString(),
+            hint: `${Math.max(0, merchants.length - activeMerchantCount)} inactive`,
+            hintClassName: 'text-gray-500',
+            route: 'portfolio',
+            icon: <Users className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        },
+        dataFreshness: {
+            title: 'Data Freshness',
+            value: isDemoMode ? 'Demo' : freshnessHours === null ? 'N/A' : `${freshnessHours}h`,
+            hint: isDemoMode ? 'simulation feed' : portfolioFreshness,
+            hintClassName: isDemoMode ? 'text-gray-500' : freshnessHours !== null && freshnessHours < 24 ? 'text-green-600' : 'text-amber-600',
+            route: 'statements',
+            icon: <CalendarDays className="w-3 h-3" />,
+            cardClassName: 'bg-white border border-gray-200'
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a12]">
 
             {/* ── Hero Banner ── */}
-            <div className="relative bg-gradient-to-r from-gray-900 via-gray-800 to-[#111827] overflow-hidden">
+            <div className="relative bg-white overflow-hidden">
                 {/* Orb */}
                 <div className="absolute -top-20 -right-20 w-72 h-72 bg-gray-400/10 rounded-full blur-[80px] pointer-events-none" />
                 <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-gray-300/10 rounded-full blur-[60px] pointer-events-none" />
                 {/* Grid */}
                 <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
-                    style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,0.5) 1px,transparent 1px)', backgroundSize: '32px 32px' }}
+                    style={{ backgroundImage: 'linear-gradient(rgba(17,24,39,0.5) 1px, transparent 1px), linear-gradient(90deg,rgba(17,24,39,0.5) 1px,transparent 1px)', backgroundSize: '32px 32px' }}
                 />
 
                 <div className="relative px-6 pt-8 pb-6 max-w-7xl mx-auto">
@@ -195,19 +390,19 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
                                 </span>
-                                <span className="text-xs font-mono text-green-400 tracking-widest">{isDemoMode ? 'LIVE · SIMULATION MODE' : 'LIVE · AUTH MODE'}</span>
+                                <span className="text-xs font-mono text-green-600 tracking-widest">{isDemoMode ? 'LIVE · SIMULATION MODE' : 'LIVE · AUTH MODE'}</span>
                             </div>
-                            <h1 className="text-3xl font-bold text-white">Portfolio Dashboard</h1>
-                            <p className="text-gray-300 text-sm mt-1">
+                            <h1 className="text-3xl font-bold text-gray-900">Portfolio Dashboard</h1>
+                            <p className="text-gray-600 text-sm mt-1">
                                 {merchants.length} merchants across {uniqueIndustries} industries
                             </p>
-                            <SourceStatusText className="text-xs text-gray-300 mt-2" />
-                            <p className="text-xs text-gray-300 mt-1">Data freshness: {portfolioFreshness}</p>
+                            <SourceStatusText className="text-xs text-gray-600 mt-2" />
+                            <p className="text-xs text-gray-600 mt-1">Data freshness: {portfolioFreshness}</p>
                         </div>
                         <button
                             type="button"
                             onClick={() => onNavigate?.('statements')}
-                            className="inline-flex items-center self-start rounded-lg border border-gray-300/50 bg-white/10 px-3 py-2 text-xs font-semibold text-gray-100 hover:bg-white/20"
+                            className="inline-flex items-center self-start rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                         >
                             Upload Statement
                         </button>
@@ -215,50 +410,55 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
 
                     {/* Hero Stat Row */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                        {/* Portfolio Volume */}
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
-                            <p className="text-xs text-gray-300 uppercase tracking-widest mb-1">Portfolio Vol.</p>
-                            <p className="text-2xl font-bold text-white font-mono tabular-nums">
-                                ${totalVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                            </p>
-                            <div className="mt-2 flex items-center gap-1 text-[11px] text-green-400">
-                                <Activity className="w-3 h-3" /> live · ticking
-                            </div>
-                        </div>
+                        {heroMetricSlots.map((metricKey, index) => {
+                            const metric = heroMetricData[metricKey];
+                            return (
+                                <div
+                                    key={`${metricKey}-${index}`}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setEditingMetricSlot((current) => current === index ? null : index)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            setEditingMetricSlot((current) => current === index ? null : index);
+                                        }
+                                    }}
+                                    className={`${metric.cardClassName} relative rounded-2xl p-5 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 cursor-pointer`}
+                                >
+                                    <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">{metric.title}</p>
+                                    <p className="text-2xl font-bold text-gray-900 font-mono tabular-nums">{metric.value}</p>
+                                    <div className={`mt-2 flex items-center gap-1 text-[11px] ${metric.hintClassName}`}>
+                                        {metric.icon} {metric.hint}
+                                    </div>
+                                    <p className="mt-3 text-[11px] font-semibold text-gray-600">Click card to change metric</p>
 
-                        {/* Live CC Volume */}
-                        <div className="bg-white/10 border border-white/20 rounded-2xl p-5 backdrop-blur-sm">
-                            <p className="text-xs text-gray-200 uppercase tracking-widest mb-1">CC Volume (Live)</p>
-                            <p className="text-2xl font-bold text-white font-mono tabular-nums">
-                                ${ccVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                            </p>
-                            <div className="mt-2 flex items-center gap-1 text-[11px] text-gray-300">
-                                <CreditCard className="w-3 h-3" /> processing now
-                            </div>
-                        </div>
-
-                        {/* Est. Monthly Residual */}
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
-                            <p className="text-xs text-gray-300 uppercase tracking-widest mb-1">Est. Residual</p>
-                            <p className="text-2xl font-bold text-white font-mono">
-                                ${Math.round(estMonthlyResidual).toLocaleString()}<span className="text-sm text-gray-300 font-normal">/mo</span>
-                            </p>
-                            <div className="mt-2 flex items-center gap-1 text-[11px] text-green-400">
-                                <ArrowUpRight className="w-3 h-3" /> across all merchants
-                            </div>
-                        </div>
-
-                        {/* Churn Risk */}
-                        <div className={`rounded-2xl p-5 backdrop-blur-sm border ${atRiskCount > 0 ? 'bg-red-600/15 border-red-500/30' : 'bg-white/5 border-white/10'}`}>
-                            <p className="text-xs text-gray-300 uppercase tracking-widest mb-1">Churn Risk</p>
-                            <p className={`text-2xl font-bold font-mono ${atRiskCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                {atRiskCount} <span className="text-sm font-normal text-gray-400">merchants</span>
-                            </p>
-                            <div className={`mt-2 flex items-center gap-1 text-[11px] ${atRiskCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                <AlertTriangle className="w-3 h-3" />
-                                {atRiskCount > 0 ? 'need attention' : 'portfolio healthy'}
-                            </div>
-                        </div>
+                                    {editingMetricSlot === index && (
+                                        <div
+                                            className="absolute left-3 right-3 top-14 z-10 rounded-lg border border-gray-200 bg-white p-2 shadow-lg"
+                                            onClick={(event) => event.stopPropagation()}
+                                        >
+                                            <p className="px-1 pb-1 text-[11px] font-semibold text-gray-500">Select metric</p>
+                                            <div className="grid grid-cols-1 gap-1">
+                                                {HERO_METRIC_OPTIONS.map((option) => (
+                                                    <button
+                                                        key={option.key}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            updateHeroMetricSlot(index, option.key);
+                                                            setEditingMetricSlot(null);
+                                                        }}
+                                                        className={`rounded-md px-2 py-1.5 text-left text-xs transition-colors ${option.key === metricKey ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
