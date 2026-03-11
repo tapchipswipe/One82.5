@@ -435,11 +435,11 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
 
                                     {editingMetricSlot === index && (
                                         <div
-                                            className="absolute left-3 right-3 top-14 z-10 rounded-lg border border-gray-200 bg-white p-2 shadow-lg"
+                                            className="absolute left-3 right-3 top-14 z-30 rounded-lg border border-gray-200 bg-white p-2 shadow-lg"
                                             onClick={(event) => event.stopPropagation()}
                                         >
                                             <p className="px-1 pb-1 text-[11px] font-semibold text-gray-500">Select metric</p>
-                                            <div className="grid grid-cols-1 gap-1">
+                                            <div className="grid max-h-52 grid-cols-1 gap-1 overflow-y-auto pr-1">
                                                 {HERO_METRIC_OPTIONS.map((option) => (
                                                     <button
                                                         key={option.key}
