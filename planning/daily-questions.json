@@ -1,0 +1,76 @@
+{
+  "date": "2026-03-11",
+  "phase": "Phase 3",
+  "questions": [
+    {
+      "id": "P3-Q1",
+      "priority": 1,
+      "area": "profitability",
+      "question": "Did we finish deterministic rep-to-portfolio profitability rollups and verify they match persisted metrics after refresh?",
+      "status": "todo",
+      "owner": "Lucas",
+      "updatedAt": "2026-03-11T13:27:00-04:00",
+      "completedAt": null,
+      "blockedReason": null,
+      "evidence": [],
+      "logEntry": null,
+      "nextStep": "Validate metrics API output against UI totals."
+    },
+    {
+      "id": "P3-Q2",
+      "priority": 2,
+      "area": "integrations",
+      "question": "Is the Stripe sync flow persisting normalized transaction data with dedupe and audit logging for ISO portfolio views?",
+      "status": "todo",
+      "owner": "Lucas",
+      "updatedAt": "2026-03-11T13:27:00-04:00",
+      "completedAt": null,
+      "blockedReason": null,
+      "evidence": [],
+      "logEntry": null,
+      "nextStep": "Inspect sync run output and domain table writes."
+    },
+    {
+      "id": "P3-Q3",
+      "priority": 3,
+      "area": "ops",
+      "question": "Can an ISO user connect one processor and still see persisted portfolio metrics after refresh and re-login, which is the current build target?",
+      "status": "todo",
+      "owner": "Lucas",
+      "updatedAt": "2026-03-11T13:27:00-04:00",
+      "completedAt": null,
+      "blockedReason": null,
+      "evidence": [],
+      "logEntry": null,
+      "nextStep": "Test full connect-sync-refresh-relogin flow in backend mode."
+    },
+    {
+      "id": "P3-Q4",
+      "priority": 4,
+      "area": "trust",
+      "question": "Do profitability and AI-adjacent views preserve trusted-data behavior without falling back to fabricated values in auth mode?",
+      "status": "todo",
+      "owner": "Lucas",
+      "updatedAt": "2026-03-11T13:27:00-04:00",
+      "completedAt": null,
+      "blockedReason": null,
+      "evidence": [],
+      "logEntry": null,
+      "nextStep": "Review provenance gating and backend-mode fallbacks."
+    },
+    {
+      "id": "P3-Q5",
+      "priority": 5,
+      "area": "readiness",
+      "question": "What is the single most important remaining gap before moving from Phase 3 into broader Phase 4 processor integrations?",
+      "status": "todo",
+      "owner": "Lucas",
+      "updatedAt": "2026-03-11T13:27:00-04:00",
+      "completedAt": null,
+      "blockedReason": null,
+      "evidence": [],
+      "logEntry": null,
+      "nextStep": "Define exit criteria for Phase 3."
+    }
+  ]
+}

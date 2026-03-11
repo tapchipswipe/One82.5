@@ -1,0 +1,164 @@
+name: Update Progress Log
+
+on:
+  workflow_dispatch:
+    inputs:
+      question_id:
+        description: "Question ID, e.g. P3-Q1"
+        required: true
+        type: string
+      status:
+        description: "New status"
+        required: true
+        type: choice
+        options:
+          - todo
+          - in_progress
+          - blocked
+          - done
+      log_entry:
+        description: "Human-readable completion note"
+        required: false
+        type: string
+      next_step:
+        description: "Next step"
+        required: false
+        type: string
+      blocked_reason:
+        description: "Blocker reason if status=blocked"
+        required: false
+        type: string
+      evidence:
+        description: "Comma-separated evidence list"
+        required: false
+        type: string
+
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  update:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       !github.event.issue.pull_request &&
+       startsWith(github.event.comment.body, '.'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Parse command inputs
+        id: parse
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "question_id=${{ inputs.question_id }}" >> $GITHUB_OUTPUT
+            echo "status=${{ inputs.status }}" >> $GITHUB_OUTPUT
+            echo "log_entry=${{ inputs.log_entry }}" >> $GITHUB_OUTPUT
+            echo "next_step=${{ inputs.next_step }}" >> $GITHUB_OUTPUT
+            echo "blocked_reason=${{ inputs.blocked_reason }}" >> $GITHUB_OUTPUT
+            echo "evidence=${{ inputs.evidence }}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          BODY="${{ github.event.comment.body }}"
+          CMD=$(echo "$BODY" | cut -d' ' -f1)
+          ID=$(echo "$BODY" | cut -d' ' -f2)
+          REST=$(echo "$BODY" | cut -d' ' -f3-)
+
+          STATUS="todo"
+          if [ "$CMD" = ".done" ]; then STATUS="done"; fi
+          if [ "$CMD" = ".blocked" ]; then STATUS="blocked"; fi
+          if [ "$CMD" = ".progress" ]; then STATUS="in_progress"; fi
+          if [ "$CMD" = ".todo" ]; then STATUS="todo"; fi
+
+          IFS='|' read -r PART1 PART2 PART3 <<< "$REST"
+
+          LOG_ENTRY=$(echo "${PART1:-}" | xargs)
+          NEXT_STEP=$(echo "${PART2:-}" | xargs)
+          EVIDENCE=$(echo "${PART3:-}" | xargs)
+
+          BLOCKED_REASON=""
+          if [ "$STATUS" = "blocked" ]; then
+            BLOCKED_REASON="$LOG_ENTRY"
+          fi
+
+          echo "question_id=$ID" >> $GITHUB_OUTPUT
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "log_entry=$LOG_ENTRY" >> $GITHUB_OUTPUT
+          echo "next_step=$NEXT_STEP" >> $GITHUB_OUTPUT
+          echo "blocked_reason=$BLOCKED_REASON" >> $GITHUB_OUTPUT
+          echo "evidence=$EVIDENCE" >> $GITHUB_OUTPUT
+
+      - name: Update daily-questions.json
+        env:
+          QUESTION_ID: ${{ steps.parse.outputs.question_id }}
+          STATUS: ${{ steps.parse.outputs.status }}
+          LOG_ENTRY: ${{ steps.parse.outputs.log_entry }}
+          NEXT_STEP: ${{ steps.parse.outputs.next_step }}
+          BLOCKED_REASON: ${{ steps.parse.outputs.blocked_reason }}
+          EVIDENCE: ${{ steps.parse.outputs.evidence }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const path = 'planning/daily-questions.json';
+          const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const now = new Date().toISOString();
+
+          const evidence = (process.env.EVIDENCE || '')
+            .split(',')
+            .map((x) => x.trim())
+            .filter(Boolean);
+
+          const q = data.questions.find((item) => item.id === process.env.QUESTION_ID);
+
+          if (!q) {
+            console.error(`Question not found: ${process.env.QUESTION_ID}`);
+            process.exit(1);
+          }
+
+          q.status = process.env.STATUS || q.status;
+          q.updatedAt = now;
+
+          if (process.env.LOG_ENTRY) q.logEntry = process.env.LOG_ENTRY;
+          if (process.env.NEXT_STEP) q.nextStep = process.env.NEXT_STEP;
+          if (process.env.BLOCKED_REASON) q.blockedReason = process.env.BLOCKED_REASON;
+
+          if (evidence.length) {
+            const merged = new Set([...(q.evidence || []), ...evidence]);
+            q.evidence = [...merged];
+          }
+
+          if (q.status === 'done') {
+            q.completedAt = now;
+            if (!q.logEntry) q.logEntry = q.question;
+          } else {
+            q.completedAt = null;
+          }
+
+          fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+          NODE
+
+      - name: Regenerate progress log
+        run: node scripts/generate-log.mjs
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add planning/daily-questions.json PROGRESS_LOG.md
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(progress): update daily questions and log"
+          git push
