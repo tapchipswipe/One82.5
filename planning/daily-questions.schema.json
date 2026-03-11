@@ -37,7 +37,7 @@
           "priority": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 5
+            "description": "Priority order — no upper limit, lower number = higher priority"
           },
           "area": {
             "type": "string",

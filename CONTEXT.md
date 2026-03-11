@@ -5,9 +5,10 @@
 > 2. Read `VISION.md` for the roadmap and current phase status.
 > 3. Read `PROGRESS_LOG.md` for what was last worked on.
 > 4. Scan `/app`, `/api`, `/components`, and `/services` directories for recent file structure and implementation.
-> 5. Output **5 targeted daily development questions** based on the current roadmap phase, what is built vs. missing, and any blockers noted in the progress log.
+> 5. Output **as many Y/N daily development questions as needed** to cover the overall health and progress of the project — not just the current phase. Questions should span UI, backend, integrations, trust/data safety, and readiness across the full product.
 > 6. **ALL questions must be phrased as Y/N (yes or no) questions.** The user answers each with Y or N. Questions should be short, direct, and answerable in one word.
-> 7. Questions should be actionable, specific to One82's architecture, and ordered by priority.
+> 7. Do NOT limit questions to phase-completion criteria. Cover anything that is incomplete, broken, or at risk across the entire product.
+> 8. Order questions by overall priority and urgency, not by phase.
 
 ---
 
