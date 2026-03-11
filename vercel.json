@@ -14,5 +14,7 @@
         }
       ]
     }
-  ]
+  ],
+  "buildCommand": "npm run build && node scripts/prepare-dist.mjs",
+  "outputDirectory": "dist"
 }
