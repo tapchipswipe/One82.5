@@ -69,7 +69,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
 
       {/* ── Left panel: brand ── */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 relative p-14 bg-gray-50/50">
-        
+
         {/* Logo */}
         <div className="flex items-center gap-3">
           <Image
@@ -119,7 +119,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
 
       {/* ── Right panel: form ── */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
-        
+
         <div className="w-full max-w-sm">
           {/* Back to Home button */}
           {onBackToHome && (
@@ -228,8 +228,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                 onBlur={() => setFocused(null)}
                 placeholder="you@company.com"
                 className={`w-full px-4 py-3.5 rounded-lg border-2 bg-white text-gray-900 placeholder-gray-400 outline-none transition-all ${focused === 'email'
-                    ? 'border-gray-900 ring-4 ring-gray-100'
-                    : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-gray-900 ring-4 ring-gray-100'
+                  : 'border-gray-200 hover:border-gray-300'
                   }`}
               />
             </div>
@@ -248,8 +248,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                 onBlur={() => setFocused(null)}
                 placeholder="••••••••"
                 className={`w-full px-4 py-3.5 rounded-lg border-2 bg-white text-gray-900 placeholder-gray-400 outline-none transition-all ${focused === 'password'
-                    ? 'border-gray-900 ring-4 ring-gray-100'
-                    : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-gray-900 ring-4 ring-gray-100'
+                  : 'border-gray-200 hover:border-gray-300'
                   }`}
               />
             </div>
@@ -307,7 +307,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
               </span>
-              <span className="text-xs text-gray-500 font-medium">Simulation mode — no real data required</span>
+              <span className="text-xs text-gray-500 font-medium">Demo mode — sample data, no account needed</span>
             </div>
           )}
         </div>

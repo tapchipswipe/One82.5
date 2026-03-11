@@ -45,8 +45,8 @@ const Layout: React.FC<LayoutProps> = ({
         onMouseEnter={() => onPrefetchView?.(view)}
         onFocus={() => onPrefetchView?.(view)}
         className={`relative flex items-center w-full px-3 py-2.5 mb-0.5 text-sm font-medium rounded-lg transition-all duration-150 group ${isActive
-            ? 'bg-gray-900 text-white'
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          ? 'bg-gray-900 text-white'
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
           }`}
       >
         <Icon className={`w-4 h-4 mr-3 flex-shrink-0 transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}`} />
@@ -75,13 +75,13 @@ const Layout: React.FC<LayoutProps> = ({
       {/* ── Sidebar ── */}
       <aside className={`
         fixed inset-y-0 left-0 z-30 w-60 flex flex-col
-        bg-white border-r border-gray-200
+        bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800
         transform transition-transform duration-200 ease-in-out
         lg:relative lg:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Logo */}
-        <div className="flex items-center h-16 px-5 border-b border-gray-200">
+        <div className="flex items-center h-16 px-5 border-b border-gray-200 dark:border-slate-800">
           <Image
             src="/logos/one82-logo-white-centered-v2.png"
             alt="ONE82"
@@ -89,8 +89,8 @@ const Layout: React.FC<LayoutProps> = ({
             height={40}
             className="h-10 w-10 object-contain"
           />
-          <span className="ml-3 text-gray-900 font-bold text-lg tracking-tight">ONE82</span>
-          <span className="ml-2 text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded uppercase tracking-wide">
+          <span className="ml-3 text-gray-900 dark:text-white font-bold text-lg tracking-tight">ONE82</span>
+          <span className="ml-2 text-[10px] font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded uppercase tracking-wide">
             {role === 'iso' ? 'ISO' : role === 'overseer' ? 'OWNER' : 'Pro'}
           </span>
         </div>
@@ -145,26 +145,26 @@ const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         {/* Bottom panel */}
-        <div className="p-3 border-t border-gray-200 space-y-2">
+        <div className="p-3 border-t border-gray-200 dark:border-slate-800 space-y-2">
           {/* User card */}
           <div
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             onClick={() => { onNavigate('profile'); setIsSidebarOpen(false); }}
             onMouseEnter={() => onPrefetchView?.('profile')}
           >
-            <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">
+            <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-slate-200 flex-shrink-0">
               {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-gray-900 truncate">{user?.name}</p>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wide">{user?.plan}</p>
+              <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{user?.name}</p>
+              <p className="text-[10px] text-gray-500 dark:text-slate-400 uppercase tracking-wide">{user?.plan}</p>
             </div>
             <button
               onClick={(event) => {
                 event.stopPropagation();
                 onLogout();
               }}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors"
               title="Sign out"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -174,9 +174,9 @@ const Layout: React.FC<LayoutProps> = ({
       </aside>
 
       {/* ── Main ── */}
-      <div className="flex flex-col flex-1 w-0 overflow-hidden bg-gray-50 dark:bg-gray-50">
+      <div className="flex flex-col flex-1 w-0 overflow-hidden bg-gray-50 dark:bg-slate-950">
         {/* Top bar */}
-        <header className="flex items-center justify-between h-14 px-5 bg-white border-b border-gray-200 shadow-sm relative z-10">
+        <header className="flex items-center justify-between h-14 px-5 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm relative z-10">
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 -ml-2 text-gray-500 rounded-lg lg:hidden hover:bg-gray-100"

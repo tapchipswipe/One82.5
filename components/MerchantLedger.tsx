@@ -32,8 +32,8 @@ const Sparkline = ({ data }: { data: number[] }) => {
                 <Line type="monotone" dataKey="v" stroke={isUp ? '#22c55e' : '#ef4444'} dot={false} strokeWidth={2} />
                 <Tooltip
                     formatter={(val: number) => [`$${Number(val).toLocaleString()}`, 'Vol']}
-                    contentStyle={{ fontSize: 10, zIndex: 70 }}
-                    wrapperStyle={{ zIndex: 70 }}
+                    contentStyle={{ fontSize: 10, zIndex: 9999 }}
+                    wrapperStyle={{ zIndex: 9999 }}
                 />
             </LineChart>
         </ResponsiveContainer>

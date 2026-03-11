@@ -216,7 +216,7 @@ const StatementReader: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-3">
             <BarChart2 className="w-7 h-7 text-indigo-600" />
             Merchant Statement Analyzer
           </h2>

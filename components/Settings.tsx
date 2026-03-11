@@ -42,7 +42,7 @@ const Settings: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h2>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Settings</h2>
                 <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage your preferences, notifications, and account experience.</p>
       </div>
 
@@ -151,7 +151,6 @@ const Settings: React.FC = () => {
 
         <hr className="border-slate-200 dark:border-slate-800" />
 
-        {isMerchant && null}
 
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 text-xs text-slate-600 dark:text-slate-300">
             <p><span className="font-semibold">Credits:</span> Credits shown in legacy profile fields are informational demo metadata and do not gate core product usage.</p>
@@ -216,6 +215,9 @@ const Settings: React.FC = () => {
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
             </select>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                Full theme switching coming soon. Currently in dark mode by default.
+            </p>
         </div>
 
         <div className="pt-4">

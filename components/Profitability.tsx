@@ -188,7 +188,7 @@ const Profitability: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto p-6 space-y-8">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-3">
             <BarChart2 className="w-7 h-7 text-indigo-600" />
             Profitability
           </h2>
@@ -209,7 +209,7 @@ const Profitability: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-3">
           <BarChart2 className="w-7 h-7 text-indigo-600" />
           Profitability
         </h2>

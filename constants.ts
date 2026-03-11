@@ -101,8 +101,9 @@ export const BUSINESS_TYPES = [
   { id: 'Restaurant', icon: '🍽️', label: 'Restaurant / Cafe' },
   { id: 'Service', icon: '💇', label: 'Service Business' },
   { id: 'E-Commerce', icon: '💻', label: 'E-Commerce' },
-  { id: 'Convenience Store', icon: '🏪', label: 'Convenience Store' },
   { id: 'Auto Repair', icon: '🔧', label: 'Auto Repair Shop' },
+  { id: 'Food Truck', icon: '🚚', label: 'Food Truck' },
+  { id: 'Convenience Store', icon: '🏪', label: 'Convenience Store' },
 ];
 
 export const THEME_COLORS = {

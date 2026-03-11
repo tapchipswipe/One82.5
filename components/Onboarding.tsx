@@ -37,7 +37,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialRole }) => {
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400">
             {step === 1 ? 'How will you be using the platform?' :
-              role === 'merchant' ? 'Tailor your AI analytics to your industry.' :
+              role === 'merchant' ? 'Tailor your experience to your business.' :
                 'Enter your organization details for portfolio management.'}
           </p>
         </div>
@@ -53,7 +53,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialRole }) => {
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Merchant</h3>
               <p className="text-slate-500 dark:text-slate-400">
-                I run a business and want to optimize inventory and sales.
+                I run a business and want insights on my transactions, customers, and revenue.
               </p>
             </button>
 

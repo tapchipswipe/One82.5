@@ -109,7 +109,7 @@ const InventoryIntelligence: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="w-6 h-6 text-gray-900 dark:text-white" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Inventory Intelligence</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">AI Inventory Intelligence</h1>
         </div>
         <p className="text-gray-600 dark:text-gray-300">
           Transaction-derived stock insights powered by AI pattern analysis

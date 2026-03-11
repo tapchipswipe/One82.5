@@ -148,7 +148,7 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Dashboard</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{businessType} Intelligence Overview</p>
           <p className={`text-xs mt-1 font-medium ${isDataStale ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>
             Data freshness: {isDataStale
