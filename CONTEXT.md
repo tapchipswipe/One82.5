@@ -6,7 +6,8 @@
 > 3. Read `PROGRESS_LOG.md` for what was last worked on.
 > 4. Scan `/app`, `/api`, `/components`, and `/services` directories for recent file structure and implementation.
 > 5. Output **5 targeted daily development questions** based on the current roadmap phase, what is built vs. missing, and any blockers noted in the progress log.
-> 6. Questions should be actionable, specific to One82's architecture, and ordered by priority.
+> 6. **ALL questions must be phrased as Y/N (yes or no) questions.** The user answers each with Y or N. Questions should be short, direct, and answerable in one word.
+> 7. Questions should be actionable, specific to One82's architecture, and ordered by priority.
 
 ---
 

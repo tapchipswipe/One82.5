@@ -3,32 +3,108 @@
   "$id": "https://one82.local/planning/daily-questions.schema.json",
   "title": "One82 Daily Questions",
   "type": "object",
-  "required": ["date", "phase", "questions"],
+  "required": [
+    "date",
+    "phase",
+    "questions"
+  ],
   "properties": {
-    "date": { "type": "string", "description": "ISO date for the active planning day, e.g. 2026-03-11" },
-    "phase": { "type": "string", "description": "Current roadmap phase" },
+    "date": {
+      "type": "string",
+      "description": "ISO date for the active planning day, e.g. 2026-03-11"
+    },
+    "phase": {
+      "type": "string",
+      "description": "Current roadmap phase"
+    },
     "questions": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "priority", "question", "status", "area", "updatedAt"],
+        "required": [
+          "id",
+          "priority",
+          "question",
+          "status",
+          "area",
+          "updatedAt"
+        ],
         "properties": {
-          "id": { "type": "string", "description": "Stable ID like P3-Q1" },
-          "priority": { "type": "integer", "minimum": 1, "maximum": 5 },
-          "area": { "type": "string", "description": "Feature area like profitability, integrations, auth, dashboard" },
-          "question": { "type": "string" },
-          "status": { "type": "string", "enum": ["todo", "in_progress", "blocked", "done"] },
-          "owner": { "type": "string" },
-          "updatedAt": { "type": "string", "description": "ISO timestamp" },
-          "completedAt": { "type": ["string", "null"], "description": "ISO timestamp" },
-          "blockedReason": { "type": ["string", "null"] },
+          "id": {
+            "type": "string",
+            "description": "Stable ID like P3-Q1"
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "area": {
+            "type": "string",
+            "description": "Feature area like profitability, integrations, auth, dashboard"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "yn",
+              "open"
+            ],
+            "default": "yn",
+            "description": "Question format — yn means answerable with Yes or No"
+          },
+          "question": {
+            "type": "string",
+            "description": "Must be phrased as a Y/N question when type is yn"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "blocked",
+              "done"
+            ]
+          },
+          "owner": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "ISO timestamp"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO timestamp"
+          },
+          "blockedReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "evidence": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Files, issue URLs, commit SHAs, PR numbers, API routes"
           },
-          "logEntry": { "type": ["string", "null"], "description": "Human-readable sentence for PROGRESS_LOG.md" },
-          "nextStep": { "type": ["string", "null"] }
+          "logEntry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Human-readable sentence for PROGRESS_LOG.md"
+          },
+          "nextStep": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         },
         "additionalProperties": false
       }
