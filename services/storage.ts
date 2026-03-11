@@ -399,7 +399,7 @@ export const StorageService = {
     if (!BACKEND_DATA_ENABLED || !isBackendMode(mode)) return;
 
     try {
-      await fetch(getDataApiUrl('/api/data/notifications/read'), {
+      await fetch(getDataApiUrl('/api/data/notifications'), {
         method: 'POST'
       });
     } catch {
