@@ -101,7 +101,8 @@ const Profitability: React.FC = () => {
   const isDemoMode = StorageService.getDataMode() === 'demo';
   const [processorFilter, setProcessorFilter] = useState<'all' | BuyRateProfile['processorTarget']>('all');
   const [buyRateProfiles, setBuyRateProfiles] = useState<BuyRateProfile[]>(() => StorageService.getBuyRateProfiles());
-  const transactions = useMemo(() => StorageService.getTransactions(), []);
+  const [transactions, setTransactions] = useState(() => StorageService.getTransactions());
+  const [importedMerchants, setImportedMerchants] = useState(() => StorageService.getImportedMerchants());
   const merchantRows = useMemo(() => getMerchantRows(transactions, buyRateProfiles), [transactions, buyRateProfiles]);
   const filteredRows = useMemo(() => {
     if (processorFilter === 'all') return merchantRows;
@@ -109,7 +110,6 @@ const Profitability: React.FC = () => {
   }, [merchantRows, processorFilter]);
 
   const repRollups = useMemo<RepRollup[]>(() => {
-    const importedMerchants = StorageService.getImportedMerchants();
     const merchantToRep = new Map<string, string>();
     importedMerchants.forEach((row) => {
       const merchantName = inferMerchantNameFromMerchantRow(row);
@@ -155,6 +155,8 @@ const Profitability: React.FC = () => {
 
   useEffect(() => {
     void StorageService.getBuyRateProfilesResolved().then((profiles) => setBuyRateProfiles(profiles));
+    void StorageService.getTransactionsResolved().then((txns) => setTransactions(txns));
+    void StorageService.getImportedDataResolved().then(({ merchants }) => setImportedMerchants(merchants));
   }, []);
 
   const totals = useMemo(() => {
@@ -416,13 +418,12 @@ const Profitability: React.FC = () => {
                   <td className="px-4 py-3 font-mono text-gray-700 dark:text-gray-300">{formatCurrency(row.processorCost)}</td>
                   <td className="px-4 py-3 font-mono font-bold text-green-600 dark:text-green-400">{formatCurrency(row.estimatedMargin)}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                      row.trend === 'up'
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${row.trend === 'up'
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                         : row.trend === 'down'
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
                       {row.trend === 'up' ? 'Up' : row.trend === 'down' ? 'Down' : 'Flat'}
                     </span>
                   </td>

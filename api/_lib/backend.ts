@@ -47,14 +47,14 @@ type Transaction = {
   items: string[];
   method: 'Visa' | 'MasterCard' | 'Amex' | 'Square' | 'Stripe' | 'Cash' | 'Apple Pay' | 'Wire';
   category:
-    | 'Inventory'
-    | 'Utilities'
-    | 'Payroll'
-    | 'Marketing'
-    | 'Software'
-    | 'Rent'
-    | 'Miscellaneous'
-    | 'Uncategorized';
+  | 'Inventory'
+  | 'Utilities'
+  | 'Payroll'
+  | 'Marketing'
+  | 'Software'
+  | 'Rent'
+  | 'Miscellaneous'
+  | 'Uncategorized';
 };
 
 type CalendarEvent = {
@@ -180,6 +180,9 @@ const MERCHANTS_TABLE = env.tables.merchants;
 const TEAM_MEMBERS_TABLE = env.tables.teamMembers;
 const PROCESSOR_TRANSACTIONS_TABLE = env.tables.processorTransactions;
 const IMPORT_JOBS_TABLE = env.tables.importJobs;
+const PROCESSOR_CONNECTIONS_TABLE = env.tables.syncRuns.replace('sync_runs', 'processor_connections');
+const SYNC_RUNS_TABLE = env.tables.syncRuns;
+const RESIDUAL_SNAPSHOTS_TABLE = 'one82_residual_snapshots';
 
 const getMemoryStore = (): Map<string, TenantState> => {
   const globalValue = globalThis as typeof globalThis & { __one82MemStore?: Map<string, TenantState> };
@@ -960,4 +963,101 @@ export const buildMetrics = (transactions: Transaction[]): DailyMetric[] => {
   }
 
   return Array.from(map.values()).sort((left, right) => left.date.localeCompare(right.date));
+};
+
+export const upsertProcessorConnection = async (
+  tenantId: string,
+  provider: string,
+  externalAccountId?: string
+): Promise<void> => {
+  if (!canUseSupabase) return;
+
+  await ensureTenantExists(tenantId);
+
+  const url = `${SUPABASE_URL}/rest/v1/${PROCESSOR_CONNECTIONS_TABLE}?on_conflict=tenant_id,provider,external_account_id`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify([{
+      tenant_id: tenantId,
+      provider,
+      external_account_id: externalAccountId || null,
+      status: 'connected',
+      last_synced_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }])
+  });
+};
+
+export const insertSyncRun = async (
+  tenantId: string,
+  provider: string,
+  importedCount: number,
+  status: 'completed' | 'failed' = 'completed',
+  errorMessage?: string
+): Promise<void> => {
+  if (!canUseSupabase) return;
+
+  await ensureTenantExists(tenantId);
+
+  const now = new Date().toISOString();
+  const url = `${SUPABASE_URL}/rest/v1/${SYNC_RUNS_TABLE}`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify([{
+      tenant_id: tenantId,
+      provider,
+      started_at: now,
+      completed_at: now,
+      status,
+      imported_count: importedCount,
+      failed_count: 0,
+      error_message: errorMessage || null,
+      updated_at: now
+    }])
+  });
+};
+
+export const upsertResidualSnapshot = async (
+  tenantId: string,
+  teamMemberId: string | null,
+  periodStart: string,
+  periodEnd: string,
+  grossVolume: number,
+  residualAmount: number,
+  supportCost: number,
+  netProfit: number,
+  summary: Record<string, unknown> = {}
+): Promise<void> => {
+  if (!canUseSupabase) return;
+
+  await ensureTenantExists(tenantId);
+
+  const url = `${SUPABASE_URL}/rest/v1/${RESIDUAL_SNAPSHOTS_TABLE}?on_conflict=tenant_id,team_member_id,period_start,period_end`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      ...getSupabaseHeaders(),
+      Prefer: 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify([{
+      tenant_id: tenantId,
+      team_member_id: teamMemberId || null,
+      period_start: periodStart,
+      period_end: periodEnd,
+      gross_volume: grossVolume,
+      residual_amount: residualAmount,
+      support_cost: supportCost,
+      net_profit: netProfit,
+      summary,
+      updated_at: new Date().toISOString()
+    }])
+  });
 };

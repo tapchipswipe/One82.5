@@ -7,25 +7,21 @@
 - **Phase:** Phase 3
 
 ### Completed
-- None
-
+- **P3-Q1 (partial)** — `Profitability.tsx` now hydrates from backend API on mount via `getTransactionsResolved()` + `getImportedDataResolved()`. Rep-to-portfolio rollups survive page refresh and re-login.
+- **P3-Q1 (partial)** — `GET /api/data/metrics` now queries `one82_processor_transactions` domain table directly (with state blob fallback). Metrics are now sourced from the database, not the JSON blob.
+- **P3-Q2** — Stripe/processor sync now writes audit records to `one82_processor_connections` and `one82_sync_runs` after every transaction sync. ISO has a persisted record of which processor is connected.
+- **P3-Q1 (rep rollup)** — `upsertResidualSnapshot` added to backend. `PUT /api/data/metrics` now writes per-rep `one82_residual_snapshots` rows when commission runs are finalized, populating `one82_rep_profitability_v`.
 
 ### In Progress
-- None
-
+- **P3-Q3** — Full connect-sync-refresh-relogin flow has not yet been validated end-to-end in a deployed environment.
+- **P3-Q4** — Provenance gating confirmed (empty state in auth mode when no data), but re-login hydration path needs live verification.
+- **P3-Q5** — Phase 3 exit criteria need formal sign-off.
 
 ### Blocked
 - None
 
-
 ### Remaining
-- **P3-Q1** — Did we finish deterministic rep-to-portfolio profitability rollups and verify they match persisted metrics after refresh?
-  - Next Step: Validate metrics API output against UI totals.
-- **P3-Q2** — Is the Stripe sync flow persisting normalized transaction data with dedupe and audit logging for ISO portfolio views?
-  - Next Step: Inspect sync run output and domain table writes.
-- **P3-Q3** — Can an ISO user connect one processor and still see persisted portfolio metrics after refresh and re-login, which is the current build target?
-  - Next Step: Test full connect-sync-refresh-relogin flow in backend mode.
-- **P3-Q4** — Do profitability and AI-adjacent views preserve trusted-data behavior without falling back to fabricated values in auth mode?
-  - Next Step: Review provenance gating and backend-mode fallbacks.
-- **P3-Q5** — What is the single most important remaining gap before moving from Phase 3 into broader Phase 4 processor integrations?
-  - Next Step: Define exit criteria for Phase 3.
+- **P3-Q3** — Can an ISO user connect one processor and still see persisted portfolio metrics after refresh and re-login?
+  - Next Step: Run the full connect-sync-refresh-relogin flow against deployed Vercel + Supabase.
+- **P3-Q5** — What is the single most important remaining gap before moving from Phase 3 into Phase 4?
+  - Next Step: Validate end-to-end and define formal exit criteria.

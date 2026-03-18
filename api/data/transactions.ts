@@ -4,6 +4,8 @@ import {
   requireAuthorized,
   saveStateForTenant,
   syncTransactionsToDomain,
+  upsertProcessorConnection,
+  insertSyncRun,
   setApiResponseHeaders,
   sendMethodNotAllowed
 } from '../_lib/backend.js';
@@ -51,6 +53,10 @@ export default async function handler(req: any, res: any) {
 
   try {
     await syncTransactionsToDomain(auth.session.tenantId, updated.transactions as any[], auth.user.id, 'app');
+    // Write processor connection record and sync run audit entry
+    const provider = (body as any)?.provider || 'app';
+    await upsertProcessorConnection(auth.session.tenantId, provider);
+    await insertSyncRun(auth.session.tenantId, provider, updated.transactions.length, 'completed');
   } catch (error) {
     console.error('Failed to sync transactions to domain tables:', error);
   }
