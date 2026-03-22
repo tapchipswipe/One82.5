@@ -68,13 +68,18 @@ try {
   addCheck('[github] Origin remote', false, `Failed to read git origin: ${error instanceof Error ? error.message : String(error)}`);
 }
 
+const isCi = process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true';
 try {
   execSync('gh --version', { stdio: 'ignore' });
   try {
     execSync('gh auth status', { stdio: 'ignore' });
     addCheck('[github] CLI auth', true, 'GitHub CLI is installed and authenticated.');
   } catch {
-    addCheck('[github] CLI auth', false, 'GitHub CLI is installed but not authenticated. Run `gh auth login`.');
+    if (isCi) {
+      addSkippedCheck('[github] CLI auth', 'GitHub CLI is installed but not authenticated (expected in CI).');
+    } else {
+      addCheck('[github] CLI auth', false, 'GitHub CLI is installed but not authenticated. Run `gh auth login`.');
+    }
   }
 } catch {
   addSkippedCheck('[github] CLI auth', 'GitHub CLI not installed; skipping auth check.');
