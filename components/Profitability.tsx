@@ -145,7 +145,7 @@ const Profitability: React.FC = () => {
     });
 
     return Array.from(grouped.values()).sort((left, right) => right.estimatedMargin - left.estimatedMargin);
-  }, [filteredRows]);
+  }, [filteredRows, importedMerchants]);
 
   const upsertProfile = (row: MerchantProfitRow, updates: Partial<Pick<MerchantProfitRow, 'buyRateBps' | 'markupBps' | 'serviceFeeMonthly' | 'processorTarget'>>) => {
     const nextMarkup = updates.markupBps ?? row.markupBps;
