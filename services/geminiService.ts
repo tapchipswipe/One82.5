@@ -79,7 +79,7 @@ export const streamDashboardInsights = async (
     }
 
     // Simulated live typing effect for "Offline Mode"
-    const randomInsight = SIMULATED_INSIGHTS[Math.floor(Math.random() * SIMULATED_INSIGHTS.length)];
+    const randomInsight = SIMULATED_INSIGHTS[Math.floor((window.crypto.getRandomValues(new Uint32Array(1))[0] / (0xffffffff + 1)) * SIMULATED_INSIGHTS.length)];
     const chunks = randomInsight.split(' ');
     for (const chunk of chunks) {
       onChunk(chunk + ' ');
@@ -241,7 +241,7 @@ export const generateForecastInsights = async (historical: DailyMetric[]): Promi
     return getTrialDataRequiredMessage('Forecast insights', 'import transactions/metrics or connect a live integration');
   }
   if (!apiKey && isTrialMode()) return getTrialUnavailableMessage('Forecast insights');
-  if (!apiKey) return SIMULATED_FORECASTS[Math.floor(Math.random() * SIMULATED_FORECASTS.length)];
+  if (!apiKey) return SIMULATED_FORECASTS[Math.floor((window.crypto.getRandomValues(new Uint32Array(1))[0] / (0xffffffff + 1)) * SIMULATED_FORECASTS.length)];
 
   const ai = new GoogleGenAI({ apiKey });
   try {

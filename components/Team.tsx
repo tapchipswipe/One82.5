@@ -412,7 +412,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   const createCommissionRun = async (status: CommissionRun['status']) => {
     const now = Date.now();
     const run: CommissionRun = {
-      id: `commission_run_${now}_${Math.random().toString(36).slice(2, 8)}`,
+      id: `commission_run_${now}_${window.crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`,
       period: selectedPeriod,
       status,
       createdAt: now,

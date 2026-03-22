@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import { env } from '../../config/env.js';
 
 type UserRole = 'merchant' | 'iso' | 'overseer';
@@ -218,8 +219,18 @@ const parseCookies = (cookieHeader?: string): Record<string, string> => {
 const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
+
+  let randomPart = '';
+  if (crypto && 'randomUUID' in crypto) {
+    randomPart = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+  } else if (crypto && 'randomBytes' in crypto) {
+    randomPart = (crypto as any).randomBytes(4).toString('hex');
+  } else {
+    randomPart = Math.floor((Math.random() * 0xffffffff) / (0xffffffff + 1) * 0xffffffff).toString(16);
+  }
+
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${randomPart}`,
     userId: user.id,
     tenantId: user.organizationName || user.id,
     role: user.role,
@@ -233,7 +244,13 @@ const createSessionToken = (): string => {
     return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  // Fallback to randomBytes if randomUUID is not available but crypto is
+  if (crypto && 'randomBytes' in crypto) {
+    return `st_${Date.now().toString(36)}_${(crypto as any).randomBytes(4).toString('hex')}`;
+  }
+
+  // Fallback if neither is available (though node:crypto should have them)
+  return `st_${Date.now().toString(36)}_${Math.floor((Math.random() * 0xffffffff) / (0xffffffff + 1) * 0xffffffff).toString(16)}`;
 };
 
 const roleFromEmail = (email: string): UserRole => {
@@ -941,7 +958,8 @@ export const requireAuthorized = async (
     return null;
   }
 
-  if (!allowedRoles.includes(auth.user.role)) {
+  const roleSet = new Set(allowedRoles);
+  if (!roleSet.has(auth.user.role)) {
     sendForbidden(res);
     return null;
   }

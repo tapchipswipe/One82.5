@@ -192,11 +192,12 @@ const Customers: React.FC = () => {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'All' | 'Low' | 'Medium' | 'High'>('All');
 
+    const searchLower = search.toLowerCase();
     const filtered = customers.filter(c => {
         const matchSearch =
-            c.name.toLowerCase().includes(search.toLowerCase()) ||
-            c.email.toLowerCase().includes(search.toLowerCase()) ||
-            c.topCategory.toLowerCase().includes(search.toLowerCase());
+            c.name.toLowerCase().includes(searchLower) ||
+            c.email.toLowerCase().includes(searchLower) ||
+            c.topCategory.toLowerCase().includes(searchLower);
         const matchFilter = filter === 'All' || c.retentionRisk === filter;
         return matchSearch && matchFilter;
     });

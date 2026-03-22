@@ -57,7 +57,7 @@ const Forecast: React.FC<ForecastProps> = ({ onNavigate }) => {
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     for (let i = 0; i < 7; i++) {
-      const randomDelta = Math.random() * 0.02 - 0.01;
+      const randomDelta = (window.crypto.getRandomValues(new Uint32Array(1))[0] / (0xffffffff + 1)) * 0.02 - 0.01;
       const projectionDate = new Date();
       projectionDate.setDate(projectionDate.getDate() + i + 1);
       const projectionDateKey = projectionDate.toISOString().slice(0, 10);

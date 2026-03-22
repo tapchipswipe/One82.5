@@ -69,12 +69,13 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
     };
 
     const filteredAndSortedMerchants = useMemo(() => {
+        const searchLower = searchTerm.toLowerCase();
         return merchants
             .filter(m =>
-                m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                m.businessType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                m.name.toLowerCase().includes(searchLower) ||
+                m.businessType.toLowerCase().includes(searchLower) ||
                 m.mccCode.includes(searchTerm) ||
-                m.mccDescription.toLowerCase().includes(searchTerm.toLowerCase())
+                m.mccDescription.toLowerCase().includes(searchLower)
             )
             .sort((a, b) => {
                 const factor = sortOrder === 'asc' ? 1 : -1;

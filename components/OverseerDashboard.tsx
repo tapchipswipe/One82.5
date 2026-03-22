@@ -139,8 +139,8 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
     }
 
     const ticker = setInterval(() => {
-      setPortfolioVolume((current) => current + Math.random() * 120);
-      setLiveVolume((current) => current + Math.random() * 90 + 20);
+      setPortfolioVolume((current) => current + (window.crypto.getRandomValues(new Uint32Array(1))[0] / (0xffffffff + 1)) * 120);
+      setLiveVolume((current) => current + (window.crypto.getRandomValues(new Uint32Array(1))[0] / (0xffffffff + 1)) * 90 + 20);
     }, 2200);
 
     return () => clearInterval(ticker);

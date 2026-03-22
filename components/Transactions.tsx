@@ -52,7 +52,7 @@ const Transactions: React.FC = () => {
   }, []);
 
     const filteredTransactions = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
+        const query = searchQuery.trim().toLowerCase().replace(/[,/]/g, '');
         if (!query) return transactions;
 
         return transactions.filter((tx) => {
@@ -72,7 +72,7 @@ const Transactions: React.FC = () => {
                 .join(' ')
                 .toLowerCase();
 
-            return haystack.replace(/[,/]/g, '').includes(query.replace(/[,/]/g, ''));
+            return haystack.replace(/[,/]/g, '').includes(query);
         });
     }, [transactions, searchQuery]);
 

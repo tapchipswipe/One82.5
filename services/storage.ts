@@ -177,7 +177,7 @@ export const StorageService = {
       // Log history
       const logs = StorageService.getCreditLogs();
       const newLog: CreditLog = {
-          id: Date.now().toString() + Math.random().toString().slice(2, 5),
+          id: Date.now().toString() + window.crypto.randomUUID().replace(/-/g, '').slice(0, 8),
           action: reason,
           amount: amount,
           timestamp: Date.now()
@@ -409,7 +409,7 @@ export const StorageService = {
 
   addNotification: (notification: { title: string; message: string; type: AppNotification['type'] }): AppNotification => {
     const nextNotification: AppNotification = {
-      id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: `n_${Date.now()}_${window.crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`,
       title: notification.title,
       message: notification.message,
       type: notification.type,
@@ -826,7 +826,7 @@ export const StorageService = {
   addOnboardingDeal: (dealInput: Omit<OnboardingDeal, 'id' | 'createdAt' | 'updatedAt'>): OnboardingDeal => {
     const now = Date.now();
     const nextDeal: OnboardingDeal = {
-      id: `deal_${now}_${Math.random().toString(36).slice(2, 8)}`,
+      id: `deal_${now}_${window.crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`,
       createdAt: now,
       updatedAt: now,
       ...dealInput
@@ -994,7 +994,7 @@ export const StorageService = {
     const current = StorageService.getBuyRateProfiles();
     const existing = current.find((profile) => profile.merchantName === profileInput.merchantName);
     const nextProfile: BuyRateProfile = {
-      id: existing?.id || `buyrate_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: existing?.id || `buyrate_${Date.now()}_${window.crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`,
       updatedAt: Date.now(),
       ...profileInput
     };
@@ -1031,7 +1031,7 @@ export const StorageService = {
   appendImportAuditLogEntry: (entry: Omit<ImportAuditEntry, 'id' | 'createdAt'>): void => {
     const current = StorageService.getImportAuditLog();
     const nextEntry: ImportAuditEntry = {
-      id: `import_audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: `import_audit_${Date.now()}_${window.crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`,
       createdAt: Date.now(),
       ...entry
     };

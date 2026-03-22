@@ -88,8 +88,9 @@ const parseCsvRows = (content: string): string[][] => {
 
 const inferColumnMappings = (headers: string[], importType: ImportType): Record<string, string> => {
     const aliases = FIELD_ALIASES[importType];
+    const headerSet = new Set(headers);
     return Object.entries(aliases).reduce<Record<string, string>>((acc, [requiredField, candidates]) => {
-        const match = candidates.find((candidate) => headers.includes(candidate));
+        const match = candidates.find((candidate) => headerSet.has(candidate));
         if (match) {
             acc[requiredField] = match;
         }
@@ -408,7 +409,8 @@ const Integrations: React.FC = () => {
     const stripeConnected = isIntegrationConnected('stripe');
     const retryCooldownSeconds = Math.max(0, Math.ceil((retryCooldownUntil - nowMs) / 1000));
     const requiredMappingFields = REQUIRED_FIELDS_BY_IMPORT[importType];
-    const mappingRequired = requiredMappingFields.some((field) => !importHeaders.includes(field));
+    const importHeaderSet = new Set(importHeaders);
+    const mappingRequired = requiredMappingFields.some((field) => !importHeaderSet.has(field));
     const missingMappedRequired = requiredMappingFields.filter((field) => !columnMappings[field]);
 
     useEffect(() => {

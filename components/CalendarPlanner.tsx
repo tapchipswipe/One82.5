@@ -142,7 +142,7 @@ const CalendarPlanner: React.FC = () => {
       saveEvents(updated);
     } else {
       const created: CalendarEvent = {
-        id: `cal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        id: `cal_${Date.now()}_${window.crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`,
         title: form.title.trim(),
         date: form.date,
         note: form.note.trim(),

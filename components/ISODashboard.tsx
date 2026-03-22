@@ -34,16 +34,31 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
         const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
         const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
-        const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-        const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+
+        const midpoint = Math.max(1, Math.floor(sorted.length / 2));
+        let firstHalf = 0;
+        let secondHalf = 0;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i < midpoint) {
+            firstHalf += sorted[i].amount;
+          } else {
+            secondHalf += sorted[i].amount;
+          }
+        }
+
         const trend: PortfolioMerchant['trend'] = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
         const riskLevel: PortfolioMerchant['riskLevel'] = trend === 'down' ? 'Medium' : 'Low';
         const churnRisk: PortfolioMerchant['churnRisk'] = trend === 'down' ? 'Medium' : 'Low';
         const volumeHistory = Array.from({ length: 6 }, (_, offset) => {
             const start = Math.floor((offset * records.length) / 6);
             const end = Math.floor(((offset + 1) * records.length) / 6);
-            const slice = records.slice(start, Math.max(end, start + 1));
-            return Math.round(slice.reduce((sum, record) => sum + record.amount, 0));
+
+            let sliceSum = 0;
+            const limit = Math.max(end, start + 1);
+            for (let i = start; i < limit && i < records.length; i++) {
+                sliceSum += records[i].amount;
+            }
+            return Math.round(sliceSum);
         });
 
         return {
@@ -118,8 +133,9 @@ const sanitizeHeroMetricSlots = (input: unknown): HeroMetricKey[] => {
     if (!Array.isArray(input)) return DEFAULT_HERO_METRIC_SLOTS;
     const allowed = new Set(HERO_METRIC_OPTIONS.map((option) => option.key));
     const unique = input.filter((item): item is HeroMetricKey => typeof item === 'string' && allowed.has(item as HeroMetricKey));
-    const deduped = Array.from(new Set(unique));
-    const filled = [...deduped, ...DEFAULT_HERO_METRIC_SLOTS.filter((slot) => !deduped.includes(slot))];
+    const dedupedSet = new Set(unique);
+    const deduped = Array.from(dedupedSet);
+    const filled = [...deduped, ...DEFAULT_HERO_METRIC_SLOTS.filter((slot) => !dedupedSet.has(slot))];
     return filled.slice(0, 4);
 };
 
@@ -172,8 +188,8 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
             return () => window.removeEventListener('user-update', onUpdate);
         }
 
-        const portfolioTicker = setInterval(() => setTotalVolume(p => p + Math.random() * 100), 3000);
-        const ccTicker = setInterval(() => setCcVolume(p => p + Math.random() * 250 + 50), 1500);
+        const portfolioTicker = setInterval(() => setTotalVolume(p => p + (window.crypto.getRandomValues(new Uint32Array(1))[0] / (0xffffffff + 1)) * 100), 3000);
+        const ccTicker = setInterval(() => setCcVolume(p => p + (window.crypto.getRandomValues(new Uint32Array(1))[0] / (0xffffffff + 1)) * 250 + 50), 1500);
 
         return () => { clearInterval(portfolioTicker); clearInterval(ccTicker); };
     }, [isDemoMode]);
