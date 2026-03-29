@@ -43,7 +43,7 @@ try {
 
 try {
   const vercel = readJson(path.join(root, 'vercel.json'));
-  const hasApiFunctionConfig = Boolean(vercel?.functions?.['api/**/*.ts']);
+  const hasApiFunctionConfig = Boolean(vercel?.functions?.['api/**/*']);
   const hasApiHeaders = Array.isArray(vercel?.headers) && vercel.headers.some((entry) => entry?.source === '/api/(.*)');
   addCheck('[vercel] Runtime policy', hasApiFunctionConfig && hasApiHeaders, hasApiFunctionConfig && hasApiHeaders ? 'API function runtime and API security headers are configured.' : 'Missing API function config and/or API header policy in vercel.json.');
 } catch (error) {
@@ -68,16 +68,20 @@ try {
   addCheck('[github] Origin remote', false, `Failed to read git origin: ${error instanceof Error ? error.message : String(error)}`);
 }
 
-try {
-  execSync('gh --version', { stdio: 'ignore' });
+if (process.env.CI || process.env.GITHUB_ACTIONS) {
+  addSkippedCheck('[github] CLI auth', 'CI environment detected; skipping interactive auth check.');
+} else {
   try {
-    execSync('gh auth status', { stdio: 'ignore' });
-    addCheck('[github] CLI auth', true, 'GitHub CLI is installed and authenticated.');
+    execSync('gh --version', { stdio: 'ignore' });
+    try {
+      execSync('gh auth status', { stdio: 'ignore' });
+      addCheck('[github] CLI auth', true, 'GitHub CLI is installed and authenticated.');
+    } catch {
+      addCheck('[github] CLI auth', false, 'GitHub CLI is installed but not authenticated. Run `gh auth login`.');
+    }
   } catch {
-    addCheck('[github] CLI auth', false, 'GitHub CLI is installed but not authenticated. Run `gh auth login`.');
+    addSkippedCheck('[github] CLI auth', 'GitHub CLI not installed; skipping auth check.');
   }
-} catch {
-  addSkippedCheck('[github] CLI auth', 'GitHub CLI not installed; skipping auth check.');
 }
 
 try {
