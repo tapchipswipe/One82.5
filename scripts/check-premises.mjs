@@ -68,28 +68,35 @@ try {
   addCheck('[github] Origin remote', false, `Failed to read git origin: ${error instanceof Error ? error.message : String(error)}`);
 }
 
-try {
-  execSync('gh --version', { stdio: 'ignore' });
-  try {
-    execSync('gh auth status', { stdio: 'ignore' });
-    addCheck('[github] CLI auth', true, 'GitHub CLI is installed and authenticated.');
-  } catch {
-    addCheck('[github] CLI auth', false, 'GitHub CLI is installed but not authenticated. Run `gh auth login`.');
-  }
-} catch {
-  addSkippedCheck('[github] CLI auth', 'GitHub CLI not installed; skipping auth check.');
-}
+const isCI = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
 
-try {
-  execSync('vercel --version', { stdio: 'ignore' });
+if (isCI) {
+  addSkippedCheck('[github] CLI auth', 'Running in CI environment; skipping interactive auth check.');
+  addSkippedCheck('[vercel] CLI auth', 'Running in CI environment; skipping interactive auth check.');
+} else {
   try {
-    const whoami = execSync('vercel whoami', { encoding: 'utf8' }).trim();
-    addCheck('[vercel] CLI auth', Boolean(whoami), whoami ? `Authenticated as ${whoami}` : 'Vercel CLI returned empty identity.');
+    execSync('gh --version', { stdio: 'ignore' });
+    try {
+      execSync('gh auth status', { stdio: 'ignore' });
+      addCheck('[github] CLI auth', true, 'GitHub CLI is installed and authenticated.');
+    } catch {
+      addCheck('[github] CLI auth', false, 'GitHub CLI is installed but not authenticated. Run `gh auth login`.');
+    }
   } catch {
-    addCheck('[vercel] CLI auth', false, 'Vercel CLI is installed but not authenticated. Run `vercel login`.');
+    addSkippedCheck('[github] CLI auth', 'GitHub CLI not installed; skipping auth check.');
   }
-} catch {
-  addSkippedCheck('[vercel] CLI auth', 'Vercel CLI not installed; skipping auth check.');
+
+  try {
+    execSync('vercel --version', { stdio: 'ignore' });
+    try {
+      const whoami = execSync('vercel whoami', { encoding: 'utf8' }).trim();
+      addCheck('[vercel] CLI auth', Boolean(whoami), whoami ? `Authenticated as ${whoami}` : 'Vercel CLI returned empty identity.');
+    } catch {
+      addCheck('[vercel] CLI auth', false, 'Vercel CLI is installed but not authenticated. Run `vercel login`.');
+    }
+  } catch {
+    addSkippedCheck('[vercel] CLI auth', 'Vercel CLI not installed; skipping auth check.');
+  }
 }
 
 const healthBase = process.env.ONE82_HEALTH_URL;
