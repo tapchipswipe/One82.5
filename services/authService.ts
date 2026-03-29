@@ -8,7 +8,7 @@ const readEnv = (key: string): string | undefined => {
   return viteEnv?.[key] ?? process.env[key];
 };
 
-const readBooleanEnv = (key: string): boolean => {
+const _readBooleanEnv = (key: string): boolean => {
   const rawValue = readEnv(key);
   if (!rawValue) return false;
   const normalized = rawValue.trim().replace(/^['"]|['"]$/g, '').toLowerCase();
