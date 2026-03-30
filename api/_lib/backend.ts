@@ -1,4 +1,4 @@
-import { env } from '../../config/env.js';
+import { env } from '../../config/env';
 
 type UserRole = 'merchant' | 'iso' | 'overseer';
 
@@ -319,12 +319,24 @@ export const verifySupabaseCredentials = async (email: string, password: string)
     method: 'POST',
     headers: {
       apikey: SUPABASE_ANON_KEY || '',
+      Authorization: `Bearer ${SUPABASE_ANON_KEY || ''}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ email, password })
   });
 
   if (!response.ok) {
+    if (env.runtimeMode === 'development') {
+      try {
+        const payloadText = await response.text();
+        console.warn('[auth] Supabase credential verification failed', {
+          status: response.status,
+          body: payloadText.slice(0, 500)
+        });
+      } catch {
+        // ignore
+      }
+    }
     return false;
   }
 

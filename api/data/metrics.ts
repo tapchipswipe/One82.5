@@ -7,8 +7,8 @@ import {
   upsertResidualSnapshot,
   setApiResponseHeaders,
   sendMethodNotAllowed
-} from '../_lib/backend.js';
-import { env } from '../../config/env.js';
+} from '../_lib/backend';
+import { env } from '../../config/env';
 
 export const config = { runtime: 'nodejs' };
 
