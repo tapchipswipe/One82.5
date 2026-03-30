@@ -206,6 +206,7 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
 
 const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   const isDemoMode = StorageService.getDataMode() === 'demo';
+  const [isPayoutWizardOpen, setIsPayoutWizardOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(() => new Date().toISOString().slice(0, 7));
   const [commissionRuns, setCommissionRuns] = useState<CommissionRun[]>(() => StorageService.getCommissionRuns());
   const [selectedRunId, setSelectedRunId] = useState<string>('');
@@ -813,11 +814,162 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
         </div>
       )}
 
+      {isPayoutWizardOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-6xl max-h-[88vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payout Wizard</p>
+                <h2 className="text-lg font-bold text-gray-900">Commission Automation</h2>
+                <p className="text-xs text-gray-500 mt-1">Step through rules → preview → save run → export CSV.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPayoutWizardOpen(false)}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div>
+                  <p className="text-xs text-gray-500">Period</p>
+                  <p className="text-xs text-gray-600 mt-1">Base rate: {Math.round(commissionRules.baseRate * 100)}% · Excess share: {Math.round(commissionRules.excessMarkupShare * 100)}% markup / {Math.round(commissionRules.excessServiceFeeShare * 100)}% fee</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="month"
+                    value={selectedPeriod}
+                    onChange={(event) => setSelectedPeriod(event.target.value)}
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={openRulesModal}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" /> Set Rules
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { void createCommissionRun('draft'); }}
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Save Draft Run
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { void createCommissionRun('finalized'); }}
+                    className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+                  >
+                    Finalize Run
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Export</p>
+                <p className="mt-1 text-xs text-gray-600">
+                  Exports are generated from a <span className="font-semibold">saved run</span> (draft or finalized) to prevent payout mismatches.
+                </p>
+                <div className="mt-3 flex flex-col lg:flex-row lg:items-center gap-2">
+                  <select
+                    value={selectedRunId}
+                    onChange={(event) => setSelectedRunId(event.target.value)}
+                    className="w-full lg:max-w-md px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                  >
+                    {commissionRuns.length === 0 && <option value="">No saved runs yet</option>}
+                    {commissionRuns.map((run) => (
+                      <option key={run.id} value={run.id}>
+                        {run.period} · {run.status} · {run.lineItems.length} items · {formatCurrency(run.totalPayout)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={exportSelectedRunLineItemsCsv}
+                    disabled={!selectedRun}
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-white disabled:opacity-40"
+                  >
+                    Export line items CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportSelectedRunRepRollupsCsv}
+                    disabled={!selectedRun}
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-white disabled:opacity-40"
+                  >
+                    Export rep rollups CSV
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Draft Line Items</p>
+                  <p className="text-xl font-bold text-gray-900 mt-1">{draftTotals.lineCount}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Draft Total Payout</p>
+                  <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(draftTotals.totalPayout)}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Exceptions</p>
+                  <p className="text-xl font-bold text-gray-900 mt-1">{draftTotals.exceptions}</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full min-w-[980px] text-sm text-left bg-white">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      {['Rep', 'Merchant', 'Volume', 'Residual', 'Rate', 'Model', 'Payout', 'Exception'].map((header) => (
+                        <th key={header} className="px-3 py-2 text-xs uppercase tracking-wide text-gray-500 font-semibold whitespace-nowrap">{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {draftLineItems.slice(0, 18).map((lineItem) => (
+                      <tr key={lineItem.id}>
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{lineItem.repName}</td>
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{lineItem.merchantName}</td>
+                        <td className="px-3 py-2 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(lineItem.volume)}</td>
+                        <td className="px-3 py-2 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(lineItem.residualRevenue)}</td>
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{Math.round(lineItem.commissionRate * 100)}%</td>
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{lineItem.appliedRule || 'Base Tier'}</td>
+                        <td className="px-3 py-2 font-mono font-semibold text-indigo-700 whitespace-nowrap">
+                          <span>{formatCurrency(lineItem.payout)}</span>
+                          <span className="ml-2 text-[11px] font-normal text-gray-500 whitespace-nowrap">
+                            ({formatCurrency(lineItem.basePayout || lineItem.payout)} + {formatCurrency(lineItem.excessPayout || 0)})
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-amber-600 max-w-[260px] truncate">{lineItem.exception || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <h1 className="text-2xl font-bold text-gray-900">Team</h1>
         <p className="mt-1 text-sm text-gray-500">
           ISO-only view of sales reps and the merchants currently assigned to each portfolio.
         </p>
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setIsPayoutWizardOpen(true)}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+          >
+            Open Payout Wizard
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -846,172 +998,19 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Calculator className="w-4 h-4 text-indigo-600" /> Commission Automation</h2>
-            <p className="text-xs text-gray-500 mt-1">Generate monthly rep payouts from portfolio residual inputs with line-item traceability and exception flags.</p>
+            <h2 className="text-sm font-semibold text-gray-900">Payouts</h2>
+            <p className="text-xs text-gray-600 mt-1">Use the payout wizard to save runs and export CSVs.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="month"
-              value={selectedPeriod}
-              onChange={(event) => setSelectedPeriod(event.target.value)}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-sm"
-            />
-            <span className="text-xs text-gray-600">Base rate: {Math.round(commissionRules.baseRate * 100)}% · Excess share: {Math.round(commissionRules.excessMarkupShare * 100)}% markup / {Math.round(commissionRules.excessServiceFeeShare * 100)}% fee</span>
-            <button
-              type="button"
-              onClick={openRulesModal}
-              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" /> Set Rules
-            </button>
-            <button
-              type="button"
-              onClick={() => { void createCommissionRun('draft'); }}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Save Draft Run
-            </button>
-            <button
-              type="button"
-              onClick={() => { void createCommissionRun('finalized'); }}
-              className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
-            >
-              Finalize Run
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Export wizard</p>
-          <p className="mt-1 text-xs text-gray-600">
-            Exports are generated from a <span className="font-semibold">saved run</span> (draft or finalized) to prevent payout mismatches.
-          </p>
-          <div className="mt-3 flex flex-col lg:flex-row lg:items-center gap-2">
-            <select
-              value={selectedRunId}
-              onChange={(event) => setSelectedRunId(event.target.value)}
-              className="w-full lg:max-w-md px-3 py-2 rounded-lg border border-gray-300 text-sm"
-            >
-              {commissionRuns.length === 0 && <option value="">No saved runs yet</option>}
-              {commissionRuns.map((run) => (
-                <option key={run.id} value={run.id}>
-                  {run.period} · {run.status} · {run.lineItems.length} items · {formatCurrency(run.totalPayout)}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={exportSelectedRunLineItemsCsv}
-              disabled={!selectedRun}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-white disabled:opacity-40"
-            >
-              Export line items CSV
-            </button>
-            <button
-              type="button"
-              onClick={exportSelectedRunRepRollupsCsv}
-              disabled={!selectedRun}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-white disabled:opacity-40"
-            >
-              Export rep rollups CSV
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Draft Line Items</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">{draftTotals.lineCount}</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Draft Total Payout</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(draftTotals.totalPayout)}</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wide">Exceptions</p>
-            <p className="text-xl font-bold text-gray-900 mt-1">{draftTotals.exceptions}</p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-sm text-left">
-            <thead className="bg-gray-50 border-y border-gray-200">
-              <tr>
-                {['Rep', 'Merchant', 'Volume', 'Residual', 'Rate', 'Model', 'Payout', 'Exception'].map((header) => (
-                  <th key={header} className="px-3 py-2 text-xs uppercase tracking-wide text-gray-500 font-semibold whitespace-nowrap">{header}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {draftLineItems.slice(0, 14).map((lineItem) => (
-                <tr key={lineItem.id}>
-                  <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{lineItem.repName}</td>
-                  <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{lineItem.merchantName}</td>
-                  <td className="px-3 py-2 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(lineItem.volume)}</td>
-                  <td className="px-3 py-2 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(lineItem.residualRevenue)}</td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{Math.round(lineItem.commissionRate * 100)}%</td>
-                  <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{lineItem.appliedRule || 'Base Tier'}</td>
-                  <td className="px-3 py-2 font-mono font-semibold text-indigo-700 whitespace-nowrap">
-                    <span>{formatCurrency(lineItem.payout)}</span>
-                    <span className="ml-2 text-[11px] font-normal text-gray-500 whitespace-nowrap">
-                      ({formatCurrency(lineItem.basePayout || lineItem.payout)} + {formatCurrency(lineItem.excessPayout || 0)})
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-amber-600 max-w-[220px] truncate">{lineItem.exception || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-600" /> Recent Commission Runs</h3>
-          <div className="mt-2 space-y-2">
-            {commissionRuns.slice(0, 6).map((run) => (
-              <div key={run.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs border border-gray-200 bg-white rounded-lg px-3 py-2">
-                <span className="text-gray-700">{run.period} · {run.lineItems.length} items · {run.status}</span>
-                <span className="font-semibold text-gray-900">{formatCurrency(run.totalPayout)}</span>
-              </div>
-            ))}
-            {commissionRuns.length === 0 && <p className="text-xs text-gray-500">No runs yet. Save draft or finalize the first monthly run.</p>}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <h3 className="text-sm font-semibold text-gray-900">Rep Buy-Rate Rollups</h3>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full min-w-[920px] text-xs">
-              <thead>
-                <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wide">
-                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Rep</th>
-                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Volume</th>
-                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Residual Base</th>
-                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Base Payout</th>
-                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Excess Payout</th>
-                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Commission Payout</th>
-                  <th className="py-2 pr-3 text-left font-semibold whitespace-nowrap">Lines</th>
-                  <th className="py-2 text-left font-semibold whitespace-nowrap">Exceptions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {repRollups.map((rollup) => (
-                  <tr key={rollup.repName} className="border-b border-gray-200/70">
-                    <td className="py-2 pr-3 text-gray-700 whitespace-nowrap">{rollup.repName}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(rollup.volume)}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(rollup.residual)}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(rollup.basePayout)}</td>
-                    <td className="py-2 pr-3 font-mono text-gray-700 whitespace-nowrap">{formatCurrency(rollup.excessPayout)}</td>
-                    <td className="py-2 pr-3 font-mono font-semibold text-indigo-700 whitespace-nowrap">{formatCurrency(rollup.payout)}</td>
-                    <td className="py-2 pr-3 text-gray-700 whitespace-nowrap">{rollup.lineCount}</td>
-                    <td className="py-2 text-amber-600 whitespace-nowrap">{rollup.exceptions}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsPayoutWizardOpen(true)}
+            className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Open Payout Wizard
+          </button>
         </div>
       </div>
 

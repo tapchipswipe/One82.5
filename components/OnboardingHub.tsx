@@ -163,6 +163,7 @@ const indexOfStep = (id: WizardStepId): number => Math.max(0, WIZARD_STEPS.findI
 
 const OnboardingHub: React.FC = () => {
   const [onboardingDeals, setOnboardingDeals] = useState<OnboardingDeal[]>([]);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [repOptions, setRepOptions] = useState<string[]>([]);
   const [internalNotes, setInternalNotes] = useState('');
   const [applicationData, setApplicationData] = useState<OnboardingApplicationData>(() => emptyApplicationData());
@@ -370,173 +371,201 @@ const OnboardingHub: React.FC = () => {
             <span className="text-xs text-gray-500">Open deals: {visibleDeals.length}</span>
             <button
               type="button"
-              onClick={resetWizard}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Start New
-            </button>
-            <button
-              type="button"
-              onClick={() => { void upsertActiveDeal('validation-required'); }}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Save Draft
-            </button>
-            <button
-              type="button"
-              onClick={() => { void upsertActiveDeal(requiredChecklist.isReady ? 'ready-to-submit' : 'validation-required'); }}
+              onClick={() => { resetWizard(); setIsWizardOpen(true); }}
               className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
             >
-              Save Package
+              Open Onboarding Wizard
             </button>
           </div>
         </div>
 
-        <div className="px-6 py-4 border-b border-gray-100">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Wizard step</p>
-                <p className="text-sm text-gray-800">
-                  <span className="font-semibold">{WIZARD_STEPS[indexOfStep(wizardStep)]?.label}</span>
-                  <span className="text-gray-500"> · {WIZARD_STEPS[indexOfStep(wizardStep)]?.help}</span>
-                </p>
-                {activeDeal && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Editing: <span className="font-semibold text-gray-800">{activeDeal.merchantName}</span> · status <span className="font-mono">{activeDeal.status}</span>
-                  </p>
-                )}
-                {!activeDeal && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    New deal draft (not saved yet). Enter at least a business legal name to save.
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
+        {isWizardOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-6xl max-h-[88vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl">
+              <div className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Onboarding Wizard</p>
+                  <h2 className="text-lg font-bold text-gray-900">Merchant Processing Application (MPA)</h2>
+                  <p className="text-xs text-gray-500 mt-1">Step through the MPA and save as draft/package to submit.</p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setWizardStep(WIZARD_STEPS[Math.max(0, indexOfStep(wizardStep) - 1)]?.id || 'deal')}
-                  disabled={indexOfStep(wizardStep) === 0}
-                  className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                  onClick={() => setIsWizardOpen(false)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                 >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWizardStep(WIZARD_STEPS[Math.min(WIZARD_STEPS.length - 1, indexOfStep(wizardStep) + 1)]?.id || 'review')}
-                  disabled={indexOfStep(wizardStep) >= WIZARD_STEPS.length - 1}
-                  className="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-black disabled:opacity-40"
-                >
-                  Next
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { void upsertActiveDeal('submitted'); }}
-                  disabled={!requiredChecklist.isReady}
-                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:opacity-40"
-                >
-                  <Send className="w-3 h-3" /> Submit
+                  Close
                 </button>
               </div>
-            </div>
 
-            {isScopedRep && (
-              <p className="text-xs text-indigo-700">Scoped rep mode: this user can only create and manage onboarding deals assigned to {scopedRepName}.</p>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {WIZARD_STEPS.map((step) => {
-                const isActive = step.id === wizardStep;
-                return (
-                  <button
-                    key={step.id}
-                    type="button"
-                    onClick={() => setWizardStep(step.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                      isActive
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    {step.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 py-6 space-y-6">
-          {wizardStep === 'deal' && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                <label className="text-xs text-gray-600">
-                  Rep owner
-                  <select
-                    value={merchantIdentity.ownerRepName}
-                    onChange={(event) => setMerchantIdentity((current) => ({ ...current, ownerRepName: event.target.value }))}
-                    disabled={isScopedRep}
-                    className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
-                  >
-                    {repOptions.length === 0 && <option value="">Unassigned Rep</option>}
-                    {repOptions.map((rep) => <option key={rep} value={rep}>{rep}</option>)}
-                  </select>
-                </label>
-                <label className="text-xs text-gray-600">
-                  Processor target
-                  <select
-                    value={merchantIdentity.processorTarget}
-                    onChange={(event) => setMerchantIdentity((current) => ({ ...current, processorTarget: event.target.value as ProcessorTarget }))}
-                    className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
-                  >
-                    <option value="stripe">Stripe</option>
-                    <option value="tsys">TSYS</option>
-                    <option value="fiserv">Fiserv</option>
-                    <option value="worldpay">Worldpay</option>
-                    <option value="global">Global Payments</option>
-                  </select>
-                </label>
-                <label className="text-xs text-gray-600">
-                  Internal notes
-                  <input
-                    value={internalNotes}
-                    onChange={(event) => setInternalNotes(event.target.value)}
-                    placeholder="Internal notes"
-                    className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
-                  />
-                </label>
-              </div>
-
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Continue draft</p>
-                <p className="text-xs text-gray-500 mt-1">Pick an existing deal to resume editing the MPA. (Scoped reps only see their deals.)</p>
-                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {visibleDeals
-                    .filter((deal) => deal.status !== 'submitted')
-                    .slice(0, 9)
-                    .map((deal) => (
+              <div className="px-6 py-4 border-b border-gray-100">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Wizard step</p>
+                      <p className="text-sm text-gray-800">
+                        <span className="font-semibold">{WIZARD_STEPS[indexOfStep(wizardStep)]?.label}</span>
+                        <span className="text-gray-500"> · {WIZARD_STEPS[indexOfStep(wizardStep)]?.help}</span>
+                      </p>
+                      {activeDeal && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Editing: <span className="font-semibold text-gray-800">{activeDeal.merchantName}</span> · status <span className="font-mono">{activeDeal.status}</span>
+                        </p>
+                      )}
+                      {!activeDeal && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          New deal draft (not saved yet). Enter at least a business legal name to save.
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
-                        key={deal.id}
                         type="button"
-                        onClick={() => loadDealIntoWizard(deal)}
-                        className={`rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
-                          deal.id === activeDealId
-                            ? 'border-indigo-600 bg-white'
-                            : 'border-gray-200 bg-white hover:bg-gray-50'
-                        }`}
+                        onClick={resetWizard}
+                        className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                       >
-                        <p className="font-semibold text-gray-900 truncate">{deal.merchantName}</p>
-                        <p className="text-gray-500 truncate">{deal.ownerRepName} · {deal.processorTarget.toUpperCase()}</p>
-                        <p className="mt-1 font-mono text-[11px] text-gray-500">{deal.status}</p>
+                        Start New
                       </button>
-                    ))}
-                  {visibleDeals.filter((deal) => deal.status !== 'submitted').length === 0 && (
-                    <div className="text-xs text-gray-500">No drafts yet. Start a new deal above.</div>
+                      <button
+                        type="button"
+                        onClick={() => { void upsertActiveDeal('validation-required'); }}
+                        className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        Save Draft
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { void upsertActiveDeal(requiredChecklist.isReady ? 'ready-to-submit' : 'validation-required'); }}
+                        className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+                      >
+                        Save Package
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { void upsertActiveDeal('submitted'); }}
+                        disabled={!requiredChecklist.isReady}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:opacity-40"
+                      >
+                        <Send className="w-3 h-3" /> Submit
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWizardStep(WIZARD_STEPS[Math.max(0, indexOfStep(wizardStep) - 1)]?.id || 'deal')}
+                      disabled={indexOfStep(wizardStep) === 0}
+                      className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWizardStep(WIZARD_STEPS[Math.min(WIZARD_STEPS.length - 1, indexOfStep(wizardStep) + 1)]?.id || 'review')}
+                      disabled={indexOfStep(wizardStep) >= WIZARD_STEPS.length - 1}
+                      className="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-semibold hover:bg-black disabled:opacity-40"
+                    >
+                      Next
+                    </button>
+
+                    <div className="flex flex-wrap gap-2">
+                      {WIZARD_STEPS.map((step) => {
+                        const isActive = step.id === wizardStep;
+                        return (
+                          <button
+                            key={step.id}
+                            type="button"
+                            onClick={() => setWizardStep(step.id)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                              isActive
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            {step.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {isScopedRep && (
+                    <p className="text-xs text-indigo-700">Scoped rep mode: this user can only create and manage onboarding deals assigned to {scopedRepName}.</p>
                   )}
                 </div>
               </div>
-            </div>
-          )}
+
+              <div className="px-6 py-6 space-y-6">
+                {wizardStep === 'deal' && (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                      <label className="text-xs text-gray-600">
+                        Rep owner
+                        <select
+                          value={merchantIdentity.ownerRepName}
+                          onChange={(event) => setMerchantIdentity((current) => ({ ...current, ownerRepName: event.target.value }))}
+                          disabled={isScopedRep}
+                          className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                        >
+                          {repOptions.length === 0 && <option value="">Unassigned Rep</option>}
+                          {repOptions.map((rep) => <option key={rep} value={rep}>{rep}</option>)}
+                        </select>
+                      </label>
+                      <label className="text-xs text-gray-600">
+                        Processor target
+                        <select
+                          value={merchantIdentity.processorTarget}
+                          onChange={(event) => setMerchantIdentity((current) => ({ ...current, processorTarget: event.target.value as ProcessorTarget }))}
+                          className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                        >
+                          <option value="stripe">Stripe</option>
+                          <option value="tsys">TSYS</option>
+                          <option value="fiserv">Fiserv</option>
+                          <option value="worldpay">Worldpay</option>
+                          <option value="global">Global Payments</option>
+                        </select>
+                      </label>
+                      <label className="text-xs text-gray-600">
+                        Internal notes
+                        <input
+                          value={internalNotes}
+                          onChange={(event) => setInternalNotes(event.target.value)}
+                          placeholder="Internal notes"
+                          className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Continue draft</p>
+                      <p className="text-xs text-gray-500 mt-1">Pick an existing deal to resume editing the MPA. (Scoped reps only see their deals.)</p>
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {visibleDeals
+                          .filter((deal) => deal.status !== 'submitted')
+                          .slice(0, 9)
+                          .map((deal) => (
+                            <button
+                              key={deal.id}
+                              type="button"
+                              onClick={() => loadDealIntoWizard(deal)}
+                              className={`rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
+                                deal.id === activeDealId
+                                  ? 'border-indigo-600 bg-white'
+                                  : 'border-gray-200 bg-white hover:bg-gray-50'
+                              }`}
+                            >
+                              <p className="font-semibold text-gray-900 truncate">{deal.merchantName}</p>
+                              <p className="text-gray-500 truncate">{deal.ownerRepName} · {deal.processorTarget.toUpperCase()}</p>
+                              <p className="mt-1 font-mono text-[11px] text-gray-500">{deal.status}</p>
+                            </button>
+                          ))}
+                        {visibleDeals.filter((deal) => deal.status !== 'submitted').length === 0 && (
+                          <div className="text-xs text-gray-500">No drafts yet. Start a new deal above.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
           {wizardStep === 'contact' && (
             <div className="rounded-xl border border-gray-200 p-4 space-y-3">
@@ -614,6 +643,9 @@ const OnboardingHub: React.FC = () => {
             </div>
           )}
         </div>
+            </div>
+          </div>
+        )}
 
         {/* Existing sections below (addresses, owners, banking, equipment/pricing/agreement, deal table) remain unchanged.
             They are now conditionally shown by wizard step above; the original full-form layout is intentionally preserved
