@@ -10,7 +10,8 @@ const readEnv = (key: string): string | undefined => {
 };
 
 type DataMode = 'demo' | 'backend';
-const BACKEND_DATA_ENABLED = readEnv('VITE_ENABLE_BACKEND_DATA') === 'true';
+// Supabase-only operation: data flows are always backend-backed.
+const BACKEND_DATA_ENABLED = true;
 
 // Simulated Database Keys
 const STORAGE_KEYS = {
@@ -65,10 +66,6 @@ const getDataApiUrl = (path: string): string => {
 const isBackendMode = (mode: DataMode): boolean => mode === 'backend';
 const isStrictBackendDataMode = (): boolean => BACKEND_DATA_ENABLED && StorageService.getDataMode() === 'backend';
 const shouldPersistBusinessDataLocally = (): boolean => !isStrictBackendDataMode();
-const normalizeDataMode = (mode: DataMode): DataMode => {
-  if (!BACKEND_DATA_ENABLED) return 'demo';
-  return mode === 'backend' ? 'backend' : 'demo';
-};
 
 const DEFAULT_SETTINGS: AppSettings = {
   notifications: true,
@@ -118,41 +115,12 @@ export const StorageService = {
   isBackendDataEnabled: (): boolean => BACKEND_DATA_ENABLED,
 
   getDataMode: (): DataMode => {
-    const mode = localStorage.getItem(STORAGE_KEYS.DATA_MODE);
-    return normalizeDataMode(mode === 'backend' ? 'backend' : 'demo');
+    return 'backend';
   },
 
   setDataMode: (mode: DataMode): void => {
-    const normalized = normalizeDataMode(mode);
-    localStorage.setItem(STORAGE_KEYS.DATA_MODE, normalized);
-
-    if (normalized === 'backend') {
-      localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
-      localStorage.removeItem(STORAGE_KEYS.METRICS);
-      localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
-      localStorage.removeItem(STORAGE_KEYS.REVIEWS);
-      localStorage.removeItem(STORAGE_KEYS.CALENDAR_EVENTS);
-      localStorage.removeItem(STORAGE_KEYS.IMPORTED_MERCHANTS);
-      localStorage.removeItem(STORAGE_KEYS.IMPORTED_TEAM);
-      localStorage.removeItem(STORAGE_KEYS.MERCHANT_INVITES);
-      localStorage.removeItem(STORAGE_KEYS.IMPORT_AUDIT_LOG);
-      localStorage.removeItem(STORAGE_KEYS.ONBOARDING_DEALS);
-      localStorage.removeItem(STORAGE_KEYS.COMMISSION_RUNS);
-      localStorage.removeItem(STORAGE_KEYS.BUY_RATE_PROFILES);
-
-      RUNTIME_CACHE.transactions = [];
-      RUNTIME_CACHE.metrics = [];
-      RUNTIME_CACHE.notifications = [];
-      RUNTIME_CACHE.reviews = [];
-      RUNTIME_CACHE.calendarEvents = [];
-      RUNTIME_CACHE.importedMerchants = [];
-      RUNTIME_CACHE.importedTeam = [];
-      RUNTIME_CACHE.merchantInvites = [];
-      RUNTIME_CACHE.importAuditLog = [];
-      RUNTIME_CACHE.onboardingDeals = [];
-      RUNTIME_CACHE.commissionRuns = [];
-      RUNTIME_CACHE.buyRateProfiles = [];
-    }
+    void mode;
+    localStorage.setItem(STORAGE_KEYS.DATA_MODE, 'backend');
   },
 
   // User / Auth

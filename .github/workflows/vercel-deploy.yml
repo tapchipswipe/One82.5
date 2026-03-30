@@ -1,0 +1,72 @@
+name: Vercel Deploy
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  preview:
+    name: Preview Deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref != 'refs/heads/one82-production'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (prebuilt deploy)
+        run: npm run build && node scripts/prepare-dist.mjs
+
+      - name: Deploy to Vercel (Preview)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest pull --yes --environment=preview --token "$VERCEL_TOKEN"
+          npx --yes vercel@latest deploy --yes --prebuilt --token "$VERCEL_TOKEN"
+
+  production:
+    name: Production Deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/one82-production'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Quality gate
+        run: npm run check
+
+      - name: Build (prebuilt deploy)
+        run: npm run build && node scripts/prepare-dist.mjs
+
+      - name: Deploy to Vercel (Production)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
+          npx --yes vercel@latest deploy --yes --prebuilt --prod --token "$VERCEL_TOKEN"
+

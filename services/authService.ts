@@ -8,17 +8,8 @@ const readEnv = (key: string): string | undefined => {
   return viteEnv?.[key] ?? process.env[key];
 };
 
-const readBooleanEnv = (key: string): boolean => {
-  const rawValue = readEnv(key);
-  if (!rawValue) return false;
-  const normalized = rawValue.trim().replace(/^['"]|['"]$/g, '').toLowerCase();
-  return normalized === 'true' || normalized === '1' || normalized === 'yes';
-};
-
-const AUTH_MODE_KEY = 'one82_auth_mode';
 const AUTH_SESSION_KEY = 'one82_auth_session';
 const AUTH_API_BASE = (readEnv('VITE_AUTH_API_BASE') || '').replace(/\/$/, '');
-const BACKEND_AUTH_ENABLED = true; // Enabled for production to make Auth Login available
 const OVERSEER_EMAIL = (readEnv('VITE_OVERSEER_EMAIL') || 'owner@one82.io').toLowerCase();
 
 const sessionStorage = {
@@ -39,31 +30,11 @@ const getApiUrl = (path: string): string => {
   return `${AUTH_API_BASE}${path}`;
 };
 
-const normalizeAuthMode = (mode: AuthMode): AuthMode => {
-  if (!BACKEND_AUTH_ENABLED) return 'demo';
-  return mode === 'backend' ? 'backend' : 'demo';
-};
-
-const isOverseerEmail = (email: string): boolean => email.toLowerCase() === OVERSEER_EMAIL;
-
-const createDemoSession = (user: User): AuthSession => {
-  const issuedAt = new Date();
-  const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
-  return {
-    sessionId: `demo_session_${Date.now()}`,
-    userId: user.id,
-    tenantId: user.organizationName || user.id,
-    role: user.role,
-    issuedAt: issuedAt.toISOString(),
-    expiresAt: expiresAt.toISOString()
-  };
-};
-
-const loginViaBackendApi = async (email: string, password: string, mode: AuthMode): Promise<AuthLoginResult> => {
+const loginViaBackendApi = async (email: string, password: string): Promise<AuthLoginResult> => {
   const response = await fetch(getApiUrl('/api/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, mode })
+    body: JSON.stringify({ email, password, mode: 'backend' satisfies AuthMode })
   });
 
   if (!response.ok) {
@@ -86,131 +57,44 @@ const loginViaBackendApi = async (email: string, password: string, mode: AuthMod
   StorageService.saveUser(user);
   sessionStorage.save(session);
 
-  return { user, session, mode };
-};
-
-const loginWithDemo = (email: string): AuthLoginResult => {
-  const normalizedEmail = email.trim().toLowerCase();
-  let user = StorageService.getUser();
-
-  if (isOverseerEmail(normalizedEmail)) {
-    user = {
-      id: 'owner_overseer',
-      email: normalizedEmail,
-      name: 'Program Owner',
-      role: 'overseer',
-      onboardingComplete: true,
-      credits: 9999,
-      plan: 'Enterprise'
-    };
-
-    StorageService.saveUser(user);
-    const session = createDemoSession(user);
-    sessionStorage.save(session);
-    return { user, session, mode: 'demo' };
-  }
-
-  if (!user || user.email !== normalizedEmail) {
-    user = {
-      id: `u_${Date.now()}`,
-      email: normalizedEmail,
-      name: normalizedEmail.split('@')[0] || 'User',
-      role: normalizedEmail.includes('iso') ? 'iso' : 'merchant',
-      businessType: undefined,
-      onboardingComplete: normalizedEmail.includes('iso'),
-      credits: 50,
-      plan: 'Free'
-    };
-
-    if (user.role === 'iso') {
-      user.organizationName = 'Demo ISO';
-    }
-  }
-
-  StorageService.saveUser(user);
-  const session = createDemoSession(user);
-  sessionStorage.save(session);
-
-  return { user, session, mode: 'demo' };
-};
-
-const loginWithBackend = async (email: string, password: string): Promise<AuthLoginResult> => {
-  return loginViaBackendApi(email, password, 'backend');
-};
-
-const getPreferredMode = (): AuthMode => {
-  const mode = localStorage.getItem(AUTH_MODE_KEY);
-  if (!mode && BACKEND_AUTH_ENABLED) {
-    return 'backend';
-  }
-  return normalizeAuthMode(mode === 'backend' ? 'backend' : 'demo');
-};
-
-const setPreferredMode = (mode: AuthMode): void => {
-  localStorage.setItem(AUTH_MODE_KEY, normalizeAuthMode(mode));
+  return { user, session, mode: 'backend' };
 };
 
 export const AuthService = {
-  isBackendEnabled: (): boolean => BACKEND_AUTH_ENABLED,
+  isBackendEnabled: (): boolean => true,
 
   getOverseerEmail: (): string => OVERSEER_EMAIL,
 
-  getPreferredMode,
-
-  setPreferredMode,
-
   bootstrap: async (): Promise<{ user: User | null; session: AuthSession | null; mode: AuthMode }> => {
-    const mode = normalizeAuthMode(getPreferredMode());
-
-    if (BACKEND_AUTH_ENABLED && mode === 'backend') {
-      try {
-        const response = await fetch(getApiUrl('/api/auth/session'));
-        if (!response.ok) {
-          return { user: null, session: null, mode };
-        }
-
-        const payload = await response.json();
-        const user = payload.user as User | undefined;
-        const session = payload.session as AuthSession | undefined;
-
-        if (user && session) {
-          StorageService.saveUser(user);
-          sessionStorage.save(session);
-          return { user, session, mode };
-        }
-      } catch {
-        return { user: null, session: null, mode };
+    try {
+      const response = await fetch(getApiUrl('/api/auth/session'));
+      if (!response.ok) {
+        return { user: null, session: null, mode: 'backend' };
       }
 
-      return { user: null, session: null, mode };
+      const payload = await response.json();
+      const user = payload.user as User | undefined;
+      const session = payload.session as AuthSession | undefined;
+
+      if (user && session) {
+        StorageService.saveUser(user);
+        sessionStorage.save(session);
+        return { user, session, mode: 'backend' };
+      }
+    } catch {
+      return { user: null, session: null, mode: 'backend' };
     }
 
-    const user = StorageService.getUser();
-    const existing = sessionStorage.get();
-    const session = user ? (existing || createDemoSession(user)) : null;
-    if (session) {
-      sessionStorage.save(session);
-    }
-    return { user, session, mode };
+    return { user: null, session: null, mode: 'backend' };
   },
 
   login: async ({ email, password, mode }: AuthLoginInput): Promise<AuthLoginResult> => {
-    const normalizedMode = normalizeAuthMode(mode);
-    setPreferredMode(normalizedMode);
-
-    if (BACKEND_AUTH_ENABLED && normalizedMode === 'backend') {
-      return loginWithBackend(email, password);
-    }
-
-    return loginWithDemo(email);
+    void mode;
+    return loginViaBackendApi(email, password);
   },
 
   saveUserProfile: async (user: User, mode: AuthMode): Promise<User> => {
-    const normalizedMode = normalizeAuthMode(mode);
-    if (normalizedMode !== 'backend') {
-      StorageService.saveUser(user);
-      return user;
-    }
+    void mode;
 
     const response = await fetch(getApiUrl('/api/auth/profile'), {
       method: 'PUT',
@@ -229,14 +113,11 @@ export const AuthService = {
   },
 
   logout: async (mode: AuthMode): Promise<void> => {
-    const normalizedMode = normalizeAuthMode(mode);
-
-    if (normalizedMode === 'backend') {
-      try {
-        await fetch(getApiUrl('/api/auth/logout'), { method: 'POST' });
-      } catch {
-        // Best effort logout
-      }
+    void mode;
+    try {
+      await fetch(getApiUrl('/api/auth/logout'), { method: 'POST' });
+    } catch {
+      // Best effort logout
     }
 
     StorageService.clearUser();

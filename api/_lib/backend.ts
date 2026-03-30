@@ -215,13 +215,21 @@ const parseCookies = (cookieHeader?: string): Record<string, string> => {
   }, {});
 };
 
+const tenantIdForUser = (user: User): string => {
+  const email = user.email.trim().toLowerCase();
+  if (email === 'demo-iso@one82.io') return 'tenant_demo_iso';
+  if (email === 'demo-merchant@one82.io') return 'tenant_demo_merchant';
+  return user.id;
+};
+
 const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
+  const tenantId = tenantIdForUser(user);
   return {
     sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     userId: user.id,
-    tenantId: user.organizationName || user.id,
+    tenantId,
     role: user.role,
     issuedAt: issuedAt.toISOString(),
     expiresAt: expiresAt.toISOString()
@@ -239,6 +247,8 @@ const createSessionToken = (): string => {
 const roleFromEmail = (email: string): UserRole => {
   const normalized = email.toLowerCase();
   if (normalized === OVERSEER_EMAIL) return 'overseer';
+  if (normalized === 'demo-merchant@one82.io') return 'merchant';
+  if (normalized === 'demo-iso@one82.io') return 'iso';
   if (normalized.includes('iso')) return 'iso';
   return 'merchant';
 };
@@ -829,7 +839,8 @@ export const saveStateForTenant = async (tenantId: string, state: TenantState): 
 };
 
 export const setSessionCookie = (res: ResponseLike, sessionToken: string): void => {
-  const cookie = `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`;
+  const secure = env.isProduction ? '; Secure' : '';
+  const cookie = `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secure}`;
   res.setHeader('Set-Cookie', cookie);
 };
 

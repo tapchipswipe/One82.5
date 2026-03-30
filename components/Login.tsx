@@ -8,7 +8,6 @@ interface LoginProps {
   onLogin: (user: User, mode: AuthMode) => void;
   showTrialMode?: boolean;
   onBackToHome?: () => void;
-  initialAuthMode?: AuthMode;
   inviteIntent?: 'merchant' | null;
 }
 
@@ -18,16 +17,15 @@ const FEATURES = [
   { icon: Shield, text: 'Churn risk & residual tracking' },
 ];
 
-const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToHome, initialAuthMode = 'demo', inviteIntent = null }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToHome, inviteIntent = null }) => {
   const isBackendAuthEnabled = AuthService.isBackendEnabled();
   const overseerEmail = AuthService.getOverseerEmail();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [authMode, setAuthMode] = useState<AuthMode>(isBackendAuthEnabled ? initialAuthMode : 'demo');
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState<'email' | 'password' | null>(null);
-  const isAuthLoginSelected = isBackendAuthEnabled && authMode === 'backend';
+  const authMode: AuthMode = 'backend';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,15 +46,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
     }
   };
 
-  const fillDemo = () => {
-    setEmail('demo@one82.io');
+  const fillDemoIso = () => {
+    setEmail('demo-iso@one82.io');
     setPassword('admin');
-    setAuthMode('demo');
+  };
+
+  const fillDemoMerchant = () => {
+    setEmail('demo-merchant@one82.io');
+    setPassword('admin');
   };
 
   const switchToAuthLogin = () => {
-    if (!isBackendAuthEnabled) return;
-    setAuthMode('backend');
+    void isBackendAuthEnabled;
   };
 
   const fillOverseer = () => {
@@ -172,41 +173,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
           </div>
 
           <div className="mb-6 rounded-lg border-2 border-gray-200 p-3 bg-gray-50">
-            <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Login Type</p>
-            {isBackendAuthEnabled ? (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAuthMode('demo')}
-                  className={`px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors ${authMode === 'demo' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}
-                >
-                  Demo Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthMode('backend')}
-                  className={`px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors ${authMode === 'backend' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'}`}
-                >
-                  Auth Login
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAuthMode('demo')}
-                  className="px-3 py-2 text-sm font-semibold rounded-md border-2 transition-colors bg-gray-900 text-white border-gray-900"
-                >
-                  Demo Login
-                </button>
-              </div>
-            )}
-            <p className="mt-2 text-xs text-gray-500">
-              {!isBackendAuthEnabled
-                ? 'Auth Login is currently unavailable. Use Demo Login for access.'
-                : authMode === 'demo'
-                  ? 'Uses local demo data and a simulated session.'
-                  : 'Uses real authentication and real/imported data only (no simulated records).'}
+            <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Sign-in</p>
+            <p className="text-xs text-gray-600">
+              ONE82 uses Supabase-backed authentication for every session. Use the demo credential buttons below for showcase access.
             </p>
             <p className="mt-1 text-[11px] text-gray-500">
               Owner-only overseer access is reserved for <span className="font-semibold">{overseerEmail}</span>.
@@ -262,7 +231,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
             >
               {isLoading ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Signing in…</>
-              ) : isAuthLoginSelected ? 'Sign in with Auth →' : 'Enter Demo →'}
+              ) : 'Sign in →'}
             </button>
 
             {error && (
@@ -281,17 +250,26 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
                 disabled={!isBackendAuthEnabled}
                 className="text-gray-900 hover:text-gray-700 font-semibold underline disabled:text-gray-400 disabled:no-underline"
               >
-                Use Auth Login
+                Use demo credentials below
               </button>
             </p>
             <div className="flex items-center gap-4 text-xs">
               <button
-                onClick={fillDemo}
+                type="button"
+                onClick={fillDemoIso}
                 className="text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
               >
-                Fill demo credentials
+                Fill demo ISO credentials
               </button>
               <button
+                type="button"
+                onClick={fillDemoMerchant}
+                className="text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+              >
+                Fill demo merchant credentials
+              </button>
+              <button
+                type="button"
                 onClick={fillOverseer}
                 className="text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
               >
@@ -299,17 +277,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, showTrialMode = false, onBackToH
               </button>
             </div>
           </div>
-
-          {/* Simulation badge */}
-          {authMode === 'demo' && (
-            <div className="mt-8 flex items-center gap-2 justify-center">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600" />
-              </span>
-              <span className="text-xs text-gray-500 font-medium">Demo mode — sample data, no account needed</span>
-            </div>
-          )}
         </div>
       </div>
     </div>

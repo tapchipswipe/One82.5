@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { BusinessType, DailyMetric, MerchantStatementAnalysis, Review, Transaction } from "@/types";
 import { PortfolioMerchant } from "@/services/simulationService";
+import { StorageService } from "@/services/storage";
 
 // Helper to get API Key securely from LocalStorage
 const getApiKey = (): string => {
@@ -8,6 +9,23 @@ const getApiKey = (): string => {
 };
 
 const isTrialMode = (): boolean => localStorage.getItem('one82_data_mode') === 'backend';
+
+const isSeededDemoTenant = (): boolean => {
+  try {
+    const user = StorageService.getUser();
+    const email = user?.email?.trim().toLowerCase();
+    if (email === 'demo-iso@one82.io') return true;
+    if (email === 'demo-merchant@one82.io') return true;
+
+    const sessionRaw = localStorage.getItem('one82_auth_session');
+    if (!sessionRaw) return false;
+    const parsed = JSON.parse(sessionRaw) as { tenantId?: string } | null;
+    const tenantId = parsed?.tenantId?.trim();
+    return tenantId === 'tenant_demo_iso' || tenantId === 'tenant_demo_merchant';
+  } catch {
+    return false;
+  }
+};
 
 const getTrialUnavailableMessage = (feature: string) =>
   `${feature} is unavailable in Auth Login until a Gemini API key is configured.`;
@@ -56,6 +74,12 @@ const SIMULATED_FORECASTS = [
   "Expected inventory shortage for cold-brew supplies by Thursday."
 ];
 
+const SEEDED_DEMO_RESPONSES = {
+  dashboard: "Seeded demo insight: Your top 2 merchants drove most of the 7-day volume. Action: prioritize a Stripe sync + statement upload for the lowest-margin account to validate pricing opportunities.",
+  dataChat: "Seeded demo response: Based on the seeded portfolio, volume is concentrated in your largest merchant. Next step: open Profitability to confirm residual vs support cost and flag any accounts with shrinking trend.",
+  statement: "Seeded demo statement response: This demo statement indicates a blended rate above target and elevated keyed volume. Recommendation: propose a pricing optimization and reduce keyed exposure with terminal/presentment improvements."
+} as const;
+
 /**
  * Step 3: Real-time Streaming for Dashboard (Updated Model)
  */
@@ -67,12 +91,17 @@ export const streamDashboardInsights = async (
 ): Promise<void> => {
   const apiKey = getApiKey();
 
-  if (isTrialMode() && metrics.length === 0) {
+  if (!isSeededDemoTenant() && isTrialMode() && metrics.length === 0) {
     onChunk(getTrialDataRequiredMessage('AI dashboard insights', 'import transactions/metrics or connect a live integration in Integrations'));
     return;
   }
 
   if (!apiKey) {
+    if (isSeededDemoTenant()) {
+      onChunk(SEEDED_DEMO_RESPONSES.dashboard);
+      return;
+    }
+
     if (isTrialMode()) {
       onChunk(getTrialUnavailableMessage('AI dashboard insights'));
       return;
@@ -122,12 +151,17 @@ export const chatWithDataStream = async (
   const metrics = Array.isArray(contextData?.metrics) ? contextData.metrics : [];
   const transactions = Array.isArray(contextData?.transactions) ? contextData.transactions : [];
 
-  if (isTrialMode() && metrics.length === 0 && transactions.length === 0) {
+  if (!isSeededDemoTenant() && isTrialMode() && metrics.length === 0 && transactions.length === 0) {
     onChunk(getTrialDataRequiredMessage('Data Chat', 'import transactions or connect a live integration before requesting AI analysis'));
     return;
   }
 
   if (!apiKey) {
+    if (isSeededDemoTenant()) {
+      onChunk(SEEDED_DEMO_RESPONSES.dataChat);
+      return;
+    }
+
     if (isTrialMode()) {
       onChunk(getTrialUnavailableMessage('Data Chat'));
       return;
@@ -167,6 +201,10 @@ export const analyzeStatementDocument = async (
   const apiKey = getApiKey();
 
   if (!apiKey) {
+    if (isSeededDemoTenant()) {
+      return SEEDED_DEMO_RESPONSES.statement;
+    }
+
     if (isTrialMode()) {
       return getTrialUnavailableMessage('Statement analysis');
     }
@@ -196,6 +234,7 @@ export const analyzeStatementDocument = async (
  */
 export const detectAnomalies = async (transactions: Transaction[]): Promise<{ title: string, message: string } | null> => {
   const apiKey = getApiKey();
+  if (!apiKey && isSeededDemoTenant()) return null;
   if (!apiKey) return null;
 
   const ai = new GoogleGenAI({ apiKey });
@@ -464,6 +503,14 @@ export const analyzeStatementFull = async (
     growthPattern: "Stable",
     fluctuationRate: 8.4,
   };
+
+  if (!apiKey && isSeededDemoTenant()) {
+    return {
+      ...simulatedResult,
+      merchantName: 'Seeded Demo Merchant LLC',
+      mccDescription: 'Seeded demo statement analysis (no live Gemini call).'
+    };
+  }
 
   if (!apiKey && isTrialMode()) return getUnavailableStatementAnalysis();
   if (!apiKey) return simulatedResult;

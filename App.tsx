@@ -7,7 +7,7 @@ import MarketingLayout from './components/marketing/MarketingLayout';
 import { StorageService } from './services/storage';
 import { AuthService } from './services/authService';
 import { detectAnomalies } from './services/geminiService';
-import { PortfolioMerchant, SimulationService } from './services/simulationService';
+import { PortfolioMerchant } from './services/simulationService';
 import { User, BusinessType, MerchantInviteStrategy, UserRole, AuthMode, Transaction } from './types';
 import { DISABLE_AI_UI, ENABLE_EXPERIMENTAL, THEME_COLORS } from './constants';
 
@@ -218,19 +218,12 @@ const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authMode, setAuthMode] = useState<AuthMode>('demo');
   const [marketingPage, setMarketingPage] = useState<'home' | 'features' | 'pricing' | null>('home');
   const [showTrial, setShowTrial] = useState(false);
   const [inviteIntent, setInviteIntent] = useState<'merchant' | null>(null);
   const pendingNavigationRef = useRef<{ fromView: string; toView: string; requestedAt: number } | null>(null);
   const prefetchedViewsRef = useRef(new Set<string>());
-  const merchants = authMode === 'demo'
-    ? SimulationService.generatePortfolio()
-    : buildPortfolioFromTransactions(StorageService.getTransactions());
-  const resolveDataMode = (mode: AuthMode): 'backend' | 'demo' => {
-    if (!StorageService.isBackendDataEnabled()) return 'demo';
-    return mode === 'backend' ? 'backend' : 'demo';
-  };
+  const merchants = buildPortfolioFromTransactions(StorageService.getTransactions());
 
   useEffect(() => {
     const initialize = async () => {
@@ -241,8 +234,8 @@ const App: React.FC = () => {
         setInviteIntent(parsedInviteIntent);
 
         const { user: bootstrappedUser, mode } = await AuthService.bootstrap();
-        setAuthMode(mode);
-        StorageService.setDataMode(resolveDataMode(mode));
+        void mode;
+        StorageService.setDataMode('backend');
 
         if (bootstrappedUser) {
           setUser(bootstrappedUser);
@@ -376,8 +369,9 @@ const App: React.FC = () => {
   const toggleTheme = () => setDarkMode(!darkMode);
   const handleLogin = (u: User, mode: AuthMode) => {
     let nextUser = u;
+    void mode;
 
-    if (inviteIntent === 'merchant' && mode === 'demo' && u.role !== 'merchant') {
+    if (inviteIntent === 'merchant' && u.role !== 'merchant') {
       nextUser = {
         ...u,
         role: 'merchant',
@@ -388,13 +382,12 @@ const App: React.FC = () => {
       StorageService.saveUser(nextUser);
     }
 
-    setAuthMode(mode);
-    StorageService.setDataMode(resolveDataMode(mode));
+    StorageService.setDataMode('backend');
     setUser(nextUser);
   };
   const handleLogout = () => {
-    void AuthService.logout(authMode);
-    StorageService.setDataMode(resolveDataMode(authMode));
+    void AuthService.logout('backend');
+    StorageService.setDataMode('backend');
     setUser(null);
   };
 
@@ -425,7 +418,7 @@ const App: React.FC = () => {
       if (role === 'iso' && data.inviteStrategy) {
         StorageService.saveMerchantInviteStrategy(data.inviteStrategy);
       }
-      void AuthService.saveUserProfile(updated, authMode).catch(() => undefined);
+      void AuthService.saveUserProfile(updated, 'backend').catch(() => undefined);
 
       if (inviteIntent) {
         setInviteIntent(null);
@@ -440,7 +433,7 @@ const App: React.FC = () => {
     setUser(updatedUser);
     StorageService.saveUser(updatedUser);
     window.dispatchEvent(new Event('user-update'));
-    void AuthService.saveUserProfile(updatedUser, authMode).catch(() => undefined);
+    void AuthService.saveUserProfile(updatedUser, 'backend').catch(() => undefined);
   };
 
   if (loading) return null;
@@ -460,7 +453,7 @@ const App: React.FC = () => {
     );
   }
   
-  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial || inviteIntent === 'merchant'} onBackToHome={inviteIntent === 'merchant' ? undefined : () => setMarketingPage('home')} initialAuthMode={showTrial || inviteIntent === 'merchant' ? 'backend' : authMode} inviteIntent={inviteIntent} /></div>;
+  if (!user) return <div className={darkMode ? 'dark' : ''}><Login onLogin={handleLogin} showTrialMode={showTrial || inviteIntent === 'merchant'} onBackToHome={inviteIntent === 'merchant' ? undefined : () => setMarketingPage('home')} inviteIntent={inviteIntent} /></div>;
   if (!user.onboardingComplete && user.role !== 'overseer') return <div className={darkMode ? 'dark' : ''}><Onboarding onComplete={handleOnboardingComplete} initialRole={inviteIntent === 'merchant' ? 'merchant' : undefined} /></div>;
 
   return (
