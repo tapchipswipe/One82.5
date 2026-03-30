@@ -830,19 +830,18 @@ const OnboardingHub: React.FC = () => {
                 Personal Guarantee acknowledged
               </label>
             </div>
-          </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className={`text-xs font-semibold ${requiredChecklist.isReady ? 'text-green-700' : 'text-amber-700'}`}>
               {requiredChecklist.isReady ? 'Application is ready for submission.' : 'Application is missing required fields before submission.'}
             </p>
-              <button
-                type="button"
-                onClick={() => { void upsertActiveDeal(requiredChecklist.isReady ? 'ready-to-submit' : 'validation-required'); }}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold"
-              >
-                Save Package
-              </button>
+            <button
+              type="button"
+              onClick={() => { void upsertActiveDeal(requiredChecklist.isReady ? 'ready-to-submit' : 'validation-required'); }}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold"
+            >
+              Save Package
+            </button>
           </div>
           </div>
         )}
