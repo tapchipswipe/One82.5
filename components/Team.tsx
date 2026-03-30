@@ -106,6 +106,34 @@ const formatCurrency = (value: number): string =>
 
 const normalizeName = (value: string): string => value.trim().toLowerCase();
 
+const csvEscape = (value: unknown): string => {
+  const raw = value === null || value === undefined ? '' : String(value);
+  const needsQuotes = /[",\n\r]/.test(raw);
+  const escaped = raw.replace(/"/g, '""');
+  return needsQuotes ? `"${escaped}"` : escaped;
+};
+
+const toCsv = (headers: string[], rows: Array<Record<string, unknown>>): string => {
+  const lines: string[] = [];
+  lines.push(headers.map((h) => csvEscape(h)).join(','));
+  for (const row of rows) {
+    lines.push(headers.map((h) => csvEscape(row[h])).join(','));
+  }
+  return lines.join('\n');
+};
+
+const downloadCsv = (filename: string, csv: string) => {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
 const inferRepNameFromTeamRow = (row: Record<string, string>): string => {
   const candidates = [row.name, row.repName, row.rep, row.owner, row.ownerRepName, row.fullName]
     .map((value) => (value || '').trim())
@@ -180,6 +208,7 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   const isDemoMode = StorageService.getDataMode() === 'demo';
   const [selectedPeriod, setSelectedPeriod] = useState(() => new Date().toISOString().slice(0, 7));
   const [commissionRuns, setCommissionRuns] = useState<CommissionRun[]>(() => StorageService.getCommissionRuns());
+  const [selectedRunId, setSelectedRunId] = useState<string>('');
   const [transactions, setTransactions] = useState<Transaction[]>(() => StorageService.getTransactions());
   const [buyRateProfiles, setBuyRateProfiles] = useState<BuyRateProfile[]>(() => StorageService.getBuyRateProfiles());
   const [importedMerchants, setImportedMerchants] = useState<Array<Record<string, string>>>(() => StorageService.getImportedMerchants());
@@ -262,6 +291,11 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
     void StorageService.getImportedDataResolved().then((payload) => setImportedMerchants(payload.merchants));
     return () => window.removeEventListener('user-update', updateRuns);
   }, []);
+
+  useEffect(() => {
+    if (selectedRunId && commissionRuns.some((run) => run.id === selectedRunId)) return;
+    setSelectedRunId(commissionRuns[0]?.id || '');
+  }, [commissionRuns, selectedRunId]);
 
   const assignments = useMemo<RepAssignment[]>(() => {
     if (merchants.length === 0) {
@@ -409,6 +443,11 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
       .sort((left, right) => right.payout - left.payout);
   }, [draftLineItems]);
 
+  const selectedRun = useMemo(() => {
+    if (!selectedRunId) return null;
+    return commissionRuns.find((run) => run.id === selectedRunId) || null;
+  }, [commissionRuns, selectedRunId]);
+
   const createCommissionRun = async (status: CommissionRun['status']) => {
     const now = Date.now();
     const run: CommissionRun = {
@@ -425,6 +464,91 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
     const latestRuns = StorageService.getCommissionRuns();
     await StorageService.saveCommissionRunsResolved(latestRuns);
     setCommissionRuns(StorageService.getCommissionRuns());
+    setSelectedRunId(run.id);
+  };
+
+  const exportSelectedRunLineItemsCsv = () => {
+    if (!selectedRun) return;
+    const headers = [
+      'period',
+      'runId',
+      'status',
+      'repName',
+      'merchantName',
+      'volume',
+      'residualRevenue',
+      'commissionRate',
+      'basePayout',
+      'excessPayout',
+      'payout',
+      'appliedRule',
+      'exception'
+    ];
+    const rows = selectedRun.lineItems.map((line) => ({
+      period: selectedRun.period,
+      runId: selectedRun.id,
+      status: selectedRun.status,
+      repName: line.repName,
+      merchantName: line.merchantName,
+      volume: line.volume,
+      residualRevenue: line.residualRevenue,
+      commissionRate: line.commissionRate,
+      basePayout: line.basePayout ?? '',
+      excessPayout: line.excessPayout ?? '',
+      payout: line.payout,
+      appliedRule: line.appliedRule ?? '',
+      exception: line.exception ?? ''
+    }));
+    const csv = toCsv(headers, rows);
+    downloadCsv(`commission-line-items_${selectedRun.period}_${selectedRun.status}.csv`, csv);
+  };
+
+  const exportSelectedRunRepRollupsCsv = () => {
+    if (!selectedRun) return;
+    const repMap = new Map<string, { volume: number; residual: number; payout: number; basePayout: number; excessPayout: number; lineCount: number; exceptions: number }>();
+    selectedRun.lineItems.forEach((line) => {
+      const current = repMap.get(line.repName) || { volume: 0, residual: 0, payout: 0, basePayout: 0, excessPayout: 0, lineCount: 0, exceptions: 0 };
+      current.volume += Number(line.volume) || 0;
+      current.residual += Number(line.residualRevenue) || 0;
+      current.payout += Number(line.payout) || 0;
+      current.basePayout += Number(line.basePayout ?? line.payout) || 0;
+      current.excessPayout += Number(line.excessPayout ?? 0) || 0;
+      current.lineCount += 1;
+      if (line.exception) current.exceptions += 1;
+      repMap.set(line.repName, current);
+    });
+
+    const headers = [
+      'period',
+      'runId',
+      'status',
+      'repName',
+      'volume',
+      'residualBase',
+      'basePayout',
+      'excessPayout',
+      'payout',
+      'lineCount',
+      'exceptions'
+    ];
+    const rows = Array.from(repMap.entries())
+      .map(([repName, totals]) => ({
+        period: selectedRun.period,
+        runId: selectedRun.id,
+        status: selectedRun.status,
+        repName,
+        volume: totals.volume,
+        residualBase: totals.residual,
+        basePayout: totals.basePayout,
+        excessPayout: totals.excessPayout,
+        payout: totals.payout,
+        lineCount: totals.lineCount,
+        exceptions: totals.exceptions
+      }))
+      .sort((a, b) => Number(b.payout) - Number(a.payout));
+
+    const csv = toCsv(headers, rows);
+    downloadCsv(`commission-rep-rollups_${selectedRun.period}_${selectedRun.status}.csv`, csv);
   };
 
   const openRulesModal = () => {
@@ -756,6 +880,43 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
               className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
             >
               Finalize Run
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Export wizard</p>
+          <p className="mt-1 text-xs text-gray-600">
+            Exports are generated from a <span className="font-semibold">saved run</span> (draft or finalized) to prevent payout mismatches.
+          </p>
+          <div className="mt-3 flex flex-col lg:flex-row lg:items-center gap-2">
+            <select
+              value={selectedRunId}
+              onChange={(event) => setSelectedRunId(event.target.value)}
+              className="w-full lg:max-w-md px-3 py-2 rounded-lg border border-gray-300 text-sm"
+            >
+              {commissionRuns.length === 0 && <option value="">No saved runs yet</option>}
+              {commissionRuns.map((run) => (
+                <option key={run.id} value={run.id}>
+                  {run.period} · {run.status} · {run.lineItems.length} items · {formatCurrency(run.totalPayout)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={exportSelectedRunLineItemsCsv}
+              disabled={!selectedRun}
+              className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-white disabled:opacity-40"
+            >
+              Export line items CSV
+            </button>
+            <button
+              type="button"
+              onClick={exportSelectedRunRepRollupsCsv}
+              disabled={!selectedRun}
+              className="px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-white disabled:opacity-40"
+            >
+              Export rep rollups CSV
             </button>
           </div>
         </div>

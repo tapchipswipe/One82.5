@@ -1,6 +1,4 @@
-import { requireAuthorized, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend';
-
-export const config = { runtime: 'nodejs' };
+import { requireAuthorized, sendMethodNotAllowed, setApiResponseHeaders } from '../../../../../api/_lib/backend';
 
 export default async function handler(req: any, res: any) {
   setApiResponseHeaders(res);
@@ -11,9 +9,8 @@ export default async function handler(req: any, res: any) {
   }
 
   const auth = await requireAuthorized(req, res);
-  if (!auth) {
-    return;
-  }
+  if (!auth) return;
 
   res.status(200).json(auth);
 }
+

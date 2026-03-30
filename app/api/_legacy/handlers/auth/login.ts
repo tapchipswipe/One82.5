@@ -5,9 +5,7 @@ import {
   setApiResponseHeaders,
   setSessionCookie,
   verifySupabaseCredentials
-} from '../_lib/backend';
-
-export const config = { runtime: 'nodejs' };
+} from '../../../../../api/_lib/backend';
 
 type LoginBody = {
   email?: string;
@@ -56,3 +54,4 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: message });
   }
 }
+

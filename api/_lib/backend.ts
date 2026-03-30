@@ -184,14 +184,6 @@ const PROCESSOR_CONNECTIONS_TABLE = env.tables.syncRuns.replace('sync_runs', 'pr
 const SYNC_RUNS_TABLE = env.tables.syncRuns;
 const RESIDUAL_SNAPSHOTS_TABLE = 'one82_residual_snapshots';
 
-const getMemoryStore = (): Map<string, TenantState> => {
-  const globalValue = globalThis as typeof globalThis & { __one82MemStore?: Map<string, TenantState> };
-  if (!globalValue.__one82MemStore) {
-    globalValue.__one82MemStore = new Map<string, TenantState>();
-  }
-  return globalValue.__one82MemStore;
-};
-
 const defaultState = (): TenantState => ({
   transactions: DEFAULT_TRANSACTIONS,
   notifications: DEFAULT_NOTIFICATIONS,
@@ -540,7 +532,7 @@ const revokeSessionByToken = async (sessionToken: string): Promise<void> => {
 };
 
 const loadStateFromSupabase = async (tenantId: string): Promise<TenantState | null> => {
-  if (!canUseSupabase) return null;
+  requireSupabase();
 
   const query = `${SUPABASE_URL}/rest/v1/${STATE_TABLE}?tenant_id=eq.${encodeURIComponent(tenantId)}&select=payload&limit=1`;
   const response = await fetch(query, {
@@ -571,7 +563,7 @@ const loadStateFromSupabase = async (tenantId: string): Promise<TenantState | nu
 };
 
 const saveStateToSupabase = async (tenantId: string, state: TenantState): Promise<boolean> => {
-  if (!canUseSupabase) return false;
+  requireSupabase();
 
   const upsertUrl = `${SUPABASE_URL}/rest/v1/${STATE_TABLE}?on_conflict=tenant_id`;
   const response = await fetch(upsertUrl, {
@@ -593,7 +585,7 @@ const saveStateToSupabase = async (tenantId: string, state: TenantState): Promis
 };
 
 const ensureTenantExists = async (tenantId: string): Promise<void> => {
-  if (!canUseSupabase) return;
+  requireSupabase();
 
   const rpcUrl = `${SUPABASE_URL}/rest/v1/rpc/one82_ensure_tenant`;
   await fetch(rpcUrl, {
@@ -789,7 +781,7 @@ export const syncTransactionsToDomain = async (
   userId?: string,
   ingestedFrom = 'import'
 ): Promise<void> => {
-  if (!canUseSupabase) return;
+  requireSupabase();
   if (!Array.isArray(transactions) || transactions.length === 0) return;
 
   await ensureTenantExists(tenantId);
@@ -806,16 +798,6 @@ export const syncTransactionsToDomain = async (
   });
 
   await insertImportJob(tenantId, 'transactions', transactions.length, userId, { ingestedFrom });
-};
-
-const loadStateFromMemory = (tenantId: string): TenantState | null => {
-  const store = getMemoryStore();
-  return store.get(tenantId) || null;
-};
-
-const saveStateToMemory = (tenantId: string, state: TenantState): void => {
-  const store = getMemoryStore();
-  store.set(tenantId, state);
 };
 
 const normalizeState = (state: TenantState | null): TenantState => {
@@ -835,19 +817,16 @@ const normalizeState = (state: TenantState | null): TenantState => {
 };
 
 export const getStateForTenant = async (tenantId: string): Promise<TenantState> => {
+  requireSupabase();
   const supabaseState = await loadStateFromSupabase(tenantId);
-  if (supabaseState) return normalizeState(supabaseState);
-
-  const memoryState = loadStateFromMemory(tenantId);
-  return normalizeState(memoryState);
+  return normalizeState(supabaseState);
 };
 
 export const saveStateForTenant = async (tenantId: string, state: TenantState): Promise<void> => {
+  requireSupabase();
   const normalized = normalizeState(state);
   const saved = await saveStateToSupabase(tenantId, normalized);
-  if (!saved) {
-    saveStateToMemory(tenantId, normalized);
-  }
+  if (!saved) throw new Error('Failed to persist tenant state in Supabase.');
 };
 
 export const setSessionCookie = (res: ResponseLike, sessionToken: string): void => {

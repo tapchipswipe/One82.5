@@ -1,6 +1,4 @@
-import { parseBody, requireAuthorized, saveLoginUser, sendMethodNotAllowed, setApiResponseHeaders } from '../_lib/backend';
-
-export const config = { runtime: 'nodejs' };
+import { parseBody, requireAuthorized, saveLoginUser, sendMethodNotAllowed, setApiResponseHeaders } from '../../../../../api/_lib/backend';
 
 type Body = {
   user?: {
@@ -25,9 +23,7 @@ export default async function handler(req: any, res: any) {
   }
 
   const auth = await requireAuthorized(req, res);
-  if (!auth) {
-    return;
-  }
+  if (!auth) return;
 
   const body = await parseBody<Body>(req);
   const incoming = body?.user;
@@ -47,3 +43,4 @@ export default async function handler(req: any, res: any) {
   const savedUser = await saveLoginUser(mergedUser, 'backend');
   res.status(200).json({ user: savedUser });
 }
+

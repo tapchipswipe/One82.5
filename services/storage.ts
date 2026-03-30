@@ -820,6 +820,17 @@ export const StorageService = {
     StorageService.saveOnboardingDeals(updated);
   },
 
+  upsertOnboardingDeal: (deal: OnboardingDeal): void => {
+    const current = StorageService.getOnboardingDeals();
+    const withoutCurrent = current.filter((existing) => existing.id !== deal.id);
+    StorageService.saveOnboardingDeals([deal, ...withoutCurrent]);
+  },
+
+  getOnboardingDealById: (dealId: string): OnboardingDeal | null => {
+    const current = StorageService.getOnboardingDeals();
+    return current.find((deal) => deal.id === dealId) || null;
+  },
+
   getCommissionRuns: (): CommissionRun[] => {
     if (isStrictBackendDataMode()) {
       return (RUNTIME_CACHE.commissionRuns || []).sort((a, b) => b.createdAt - a.createdAt);
@@ -890,6 +901,11 @@ export const StorageService = {
     const current = StorageService.getCommissionRuns();
     const withoutCurrent = current.filter((existing) => existing.id !== run.id);
     StorageService.saveCommissionRuns([run, ...withoutCurrent]);
+  },
+
+  getCommissionRunById: (runId: string): CommissionRun | null => {
+    const current = StorageService.getCommissionRuns();
+    return current.find((run) => run.id === runId) || null;
   },
 
   getBuyRateProfiles: (): BuyRateProfile[] => {
