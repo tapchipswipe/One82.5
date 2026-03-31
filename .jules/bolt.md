@@ -1,0 +1,3 @@
+## 2025-03-31 - Array Traversal Optimization in Profitability
+**Learning:** Performance bottlenecks can be created by sequentially chaining `Array.prototype.reduce()` on the same large array, or by using `.slice()` to create intermediate arrays before reducing them. This results in multiple O(N) passes and unnecessary memory allocations.
+**Action:** Replace multiple sequential `.reduce()` operations with a single `for` or `for...of` loop to compute multiple aggregates in a single pass. When calculating sums of array segments, use a single loop with an explicit boundary check (`i < array.length`) and index comparisons instead of slicing.
