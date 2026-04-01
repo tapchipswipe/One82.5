@@ -1,0 +1,4 @@
+## 2024-05-24 - Cryptographically Secure Generation for Identifiers
+**Vulnerability:** Weak random number generation using `Math.random()` for creating critical security identifiers like session IDs and session tokens.
+**Learning:** This codebase incorrectly relied on `Math.random().toString(36)` as a fallback or primary mechanism for generating security-sensitive IDs, increasing the predictability of session tokens.
+**Prevention:** Always use cryptographically secure random number generation provided by the runtime environment, such as `crypto.randomUUID()` from `node:crypto`, when generating identifiers that serve as authentication tokens or session IDs.
