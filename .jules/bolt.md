@@ -1,0 +1,3 @@
+## 2025-02-18 - Avoid slice().reduce() on array segments
+**Learning:** In this codebase, doing single-pass operations on arrays using `slice().reduce()` is an anti-pattern as it needlessly allocates intermediate arrays, degrading performance, especially on large datasets like transactions.
+**Action:** Replace `array.slice().reduce()` with single-pass `for` loops and explicit boundary checks (`i < array.length`) to prevent property-of-undefined errors.
