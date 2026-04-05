@@ -214,12 +214,31 @@ const tenantIdForUser = (user: User): string => {
   return user.id;
 };
 
+const generateRandomHex = (length: number): string => {
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const array = new Uint8Array(Math.ceil(length / 2));
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').slice(0, length);
+  }
+  // Ultimate fallback if no crypto is available
+  return Math.random().toString(36).slice(2, 2 + length);
+};
+
 const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
+
+  let randomPart = '';
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    // 8 characters of hex provides 32 bits of entropy, which is more than the original 31 bits.
+    randomPart = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+  } else {
+    randomPart = generateRandomHex(8);
+  }
+
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${randomPart}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -233,7 +252,8 @@ const createSessionToken = (): string => {
     return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  // Fallback
+  return `st_${Date.now().toString(36)}_${generateRandomHex(16)}`;
 };
 
 const roleFromEmail = (email: string): UserRole => {
