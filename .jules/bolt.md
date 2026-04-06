@@ -1,0 +1,3 @@
+## 2025-02-28 - Optimize Array Segment Operations
+**Learning:** Using `.slice().reduce()` inside complex components (like ISODashboard, App, Profitability) for sub-array summations creates unnecessary intermediate array allocations, negatively impacting memory and execution speed.
+**Action:** Replaced `.slice().reduce()` patterns with single-pass `for` loops. Crucially, learned to always include an explicit boundary check (e.g., `i < array.length`) in the loop condition to avoid "property of undefined" runtime errors when the original array is smaller than the loop parameters.
