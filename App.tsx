@@ -168,16 +168,28 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
     const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
     const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
-    const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-    const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+    const midpoint = Math.max(1, Math.floor(sorted.length / 2));
+    let firstHalf = 0;
+    let secondHalf = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      if (i < midpoint) {
+        firstHalf += sorted[i].amount;
+      } else {
+        secondHalf += sorted[i].amount;
+      }
+    }
     const trend: 'up' | 'down' | 'flat' = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
     const riskLevel: 'Low' | 'Medium' | 'High' = trend === 'down' ? 'Medium' : 'Low';
     const churnRisk: 'Low' | 'Medium' | 'High' = trend === 'down' ? 'Medium' : 'Low';
     const volumeHistory = Array.from({ length: 6 }, (_, offset) => {
       const start = Math.floor((offset * records.length) / 6);
       const end = Math.floor(((offset + 1) * records.length) / 6);
-      const slice = records.slice(start, Math.max(end, start + 1));
-      return Math.round(slice.reduce((sum, record) => sum + record.amount, 0));
+      const sliceEnd = Math.max(end, start + 1);
+      let sliceSum = 0;
+      for (let i = start; i < sliceEnd && i < records.length; i++) {
+        sliceSum += records[i].amount;
+      }
+      return Math.round(sliceSum);
     });
 
     return {
