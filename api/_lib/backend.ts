@@ -218,8 +218,21 @@ const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
+
+  let secureRandomSuffix: string;
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    secureRandomSuffix = crypto.randomUUID();
+  } else if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const array = new Uint8Array(8);
+    // @ts-expect-error - bypass strict type checks for generic typed arrays
+    crypto.getRandomValues(array);
+    secureRandomSuffix = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+  } else {
+    throw new Error('Secure random number generation is not available. Cannot generate session ID.');
+  }
+
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${secureRandomSuffix}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -233,7 +246,15 @@ const createSessionToken = (): string => {
     return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const array = new Uint8Array(16);
+    // @ts-expect-error - bypass strict type checks for generic typed arrays
+    crypto.getRandomValues(array);
+    const hexString = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `st_${Date.now().toString(36)}_${hexString}`;
+  }
+
+  throw new Error('Secure random number generation is not available. Cannot generate session token.');
 };
 
 const roleFromEmail = (email: string): UserRole => {
