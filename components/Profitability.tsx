@@ -75,8 +75,19 @@ const getMerchantRows = (transactions: Transaction[], profiles: BuyRateProfile[]
 
       const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const midpoint = Math.max(1, Math.floor(sorted.length / 2));
-      const firstHalf = sorted.slice(0, midpoint).reduce((sum, record) => sum + record.amount, 0);
-      const secondHalf = sorted.slice(midpoint).reduce((sum, record) => sum + record.amount, 0);
+
+      // Bolt Optimization: Replace O(n) array allocations (.slice) and iterations (.reduce)
+      // with boundary-checked for-loops to reduce memory overhead and CPU usage.
+      let firstHalf = 0;
+      for (let i = 0; i < midpoint && i < sorted.length; i++) {
+        firstHalf += sorted[i].amount;
+      }
+
+      let secondHalf = 0;
+      for (let i = midpoint; i < sorted.length; i++) {
+        secondHalf += sorted[i].amount;
+      }
+
       const trend: MerchantProfitRow['trend'] = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
 
       return {
