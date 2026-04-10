@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Building2, Calculator, CheckCircle2, Link2, TrendingDown, TrendingUp, Users, SlidersHorizontal, X } from 'lucide-react';
+import { Building2, Link2, TrendingDown, TrendingUp, Users, SlidersHorizontal, X } from 'lucide-react';
 import { generateSalesReps, SalesRep, SimulationService, PortfolioMerchant } from '@/services/simulationService';
 import { StorageService } from '@/services/storage';
 import { BuyRateProfile, CommissionLineItem, CommissionRun, Transaction } from '@/types';
@@ -423,25 +423,6 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
     const totalPayout = draftLineItems.reduce((sum, lineItem) => sum + lineItem.payout, 0);
     const exceptions = draftLineItems.filter((lineItem) => Boolean(lineItem.exception)).length;
     return { totalPayout, exceptions, lineCount: draftLineItems.length };
-  }, [draftLineItems]);
-
-  const repRollups = useMemo(() => {
-    const grouped = new Map<string, { volume: number; residual: number; payout: number; basePayout: number; excessPayout: number; lineCount: number; exceptions: number }>();
-    draftLineItems.forEach((lineItem) => {
-      const current = grouped.get(lineItem.repName) || { volume: 0, residual: 0, payout: 0, basePayout: 0, excessPayout: 0, lineCount: 0, exceptions: 0 };
-      current.volume += lineItem.volume;
-      current.residual += lineItem.residualRevenue;
-      current.payout += lineItem.payout;
-      current.basePayout += lineItem.basePayout || lineItem.payout;
-      current.excessPayout += lineItem.excessPayout || 0;
-      current.lineCount += 1;
-      if (lineItem.exception) current.exceptions += 1;
-      grouped.set(lineItem.repName, current);
-    });
-
-    return Array.from(grouped.entries())
-      .map(([repName, values]) => ({ repName, ...values }))
-      .sort((left, right) => right.payout - left.payout);
   }, [draftLineItems]);
 
   const selectedRun = useMemo(() => {
