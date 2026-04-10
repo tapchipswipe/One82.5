@@ -36,3 +36,4 @@ dist-ssr
 .env.production.check
 coverage/
 .turbo/
+*.tsbuildinfo
