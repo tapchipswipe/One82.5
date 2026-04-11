@@ -218,8 +218,14 @@ const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
+
+  if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+    throw new Error('Secure random number generator (crypto.randomUUID) is not available in this environment. Cannot generate secure session IDs.');
+  }
+
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    // 🛡️ Sentinel: Use crypto.randomUUID() for secure session IDs instead of predictable Date.now/Math.random
+    sessionId: `backend_session_${crypto.randomUUID()}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -229,11 +235,12 @@ const createCookieSession = (user: User): AuthSession => {
 };
 
 const createSessionToken = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
+  if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+    throw new Error('Secure random number generator (crypto.randomUUID) is not available in this environment. Cannot generate secure session tokens.');
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  // 🛡️ Sentinel: Use only secure randomness for session tokens, fail securely if unavailable
+  return `st_${crypto.randomUUID()}`;
 };
 
 const roleFromEmail = (email: string): UserRole => {
