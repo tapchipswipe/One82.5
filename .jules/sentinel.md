@@ -1,0 +1,4 @@
+## 2024-05-18 - [Insecure Randomness for Session Tokens]
+**Vulnerability:** Session identifiers and tokens in `api/_lib/backend.ts` were being generated using a fallback to `Math.random()` and `Date.now()`.
+**Learning:** `Math.random()` is not cryptographically secure and its outputs can be predicted. Relying on it or the predictable current time for session identification introduces severe prediction vulnerabilities where an attacker could guess valid session tokens.
+**Prevention:** Never use deterministic, time-based values or `Math.random()` for cryptographic randomness or session tokens. Always use `crypto.getRandomValues()` or `crypto.randomUUID()`. If secure randomness is unavailable in the environment, the system should fail securely (e.g., throwing an error) rather than silently using an insecure fallback.
