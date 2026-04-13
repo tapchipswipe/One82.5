@@ -1,0 +1,3 @@
+## 2024-10-24 - [Array Allocation and Iteration Optimization]
+**Learning:** In a React application, chaining multiple array methods like `.slice().reduce()` inside a tight loop or executing multiple `.reduce()` iterations over the same large array in `useMemo` can create substantial intermediate memory allocations and unnecessary CPU overhead.
+**Action:** Replace multi-pass `.reduce()` logic with a single pass `for...of` loop when computing multiple aggregated metrics from the same data set. Replace `.slice().reduce()` calculations with index-bound `for` loops to eliminate intermediate array allocations entirely.
