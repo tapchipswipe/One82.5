@@ -1,0 +1,4 @@
+## 2024-05-24 - Insecure Session Generation and Fail-Secure Principle
+**Vulnerability:** Core session identifiers (`sessionId` and `sessionToken`) in `api/_lib/backend.ts` were being generated using `Math.random()` and `Date.now()`.
+**Learning:** `Math.random()` provides weak, predictable randomness and is not cryptographically secure, which allows session hijacking via predictable IDs. Furthermore, providing a non-secure fallback (e.g. falling back to `Math.random()` if `crypto` is unavailable) compromises the secure system without the developer's knowledge, a dangerous anti-pattern for security-critical contexts.
+**Prevention:** Always use `crypto.randomUUID()` or `crypto.getRandomValues()` for tokens and session identifiers. In secure operations, if a secure random generator is not available, the application must **fail securely** (by throwing an error) rather than reverting to an insecure mechanism.
