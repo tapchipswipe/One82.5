@@ -1,0 +1,3 @@
+## 2024-04-14 - Avoiding O(N) array copying with slice()
+**Learning:** Using chained array methods like `.slice(start, end).reduce(...)` inside a loop or mapping function generates unnecessary intermediate arrays in memory. In React components dealing with large sets of records (like transactions in ISODashboard or Profitability), this adds up and consumes CPU cycles.
+**Action:** Replace `slice().reduce()` segments with single-pass `for` loops bounded appropriately. Make sure to carefully track mathematical boundaries (`<` vs `<=`) to mirror the original functionality and avoid `property of undefined` errors.
