@@ -34,16 +34,31 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
         const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
         const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
-        const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-        const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+        const midpoint = Math.max(1, Math.floor(sorted.length / 2));
+        // Optimization: Replaced .slice().reduce() with single-pass for-loop
+        // to eliminate intermediate array allocations and reduce CPU cycles.
+        let firstHalf = 0;
+        let secondHalf = 0;
+        for (let i = 0; i < sorted.length; i++) {
+            if (i < midpoint) {
+                firstHalf += sorted[i].amount;
+            } else {
+                secondHalf += sorted[i].amount;
+            }
+        }
         const trend: PortfolioMerchant['trend'] = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
         const riskLevel: PortfolioMerchant['riskLevel'] = trend === 'down' ? 'Medium' : 'Low';
         const churnRisk: PortfolioMerchant['churnRisk'] = trend === 'down' ? 'Medium' : 'Low';
         const volumeHistory = Array.from({ length: 6 }, (_, offset) => {
             const start = Math.floor((offset * records.length) / 6);
-            const end = Math.floor(((offset + 1) * records.length) / 6);
-            const slice = records.slice(start, Math.max(end, start + 1));
-            return Math.round(slice.reduce((sum, record) => sum + record.amount, 0));
+            const end = Math.max(Math.floor(((offset + 1) * records.length) / 6), start + 1);
+            // Optimization: Avoided .slice().reduce() inside loop to prevent
+            // O(N) array copying per slice iteration.
+            let sum = 0;
+            for (let i = start; i < end && i < records.length; i++) {
+                sum += records[i].amount;
+            }
+            return Math.round(sum);
         });
 
         return {
