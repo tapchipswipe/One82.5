@@ -75,8 +75,18 @@ const getMerchantRows = (transactions: Transaction[], profiles: BuyRateProfile[]
 
       const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const midpoint = Math.max(1, Math.floor(sorted.length / 2));
-      const firstHalf = sorted.slice(0, midpoint).reduce((sum, record) => sum + record.amount, 0);
-      const secondHalf = sorted.slice(midpoint).reduce((sum, record) => sum + record.amount, 0);
+
+      // Bolt: Use single pass for loop to avoid intermediate array allocations via .slice()
+      let firstHalf = 0;
+      let secondHalf = 0;
+      for (let i = 0; i < sorted.length; i++) {
+        if (i < midpoint) {
+          firstHalf += sorted[i].amount;
+        } else {
+          secondHalf += sorted[i].amount;
+        }
+      }
+
       const trend: MerchantProfitRow['trend'] = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
 
       return {
@@ -160,11 +170,22 @@ const Profitability: React.FC = () => {
   }, []);
 
   const totals = useMemo(() => {
-    const totalVolume = filteredRows.reduce((sum, row) => sum + row.volume, 0);
-    const totalMargin = filteredRows.reduce((sum, row) => sum + row.estimatedMargin, 0);
-    const totalProcessorCost = filteredRows.reduce((sum, row) => sum + row.processorCost, 0);
-    const totalRevenue = filteredRows.reduce((sum, row) => sum + row.estimatedRevenue, 0);
-    const totalTransactions = filteredRows.reduce((sum, row) => sum + row.transactions, 0);
+    // Bolt: Use single pass loop instead of 5 separate .reduce() calls
+    let totalVolume = 0;
+    let totalMargin = 0;
+    let totalProcessorCost = 0;
+    let totalRevenue = 0;
+    let totalTransactions = 0;
+
+    for (let i = 0; i < filteredRows.length; i++) {
+      const row = filteredRows[i];
+      totalVolume += row.volume;
+      totalMargin += row.estimatedMargin;
+      totalProcessorCost += row.processorCost;
+      totalRevenue += row.estimatedRevenue;
+      totalTransactions += row.transactions;
+    }
+
     return {
       totalVolume,
       totalMargin,
