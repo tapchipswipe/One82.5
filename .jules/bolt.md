@@ -1,0 +1,3 @@
+## 2024-05-24 - Array Segmentation Performance
+**Learning:** Chaining `.slice().reduce()` inside a loop for array segmentation causes double O(N) traversal and creates unnecessary array allocations. In our ISODashboard and Profitability components, it significantly impacted the render performance of large datasets (simulations/imports).
+**Action:** Replace `array.slice(start, end).reduce(...)` with a single `for` loop that accumulates based on loop index `i`. Additionally, replace multiple consecutive `.reduce()` on the same array with a single `for` loop pass to accumulate all values simultaneously.
