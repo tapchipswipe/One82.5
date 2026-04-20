@@ -70,12 +70,18 @@ const CalendarPlanner: React.FC = () => {
       return date >= now && date <= horizon;
     });
 
-    const positive = upcoming
-      .filter((event) => event.impactDirection === 'up')
-      .reduce((sum, event) => sum + event.impactPercent, 0);
-    const negative = upcoming
-      .filter((event) => event.impactDirection === 'down')
-      .reduce((sum, event) => sum + event.impactPercent, 0);
+    // ⚡ Bolt Performance Optimization
+    // Replaced multiple .filter().reduce() passes with a single loop to reduce CPU cycles and allocations
+    let positive = 0;
+    let negative = 0;
+    for (let i = 0; i < upcoming.length; i++) {
+      const event = upcoming[i];
+      if (event.impactDirection === 'up') {
+        positive += event.impactPercent;
+      } else if (event.impactDirection === 'down') {
+        negative += event.impactPercent;
+      }
+    }
 
     return { total: upcoming.length, positive, negative };
   }, [events]);
