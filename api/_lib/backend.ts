@@ -215,11 +215,15 @@ const tenantIdForUser = (user: User): string => {
 };
 
 const createCookieSession = (user: User): AuthSession => {
+  if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+    throw new Error('Secure randomness is unavailable. Cannot generate a secure session ID.');
+  }
+
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -233,7 +237,7 @@ const createSessionToken = (): string => {
     return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  throw new Error('Secure randomness is unavailable. Cannot generate a secure session token.');
 };
 
 const roleFromEmail = (email: string): UserRole => {
