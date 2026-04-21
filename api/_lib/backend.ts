@@ -218,8 +218,13 @@ const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
+
+  if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+    throw new Error('Secure random generation is not available in this environment.');
+  }
+
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${crypto.randomUUID().replace(/-/g, '')}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -233,7 +238,7 @@ const createSessionToken = (): string => {
     return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  throw new Error('Secure random generation is not available in this environment. Refusing to fall back to insecure Math.random().');
 };
 
 const roleFromEmail = (email: string): UserRole => {
