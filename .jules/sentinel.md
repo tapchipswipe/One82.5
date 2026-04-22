@@ -1,0 +1,4 @@
+## 2024-05-24 - Predictable Session Tokens
+**Vulnerability:** Insecure, predictable randomness (`Math.random()`) was being used alongside `Date.now()` to generate session IDs and fallback session tokens in `api/_lib/backend.ts`.
+**Learning:** `Math.random()` is not cryptographically secure and can be predicted, especially when seeded or combined with predictable time values like `Date.now()`. This could allow an attacker to guess valid session IDs or session tokens, potentially leading to session hijacking or account takeover.
+**Prevention:** Always use a Cryptographically Secure Pseudo-Random Number Generator (CSPRNG) like `crypto.getRandomValues()` or `crypto.randomUUID()` when generating security-sensitive values such as session tokens, passwords, or cryptographic keys. If a CSPRNG is unavailable, the application should fail securely (throw an error) rather than silently falling back to a weak generator.
