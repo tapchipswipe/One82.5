@@ -1,0 +1,4 @@
+## 2025-02-14 - Replace weak randomness in authentication tokens
+**Vulnerability:** The application was using weak pseudo-random generation `Math.random()` to generate authentication tokens and session identifiers, combined with predictable timestamps (`Date.now()`). This made the generated session IDs predictable, leading to potential session hijacking vulnerabilities if an attacker could guess or brute-force valid session identifiers.
+**Learning:** Hardcoding insecure fallbacks or deterministic values for secure tokens creates silent prediction vulnerabilities, particularly when strong sources like `crypto.randomUUID` exist.
+**Prevention:** Always rely strictly on a cryptographically secure random number generator (CSPRNG) like `crypto.randomUUID()` for session identifiers. If unavailable, explicitly fail the operation instead of defaulting to a predictable source.
