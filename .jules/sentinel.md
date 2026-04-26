@@ -1,0 +1,4 @@
+## 2024-05-15 - Insecure Randomness in Session Generation
+**Vulnerability:** The application was using `Math.random()` as a fallback for generating sensitive security values like session tokens (`createSessionToken` and `createCookieSession` in `api/_lib/backend.ts`). `Math.random()` is not cryptographically secure and produces predictable values, which could allow an attacker to predict session tokens and hijack user sessions.
+**Learning:** Security-critical functions like token generation must strictly rely on Cryptographically Secure Pseudo-Random Number Generators (CSPRNG), such as the global `crypto` object's `randomUUID()` or `getRandomValues()`.
+**Prevention:** Never use deterministic, time-based values like `Date.now()` or `Math.random()` for cryptographic randomness. If secure randomness is unavailable in the environment, the application must throw an error to fail securely rather than silently falling back to an insecure implementation.
