@@ -1,0 +1,4 @@
+## 2026-04-27 - Insecure Session Token Generation
+**Vulnerability:** The application used predictable `Math.random()` and `Date.now()` fallbacks to generate sensitive session tokens and session IDs in `api/_lib/backend.ts` when `crypto.randomUUID()` was deemed unavailable.
+**Learning:** `Math.random()` generates pseudo-random numbers that are predictable. Relying on it for cryptographic randomness (like session tokens) introduces severe vulnerabilities where an attacker could predict active session identifiers and hijack user accounts.
+**Prevention:** Always use secure sources of randomness, like `crypto.randomUUID()` or `crypto.getRandomValues()`, for generating security-critical identifiers. If secure randomness is unavailable in the environment, the application should throw a fatal error to fail securely rather than silently falling back to an insecure method.
