@@ -207,6 +207,26 @@ const parseCookies = (cookieHeader?: string): Record<string, string> => {
   }, {});
 };
 
+
+const generateSecureToken = (prefix: string, length: number = 12): string => {
+  if (typeof crypto === 'undefined') {
+    throw new Error('Secure randomness is not available. Cannot generate secure token.');
+  }
+
+  if ('randomUUID' in (crypto as any)) {
+    return `${prefix}_${(crypto as any).randomUUID().replace(/-/g, '').slice(0, length)}`;
+  }
+
+  if ('getRandomValues' in (crypto as any)) {
+    const array = new Uint8Array(length / 2);
+    (crypto as any).getRandomValues(array);
+    const hex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${prefix}_${hex}`;
+  }
+
+  throw new Error('Secure randomness is not available. Cannot generate secure token.');
+};
+
 const tenantIdForUser = (user: User): string => {
   const email = user.email.trim().toLowerCase();
   if (email === 'demo-iso@one82.io') return 'tenant_demo_iso';
@@ -219,7 +239,7 @@ const createCookieSession = (user: User): AuthSession => {
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: generateSecureToken('backend_session', 16),
     userId: user.id,
     tenantId,
     role: user.role,
@@ -229,11 +249,7 @@ const createCookieSession = (user: User): AuthSession => {
 };
 
 const createSessionToken = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
-  }
-
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  return generateSecureToken('st', 24);
 };
 
 const roleFromEmail = (email: string): UserRole => {
