@@ -1,0 +1,4 @@
+## 2025-02-20 - Predictable randomness in session generation
+**Vulnerability:** Session tokens and IDs in `api/_lib/backend.ts` were falling back to `Math.random()` and `Date.now()` when the global `crypto` object was unavailable.
+**Learning:** Even as a fallback, using deterministic, time-based values for security-critical operations like session token generation introduces severe prediction vulnerabilities. Attackers can guess tokens by knowing or guessing the generation time and PRNG state.
+**Prevention:** Never use `Math.random()` or `Date.now()` for cryptographic randomness. Always use `crypto.getRandomValues()` or `crypto.randomUUID()`. If secure randomness is unavailable in the environment, the application must throw a fatal error (fail securely) rather than silently falling back to insecure generation methods.
