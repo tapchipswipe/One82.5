@@ -1,0 +1,3 @@
+## 2024-03-24 - [Profitability Aggregation Bottleneck]
+**Learning:** Found an anti-pattern in `components/Profitability.tsx` where `.reduce()` was called 5 consecutive times on the same `filteredRows` array inside a `useMemo` block to calculate summary totals. This causes O(5N) iteration overhead for potentially large merchant datasets, slowing down the frontend during rendering and filtering.
+**Action:** Replaced the consecutive `reduce` chains with a single standard `for` loop to compute all 5 totals simultaneously in a single O(N) pass, significantly reducing iteration overhead. Apply this single-pass aggregation pattern everywhere multiple totals are derived from the same dataset.
