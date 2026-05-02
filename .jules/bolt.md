@@ -1,0 +1,3 @@
+## 2024-03-24 - Array Traversal Accumulation Loop
+**Learning:** Consolidating multiple O(N) array traversals (.map, .reduce, .filter) into a single for loop is extremely effective for large datasets, significantly reducing CPU cycles and intermediate allocations. In components like ISODashboard.tsx where metric calculation causes many redundant array operations, this optimization proves safe and highly beneficial. Also noticed that Math.max(...array) risks RangeError on huge arrays; looping avoids this.
+**Action:** Identify repeated functional array iterations over the same collection (especially large lists) and convert them to a single accumulator loop for better performance and safety.
