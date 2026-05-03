@@ -1,0 +1,3 @@
+## 2024-06-25 - React Component Multiple Reduce Optimization
+**Learning:** React component memoization hooks (like `useMemo`) often hide O(N) inefficiencies where the same dataset is swept multiple times using array methods like `.reduce()` to compute distinct totals. In `components/Profitability.tsx`, five separate totals were computed using five full passes over the same `filteredRows` array.
+**Action:** Always inspect array `.reduce()`, `.map()`, and `.filter()` operations within frequently re-calculated components or hooks. Replace consecutive full-array passes with a single `for` or `for...of` loop to accumulate all necessary metrics in one pass, reducing CPU cycle count and intermediate memory allocations.
