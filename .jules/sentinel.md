@@ -1,0 +1,4 @@
+## 2024-05-28 - Predictable Session Tokens
+**Vulnerability:** The application was using `Math.random()` to generate backend session IDs and session tokens as fallbacks. `Math.random()` is not a cryptographically secure pseudo-random number generator (CSPRNG), making these tokens predictable and susceptible to hijacking attacks if an attacker can predict or observe enough values to recreate the state.
+**Learning:** Hard fallback logic for random generation can quietly introduce critical vulnerabilities if the primary method (`crypto.randomUUID`) fails or is misdetected in the runtime. Fallbacks must maintain the required security guarantees.
+**Prevention:** Never use deterministic, time-based values or `Math.random()` for cryptographic randomness or session tokens. If secure randomness is unavailable in the environment, it is better to throw an error and fail securely than to silently proceed with an insecure fallback.

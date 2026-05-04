@@ -218,8 +218,15 @@ const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
+
+  // Security Fix: Math.random() is predictable and unsuitable for session IDs.
+  // Fail securely by throwing if a CSPRNG is unavailable.
+  if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+    throw new Error('Secure random generation is unavailable');
+  }
+
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${(crypto as any).randomUUID()}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -229,11 +236,13 @@ const createCookieSession = (user: User): AuthSession => {
 };
 
 const createSessionToken = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
+  // Security Fix: Math.random() is predictable and unsuitable for session tokens.
+  // Fail securely by throwing if a CSPRNG is unavailable.
+  if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+    throw new Error('Secure random generation is unavailable');
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  return `${(crypto as any).randomUUID()}_${Date.now().toString(36)}`;
 };
 
 const roleFromEmail = (email: string): UserRole => {
