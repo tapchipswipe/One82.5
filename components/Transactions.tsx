@@ -77,11 +77,18 @@ const Transactions: React.FC = () => {
     }, [transactions, searchQuery]);
 
     const lastTransactionAt = useMemo(() => {
-        const timestamps = transactions
-            .map((tx) => new Date(tx.date).getTime())
-            .filter((value) => Number.isFinite(value));
-        if (timestamps.length === 0) return null;
-        return Math.max(...timestamps);
+        // ⚡ Bolt: Single loop execution for max timestamp calculation
+        // Impact: Eliminates large array mapping/filtering and `Math.max` spreads to avoid stack exceed errors
+        let maxTimestamp: number | null = null;
+        for (let i = 0; i < transactions.length; i++) {
+            const timestamp = new Date(transactions[i].date).getTime();
+            if (Number.isFinite(timestamp)) {
+                if (maxTimestamp === null || timestamp > maxTimestamp) {
+                    maxTimestamp = timestamp;
+                }
+            }
+        }
+        return maxTimestamp;
     }, [transactions]);
 
     const dataFreshness = useMemo(() => {
