@@ -31,19 +31,41 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
     });
 
     return Array.from(grouped.entries()).map(([name, records], index) => {
-        const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+        // ⚡ Bolt: Replace map/reduce with single loop to avoid multiple passes and array allocations
+        // Impact: Reduces CPU cycles and memory allocations for large transaction histories
+        let monthlyVolume = 0;
+        for (let i = 0; i < records.length; i++) {
+            monthlyVolume += Number(records[i].amount) || 0;
+        }
+
         const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
-        const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-        const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+
+        // ⚡ Bolt: Single pass accumulation instead of slice().reduce()
+        // Impact: Avoids allocating intermediate arrays for half slices
+        const midpoint = Math.max(1, Math.floor(sorted.length / 2));
+        let firstHalf = 0;
+        for (let i = 0; i < midpoint && i < sorted.length; i++) {
+            firstHalf += sorted[i].amount;
+        }
+        let secondHalf = 0;
+        for (let i = midpoint; i < sorted.length; i++) {
+            secondHalf += sorted[i].amount;
+        }
+
         const trend: PortfolioMerchant['trend'] = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
         const riskLevel: PortfolioMerchant['riskLevel'] = trend === 'down' ? 'Medium' : 'Low';
         const churnRisk: PortfolioMerchant['churnRisk'] = trend === 'down' ? 'Medium' : 'Low';
+
+        // ⚡ Bolt: Single pass accumulation instead of slice().reduce()
         const volumeHistory = Array.from({ length: 6 }, (_, offset) => {
             const start = Math.floor((offset * records.length) / 6);
-            const end = Math.floor(((offset + 1) * records.length) / 6);
-            const slice = records.slice(start, Math.max(end, start + 1));
-            return Math.round(slice.reduce((sum, record) => sum + record.amount, 0));
+            const end = Math.max(Math.floor(((offset + 1) * records.length) / 6), start + 1);
+            let sum = 0;
+            for (let i = start; i < end && i < records.length; i++) {
+                sum += records[i].amount;
+            }
+            return Math.round(sum);
         });
 
         return {
@@ -156,9 +178,13 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                 : buildPortfolioFromTransactions(await StorageService.getTransactionsResolved());
 
             setMerchants(data);
-            setTotalVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+            let totalVol = 0;
+            for (let i = 0; i < data.length; i++) {
+                totalVol += data[i].monthlyVolume;
+            }
+            setTotalVolume(totalVol);
             if (!isDemoMode) {
-                setCcVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+                setCcVolume(totalVol);
             }
         };
 
@@ -207,19 +233,40 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
         setLastHolidayDraftAt(Date.now());
     };
 
-    const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
-    const decliningCount = merchants.filter(m => m.trend === 'down').length;
-    const activeMerchantCount = merchants.filter((merchant) => merchant.status === 'Active').length;
-    const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
+    // ⚡ Bolt: Compute all aggregates in a single pass instead of 8+ separate map/filter/reduce passes
+    // Also eliminates `Math.max(...merchants.map(...))` to prevent call stack size exceeded errors
+    // Impact: Avoids O(8 * N) iteration and large array spreading, reducing processing time
+    let atRiskCount = 0;
+    let decliningCount = 0;
+    let activeMerchantCount = 0;
+    let estMonthlyResidual = 0;
+    let totalBps = 0;
+    let topMerchantVolume = 0;
+    let latestPortfolioTransactionAt: number | null = null;
+    const industriesSet = new Set<string>();
+
+    for (let i = 0; i < merchants.length; i++) {
+        const m = merchants[i];
+        if (m.churnRisk === 'High') atRiskCount++;
+        if (m.trend === 'down') decliningCount++;
+        if (m.status === 'Active') activeMerchantCount++;
+        estMonthlyResidual += m.monthlyVolume * (m.bps / 10000);
+        totalBps += m.bps || 0;
+        if ((m.monthlyVolume || 0) > topMerchantVolume) {
+            topMerchantVolume = m.monthlyVolume || 0;
+        }
+        industriesSet.add(m.businessType);
+        if (Number.isFinite(m.lastTransaction)) {
+            if (latestPortfolioTransactionAt === null || m.lastTransaction > latestPortfolioTransactionAt) {
+                latestPortfolioTransactionAt = m.lastTransaction;
+            }
+        }
+    }
+
     const avgMerchantVolume = merchants.length > 0 ? totalVolume / merchants.length : 0;
-    const avgBps = merchants.length > 0 ? merchants.reduce((sum, merchant) => sum + (merchant.bps || 0), 0) / merchants.length : 0;
-    const topMerchantVolume = merchants.length > 0 ? Math.max(...merchants.map((merchant) => merchant.monthlyVolume || 0)) : 0;
+    const avgBps = merchants.length > 0 ? totalBps / merchants.length : 0;
     const atRiskRate = merchants.length > 0 ? (atRiskCount / merchants.length) * 100 : 0;
-    const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
-    const latestPortfolioTransactionAt = merchants
-        .map((merchant) => merchant.lastTransaction)
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => b - a)[0] || null;
+    const uniqueIndustries = industriesSet.size;
     const portfolioFreshness = isDemoMode
         ? 'Simulated freshness'
         : latestPortfolioTransactionAt

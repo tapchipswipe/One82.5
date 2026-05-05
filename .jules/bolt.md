@@ -1,0 +1,3 @@
+## 2024-05-05 - Array Iterations & Math.max Spread Optimization
+**Learning:** This codebase tends to process large transaction arrays using multiple consecutive map/filter/reduce passes and `Math.max(...array)` spreads. This negatively impacts CPU cycles, memory (through intermediate arrays), and importantly risks throwing `RangeError: Maximum call stack size exceeded`.
+**Action:** Always replace consecutive `.reduce()`, `.map()`, or `.filter()` with single-pass `for` or `for...of` loops over large arrays, and never use `Math.max(...array)` directly for finding the maximum value over potentially large datasets.
