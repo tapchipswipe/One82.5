@@ -1,0 +1,4 @@
+## 2025-02-14 - Predictable Session Tokens
+**Vulnerability:** The application used `Math.random()` and `Date.now()` to generate session IDs (`createCookieSession`) and session tokens (`createSessionToken`) in `api/_lib/backend.ts`. In some contexts, it also used an insecure fallback instead of throwing an error when secure randomness was unavailable.
+**Learning:** Using deterministic, time-based values like `Date.now()` or `Math.random()` for cryptographic randomness (such as session tokens) introduces severe prediction vulnerabilities. Attackers could potentially forge valid session identifiers.
+**Prevention:** Never use `Math.random()` for security-critical values like tokens or IDs. Always rely on `crypto.getRandomValues()` or `crypto.randomUUID()`. If secure randomness is unavailable in the environment, throw an error to fail securely rather than using an insecure fallback.
