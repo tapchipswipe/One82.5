@@ -156,9 +156,15 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                 : buildPortfolioFromTransactions(await StorageService.getTransactionsResolved());
 
             setMerchants(data);
-            setTotalVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+            // ⚡ Bolt Performance Optimization
+            // Replacing multiple .reduce() iterations with a single loop for performance.
+            let sumVolume = 0;
+            for (let i = 0; i < data.length; i++) {
+                sumVolume += data[i].monthlyVolume;
+            }
+            setTotalVolume(sumVolume);
             if (!isDemoMode) {
-                setCcVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+                setCcVolume(sumVolume);
             }
         };
 

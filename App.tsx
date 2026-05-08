@@ -165,11 +165,22 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
   });
 
   return Array.from(grouped.entries()).map(([name, records], index) => {
-    const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+    // ⚡ Bolt Performance Optimization
+    // Replacing multiple array allocations and multiple pass reduces with single iteration
+    let monthlyVolume = 0;
+    for (let i = 0; i < records.length; i++) {
+        monthlyVolume += (Number(records[i].amount) || 0);
+    }
     const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
-    const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-    const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+
+    const midpoint = Math.max(1, Math.floor(sorted.length / 2));
+    let firstHalf = 0;
+    let secondHalf = 0;
+    for(let i = 0; i < sorted.length; i++) {
+      if (i < midpoint) firstHalf += sorted[i].amount;
+      else secondHalf += sorted[i].amount;
+    }
     const trend: 'up' | 'down' | 'flat' = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
     const riskLevel: 'Low' | 'Medium' | 'High' = trend === 'down' ? 'Medium' : 'Low';
     const churnRisk: 'Low' | 'Medium' | 'High' = trend === 'down' ? 'Medium' : 'Low';
