@@ -1,0 +1,4 @@
+## 2024-05-18 - [Fix Insecure Randomness in Authentication Sessions]
+**Vulnerability:** The application used `Math.random()` to generate security-critical session tokens and IDs in `api/_lib/backend.ts` instead of using a cryptographically secure pseudo-random number generator (CSPRNG).
+**Learning:** `Math.random()` is deterministic and predictable, making session tokens vulnerable to prediction and hijacking attacks. Using it for authentication materials is a severe security flaw. The codebase also contained a weak fallback if `crypto.randomUUID` was unavailable.
+**Prevention:** Never use `Math.random()` or `Date.now()` for security-critical values. Always use Web Crypto API's `crypto.randomUUID()` or `crypto.getRandomValues()` to generate secure tokens. If a CSPRNG is not available in the environment, the application should fail securely (throw an error) rather than falling back to an insecure method.
