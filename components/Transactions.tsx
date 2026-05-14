@@ -81,7 +81,15 @@ const Transactions: React.FC = () => {
             .map((tx) => new Date(tx.date).getTime())
             .filter((value) => Number.isFinite(value));
         if (timestamps.length === 0) return null;
-        return Math.max(...timestamps);
+        // ⚡ Bolt: Use an iterative loop instead of Math.max(...timestamps)
+        // to avoid "RangeError: Maximum call stack size exceeded" for very large arrays.
+        let maxTimestamp = -Infinity;
+        for (let i = 0; i < timestamps.length; i++) {
+            if (timestamps[i] > maxTimestamp) {
+                maxTimestamp = timestamps[i];
+            }
+        }
+        return maxTimestamp;
     }, [transactions]);
 
     const dataFreshness = useMemo(() => {
