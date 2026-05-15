@@ -77,11 +77,12 @@ const Transactions: React.FC = () => {
     }, [transactions, searchQuery]);
 
     const lastTransactionAt = useMemo(() => {
-        const timestamps = transactions
-            .map((tx) => new Date(tx.date).getTime())
-            .filter((value) => Number.isFinite(value));
-        if (timestamps.length === 0) return null;
-        return Math.max(...timestamps);
+        let maxTimestamp = -Infinity;
+        for (let i = 0; i < transactions.length; i++) {
+            const ts = new Date(transactions[i].date).getTime();
+            if (Number.isFinite(ts) && ts > maxTimestamp) maxTimestamp = ts;
+        }
+        return maxTimestamp === -Infinity ? null : maxTimestamp;
     }, [transactions]);
 
     const dataFreshness = useMemo(() => {
