@@ -219,7 +219,7 @@ const createCookieSession = (user: User): AuthSession => {
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? (crypto as any).randomUUID() : (() => { throw new Error('Secure random number generation is not supported in this environment'); })()}`, // 🛡️ Sentinel: Removed insecure Math.random() usage
     userId: user.id,
     tenantId,
     role: user.role,
@@ -229,11 +229,10 @@ const createCookieSession = (user: User): AuthSession => {
 };
 
 const createSessionToken = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
+  if (typeof crypto === 'undefined' || !('randomUUID' in crypto)) {
+    throw new Error('Secure random number generation is not supported in this environment');
   }
-
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  return `st_${(crypto as any).randomUUID()}`; // 🛡️ Sentinel: Removed insecure fallback using Math.random()
 };
 
 const roleFromEmail = (email: string): UserRole => {
