@@ -1,0 +1,4 @@
+## 2024-05-18 - [Fix Weak Randomness in Session Tokens]
+**Vulnerability:** Weak randomness using `Math.random()` to generate security-critical tokens (`sessionId` and session tokens) in `api/_lib/backend.ts`.
+**Learning:** This application generates cookie sessions and backend authentication tokens. Relying on deterministic time-based values (`Date.now()`) combined with insecure random number generation (`Math.random()`) exposes the application to severe prediction vulnerabilities allowing session hijacking or unauthorized access.
+**Prevention:** In backend logic and critical token generation functions, always rely on standard cryptographic random generation. If `crypto.randomUUID()` or `crypto.getRandomValues()` are not natively available in the runtime environment, the application should throw a clear error to fail securely rather than silently falling back to a predictable token string.
