@@ -160,11 +160,22 @@ const Profitability: React.FC = () => {
   }, []);
 
   const totals = useMemo(() => {
-    const totalVolume = filteredRows.reduce((sum, row) => sum + row.volume, 0);
-    const totalMargin = filteredRows.reduce((sum, row) => sum + row.estimatedMargin, 0);
-    const totalProcessorCost = filteredRows.reduce((sum, row) => sum + row.processorCost, 0);
-    const totalRevenue = filteredRows.reduce((sum, row) => sum + row.estimatedRevenue, 0);
-    const totalTransactions = filteredRows.reduce((sum, row) => sum + row.transactions, 0);
+    let totalVolume = 0;
+    let totalMargin = 0;
+    let totalProcessorCost = 0;
+    let totalRevenue = 0;
+    let totalTransactions = 0;
+
+    // ⚡ Bolt: Consolidated multiple .reduce() passes into a single O(N) loop
+    for (let i = 0; i < filteredRows.length; i++) {
+      const row = filteredRows[i];
+      totalVolume += row.volume;
+      totalMargin += row.estimatedMargin;
+      totalProcessorCost += row.processorCost;
+      totalRevenue += row.estimatedRevenue;
+      totalTransactions += row.transactions;
+    }
+
     return {
       totalVolume,
       totalMargin,
@@ -177,10 +188,18 @@ const Profitability: React.FC = () => {
 
   const profitabilityFreshness = useMemo(() => {
     if (isDemoMode) return 'Simulated freshness';
-    const latest = transactions
-      .map((transaction) => new Date(transaction.date).getTime())
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => b - a)[0] || null;
+
+    // ⚡ Bolt: Replaced O(N log N) map/filter/sort pipeline with a single O(N) pass to find max date
+    let latest = null;
+    for (let i = 0; i < transactions.length; i++) {
+      const time = new Date(transactions[i].date).getTime();
+      if (Number.isFinite(time)) {
+        if (latest === null || time > latest) {
+          latest = time;
+        }
+      }
+    }
+
     if (!latest) return 'No recent trusted transaction data';
     const hours = Math.floor((Date.now() - latest) / 3600000);
     return hours >= 24 ? `Stale (${hours}h since latest transaction)` : `Fresh (${hours}h since latest transaction)`;

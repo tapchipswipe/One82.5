@@ -165,11 +165,24 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
   });
 
   return Array.from(grouped.entries()).map(([name, records], index) => {
-    const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
-    const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
-    const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-    const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+    // ⚡ Bolt: Single pass for monthlyVolume and sorting preparation
+    let monthlyVolume = 0;
+    const recordsWithTime = new Array(records.length);
+    for (let i = 0; i < records.length; i++) {
+        monthlyVolume += Number(records[i].amount) || 0;
+        recordsWithTime[i] = { record: records[i], time: new Date(records[i].date).getTime() };
+    }
+
+    recordsWithTime.sort((a, b) => a.time - b.time);
+    const sorted = recordsWithTime.map(item => item.record);
+
+    const lastTransaction = recordsWithTime.length > 0 ? recordsWithTime[recordsWithTime.length - 1].time : Date.now();
+
+    const midpoint = Math.max(1, Math.floor(sorted.length / 2));
+    let firstHalf = 0;
+    for (let i = 0; i < midpoint; i++) firstHalf += sorted[i].amount;
+    let secondHalf = 0;
+    for (let i = midpoint; i < sorted.length; i++) secondHalf += sorted[i].amount;
     const trend: 'up' | 'down' | 'flat' = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
     const riskLevel: 'Low' | 'Medium' | 'High' = trend === 'down' ? 'Medium' : 'Low';
     const churnRisk: 'Low' | 'Medium' | 'High' = trend === 'down' ? 'Medium' : 'Low';

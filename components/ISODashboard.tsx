@@ -156,9 +156,16 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                 : buildPortfolioFromTransactions(await StorageService.getTransactionsResolved());
 
             setMerchants(data);
-            setTotalVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+
+            // ⚡ Bolt: Calculate total volume in a single loop instead of redundant reduces
+            let volume = 0;
+            for (let i = 0; i < data.length; i++) {
+                volume += data[i].monthlyVolume;
+            }
+
+            setTotalVolume(volume);
             if (!isDemoMode) {
-                setCcVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+                setCcVolume(volume);
             }
         };
 
@@ -207,19 +214,42 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
         setLastHolidayDraftAt(Date.now());
     };
 
-    const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
-    const decliningCount = merchants.filter(m => m.trend === 'down').length;
-    const activeMerchantCount = merchants.filter((merchant) => merchant.status === 'Active').length;
-    const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
+    // ⚡ Bolt: Consolidated multiple filter, reduce, map, and sort passes into a single O(N) loop
+    let atRiskCount = 0;
+    let decliningCount = 0;
+    let activeMerchantCount = 0;
+    let estMonthlyResidual = 0;
+    let totalBps = 0;
+    let topMerchantVolume = 0;
+    let latestPortfolioTransactionAt = null;
+    const industriesSet = new Set();
+
+    for (let i = 0; i < merchants.length; i++) {
+        const m = merchants[i];
+        if (m.churnRisk === 'High') atRiskCount++;
+        if (m.trend === 'down') decliningCount++;
+        if (m.status === 'Active') activeMerchantCount++;
+
+        estMonthlyResidual += m.monthlyVolume * (m.bps / 10000);
+        totalBps += (m.bps || 0);
+
+        if (m.monthlyVolume > topMerchantVolume) {
+            topMerchantVolume = m.monthlyVolume || 0;
+        }
+
+        industriesSet.add(m.businessType);
+
+        if (Number.isFinite(m.lastTransaction)) {
+            if (latestPortfolioTransactionAt === null || m.lastTransaction > latestPortfolioTransactionAt) {
+                latestPortfolioTransactionAt = m.lastTransaction;
+            }
+        }
+    }
+
     const avgMerchantVolume = merchants.length > 0 ? totalVolume / merchants.length : 0;
-    const avgBps = merchants.length > 0 ? merchants.reduce((sum, merchant) => sum + (merchant.bps || 0), 0) / merchants.length : 0;
-    const topMerchantVolume = merchants.length > 0 ? Math.max(...merchants.map((merchant) => merchant.monthlyVolume || 0)) : 0;
+    const avgBps = merchants.length > 0 ? totalBps / merchants.length : 0;
     const atRiskRate = merchants.length > 0 ? (atRiskCount / merchants.length) * 100 : 0;
-    const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
-    const latestPortfolioTransactionAt = merchants
-        .map((merchant) => merchant.lastTransaction)
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => b - a)[0] || null;
+    const uniqueIndustries = industriesSet.size;
     const portfolioFreshness = isDemoMode
         ? 'Simulated freshness'
         : latestPortfolioTransactionAt
