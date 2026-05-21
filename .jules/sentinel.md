@@ -1,0 +1,4 @@
+## 2026-05-21 - [Insecure Randomness for Session Tokens]
+**Vulnerability:** Weak deterministic randomness (`Math.random()`) was used to generate session tokens and IDs in `api/_lib/backend.ts`.
+**Learning:** This codebase incorrectly relies on `Math.random()` as a fallback for missing secure random number generation. Because this is a security-critical context (session IDs), an attacker could potentially predict session IDs.
+**Prevention:** Always use `crypto.randomUUID()` or `crypto.getRandomValues()` for session tokens. If secure randomness is unavailable in the environment, throw an error rather than silently failing to an insecure fallback. When using Web Crypto API in a Node.js backend environment without `node:crypto` explicitly imported, it requires casting `(crypto as any)` to bypass TS errors.
