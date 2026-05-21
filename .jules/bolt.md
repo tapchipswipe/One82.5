@@ -1,0 +1,3 @@
+## 2026-05-21 - Optimize loop processing and remove redundant passes
+**Learning:** React component memoization often masks inefficient data transformations like chaining `.map()`, `.filter()`, `.reduce()`, and `.sort()` together. While functionally sound, doing this over lists (e.g. `transactions`, `merchants`, `customers`) forces N iterations per method where a single combined `for` loop would be O(N).
+**Action:** Replaced chained array methods and multiple `.reduce()` operations with single `for` loops to process the data simultaneously in `App.tsx`, `components/Profitability.tsx`, `components/ISODashboard.tsx`, and `components/Customers.tsx`.

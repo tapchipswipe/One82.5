@@ -201,15 +201,34 @@ const Customers: React.FC = () => {
         return matchSearch && matchFilter;
     });
 
-    const totalSpend = customers.reduce((a, c) => a + c.totalSpend, 0);
+    // ⚡ Bolt: Consolidated reduce, filter, map, sort passes into O(N) loops
+    let totalSpend = 0;
+    let totalLoyaltyScore = 0;
+    let atRisk = 0;
+
+    for (let i = 0; i < customers.length; i++) {
+        const c = customers[i];
+        totalSpend += c.totalSpend;
+        totalLoyaltyScore += c.loyaltyScore;
+        if (c.retentionRisk === 'High') {
+            atRisk++;
+        }
+    }
+
     const avgLoyalty = customers.length > 0
-        ? Math.round(customers.reduce((a, c) => a + c.loyaltyScore, 0) / customers.length)
+        ? Math.round(totalLoyaltyScore / customers.length)
         : 0;
-    const atRisk = customers.filter(c => c.retentionRisk === 'High').length;
-    const latestTransactionAt = StorageService.getTransactions()
-        .map((tx) => new Date(tx.date).getTime())
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => b - a)[0] || null;
+
+    const transactions = StorageService.getTransactions();
+    let latestTransactionAt = null;
+    for (let i = 0; i < transactions.length; i++) {
+        const time = new Date(transactions[i].date).getTime();
+        if (Number.isFinite(time)) {
+            if (latestTransactionAt === null || time > latestTransactionAt) {
+                latestTransactionAt = time;
+            }
+        }
+    }
     const freshness = isDemoMode
         ? 'Simulated freshness'
         : latestTransactionAt
