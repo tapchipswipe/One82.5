@@ -1,0 +1,3 @@
+## 2026-05-22 - [Consolidate Array Operations & Avoid Spread on Large Arrays]
+**Learning:** Using multiple chained array methods (`.map`, `.filter`, `.reduce`) and spread operators (`Math.max(...array)`) on large arrays inside unmemoized React components causes severe performance bottlenecks (O(N) * 10 passes per render) and risks `RangeError: Maximum call stack size exceeded`.
+**Action:** Replace multiple consecutive O(N) passes over the same dataset with a single `for` loop to accumulate values simultaneously, calculate max/min values iteratively, and wrap the calculation in `React.useMemo` to prevent redundant computations on re-renders.
