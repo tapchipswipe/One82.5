@@ -1,0 +1,3 @@
+## $(date +%Y-%m-%d) - Array Iteration and RangeError
+**Learning:** Using chained array methods (`.map().filter()`) and spread operators inside `Math.max(...array)` on potentially large datasets (like transactions) can cause performance regressions due to intermediate array allocations and risk throwing a `RangeError: Maximum call stack size exceeded` if the array exceeds engine limits.
+**Action:** Consolidate chained operations (including multiple `.reduce()` calls on the same array) into a single `for` loop, and calculate max/min iteratively rather than spreading the entire array into a variadic function.
