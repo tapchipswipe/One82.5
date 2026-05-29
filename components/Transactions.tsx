@@ -77,11 +77,18 @@ const Transactions: React.FC = () => {
     }, [transactions, searchQuery]);
 
     const lastTransactionAt = useMemo(() => {
-        const timestamps = transactions
-            .map((tx) => new Date(tx.date).getTime())
-            .filter((value) => Number.isFinite(value));
-        if (timestamps.length === 0) return null;
-        return Math.max(...timestamps);
+        // Bolt Optimization: Calculate max time using loop to prevent RangeError and avoid multiple iterations
+        if (transactions.length === 0) return null;
+        let maxTime = -Infinity;
+        let found = false;
+        for (let i = 0; i < transactions.length; i++) {
+            const time = new Date(transactions[i].date).getTime();
+            if (Number.isFinite(time)) {
+                if (time > maxTime) maxTime = time;
+                found = true;
+            }
+        }
+        return found ? maxTime : null;
     }, [transactions]);
 
     const dataFreshness = useMemo(() => {
