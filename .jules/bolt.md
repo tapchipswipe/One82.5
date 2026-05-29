@@ -1,0 +1,3 @@
+## 2026-05-29 - Array Spread Operator RangeError and Redundant Iterations
+**Learning:** Using the spread operator with `Math.max(...array)` on large arrays like transaction lists can throw a `RangeError: Maximum call stack size exceeded`. Additionally, chaining multiple array methods (`.map()`, `.filter()`, `.reduce()`, `.sort()`) on the same array results in multiple redundant O(N) iterations and memory overhead.
+**Action:** Replace multiple consecutive array iterations and spread operator max/min calculations with a single `for` loop to process all aggregations simultaneously, avoiding call stack limits and significantly improving execution speed.
