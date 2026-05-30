@@ -156,9 +156,15 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
                 : buildPortfolioFromTransactions(await StorageService.getTransactionsResolved());
 
             setMerchants(data);
-            setTotalVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+
+            let totalVol = 0;
+            for (let i = 0; i < data.length; i++) {
+                totalVol += data[i].monthlyVolume;
+            }
+
+            setTotalVolume(totalVol);
             if (!isDemoMode) {
-                setCcVolume(data.reduce((acc, m) => acc + m.monthlyVolume, 0));
+                setCcVolume(totalVol);
             }
         };
 
@@ -207,13 +213,32 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
         setLastHolidayDraftAt(Date.now());
     };
 
-    const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
-    const decliningCount = merchants.filter(m => m.trend === 'down').length;
-    const activeMerchantCount = merchants.filter((merchant) => merchant.status === 'Active').length;
-    const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
+    let atRiskCount = 0;
+    let decliningCount = 0;
+    let activeMerchantCount = 0;
+    let estMonthlyResidual = 0;
+    let totalBps = 0;
+    let topMerchantVolume = 0;
+
+    // ⚡ Bolt: Replaced multiple chained .filter(), .reduce(), and Math.max(...map()) calls
+    // with a single O(N) loop. This prevents redundant array traversals, avoids intermediate
+    // array memory allocations, and protects against call stack size exceeded errors on large portfolios.
+    for (let i = 0; i < merchants.length; i++) {
+        const m = merchants[i];
+        if (m.churnRisk === 'High') atRiskCount++;
+        if (m.trend === 'down') decliningCount++;
+        if (m.status === 'Active') activeMerchantCount++;
+
+        estMonthlyResidual += m.monthlyVolume * (m.bps / 10000);
+        totalBps += (m.bps || 0);
+
+        if (m.monthlyVolume > topMerchantVolume) {
+            topMerchantVolume = m.monthlyVolume || 0;
+        }
+    }
+
     const avgMerchantVolume = merchants.length > 0 ? totalVolume / merchants.length : 0;
-    const avgBps = merchants.length > 0 ? merchants.reduce((sum, merchant) => sum + (merchant.bps || 0), 0) / merchants.length : 0;
-    const topMerchantVolume = merchants.length > 0 ? Math.max(...merchants.map((merchant) => merchant.monthlyVolume || 0)) : 0;
+    const avgBps = merchants.length > 0 ? totalBps / merchants.length : 0;
     const atRiskRate = merchants.length > 0 ? (atRiskCount / merchants.length) * 100 : 0;
     const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
     const latestPortfolioTransactionAt = merchants
