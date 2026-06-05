@@ -219,7 +219,7 @@ const createCookieSession = (user: User): AuthSession => {
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${(typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : (() => { throw new Error('Secure random number generation is not available'); })()}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -233,7 +233,13 @@ const createSessionToken = (): string => {
     return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const array = new Uint32Array(4);
+    (crypto as any).getRandomValues(array);
+    return `st_${Date.now().toString(36)}_${Array.from(array, dec => dec.toString(36)).join('').slice(0, 10)}`;
+  }
+
+  throw new Error('Secure random number generation is not available');
 };
 
 const roleFromEmail = (email: string): UserRole => {
