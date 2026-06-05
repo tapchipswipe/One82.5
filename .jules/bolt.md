@@ -1,0 +1,4 @@
+## 2026-06-05 - Consolidated redundant array iteration passes
+
+**Learning:** This React codebase contains instances where arrays were chained with multiple passes (e.g. `reduce`, `slice`, `reduce` over the same base array) calculating aggregated statistics like first vs second half volume totals or overall summaries. Each operation added redundant O(N) iteration passes which scale linearly with large portfolio or transaction inputs.
+**Action:** Identified redundant functional array passes (`.reduce`, `.map`, `.slice`) doing aggregations, and refactored them into single `for` loop iterations that collect all necessary variables (e.g. `totalVolume`, `firstHalf`, `secondHalf`, etc.) simultaneously. When doing similar refactoring, be careful to correctly adapt indices (like keeping track of the `midpoint` for splitting array computations).
