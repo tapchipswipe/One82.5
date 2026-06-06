@@ -36,7 +36,12 @@ const buildForecast = (): ForecastPoint[] => {
 const CashFlowForecastDemo: React.FC = () => {
   const points = useMemo(() => buildForecast(), []);
   const ending = points[points.length - 1]?.balance || 0;
-  const minimum = Math.min(...points.map(item => item.balance));
+  // Bolt Performance: Single loop to find minimum balance to avoid map and call stack size limits from spread
+  let minimum = Infinity;
+  for (const item of points) {
+      if (item.balance < minimum) minimum = item.balance;
+  }
+  if (minimum === Infinity) minimum = 0;
 
   return (
     <div className="space-y-6 rounded-xl border border-gray-200 bg-white p-6">

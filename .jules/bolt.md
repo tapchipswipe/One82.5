@@ -1,0 +1,3 @@
+## 2026-06-06 - Spread Operator & Array Chain Anti-Pattern
+**Learning:** Using the spread operator `...` with `Math.max()` or `Math.min()` on large arrays (like `Math.max(...merchants.map(...))`) risks throwing a `RangeError: Maximum call stack size exceeded`. Additionally, chaining multiple array methods (`.map().filter().reduce()`) creates redundant O(N) iterations over the same dataset, harming performance in frequently rendered React components.
+**Action:** Replace multiple chained array operations and spread operator min/max calls with a single consolidated `for` loop to process all aggregations simultaneously.
