@@ -160,11 +160,23 @@ const Profitability: React.FC = () => {
   }, []);
 
   const totals = useMemo(() => {
-    const totalVolume = filteredRows.reduce((sum, row) => sum + row.volume, 0);
-    const totalMargin = filteredRows.reduce((sum, row) => sum + row.estimatedMargin, 0);
-    const totalProcessorCost = filteredRows.reduce((sum, row) => sum + row.processorCost, 0);
-    const totalRevenue = filteredRows.reduce((sum, row) => sum + row.estimatedRevenue, 0);
-    const totalTransactions = filteredRows.reduce((sum, row) => sum + row.transactions, 0);
+    // ⚡ Bolt: Consolidated 5 separate .reduce() passes into a single loop
+    // Impact: Reduces O(5N) operations to O(N), significantly improving evaluation
+    // time when rendering or filtering large data sets of merchants.
+    let totalVolume = 0;
+    let totalMargin = 0;
+    let totalProcessorCost = 0;
+    let totalRevenue = 0;
+    let totalTransactions = 0;
+
+    for (const row of filteredRows) {
+      totalVolume += row.volume;
+      totalMargin += row.estimatedMargin;
+      totalProcessorCost += row.processorCost;
+      totalRevenue += row.estimatedRevenue;
+      totalTransactions += row.transactions;
+    }
+
     return {
       totalVolume,
       totalMargin,
