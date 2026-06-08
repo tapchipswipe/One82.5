@@ -219,7 +219,7 @@ const createCookieSession = (user: User): AuthSession => {
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${generateSecureToken()}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -228,12 +228,22 @@ const createCookieSession = (user: User): AuthSession => {
   };
 };
 
-const createSessionToken = (): string => {
+const generateSecureToken = (): string => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
+    return (crypto as any).randomUUID().replace(/-/g, '');
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const array = new Uint32Array(4);
+    (crypto as any).getRandomValues(array);
+    return Array.from(array, dec => dec.toString(16).padStart(8, '0')).join('');
+  }
+
+  throw new Error('Secure random number generator not available. Cannot generate secure session token.');
+};
+
+const createSessionToken = (): string => {
+  return `st_${Date.now().toString(36)}_${generateSecureToken()}`;
 };
 
 const roleFromEmail = (email: string): UserRole => {
