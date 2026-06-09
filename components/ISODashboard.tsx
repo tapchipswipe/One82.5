@@ -31,20 +31,35 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
     });
 
     return Array.from(grouped.entries()).map(([name, records], index) => {
-        const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
-        const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
-        const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-        const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+        // ⚡ Bolt: Consolidated chained map/reduce/sort operations into a single for loop. Impact: Reduces O(N log N + 3N) to O(N log N + N) avoiding redundant array allocations.
+        records.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        let monthlyVolume = 0;
+        let firstHalf = 0;
+        let secondHalf = 0;
+        const mid = Math.max(1, Math.floor(records.length / 2));
+
+        for (let i = 0; i < records.length; i++) {
+            const amount = Number(records[i].amount) || 0;
+            monthlyVolume += amount;
+            if (i < mid) firstHalf += amount;
+            else secondHalf += amount;
+        }
+
+        const volumeHistory = new Array(6).fill(0);
+        for (let offset = 0; offset < 6; offset++) {
+            const start = Math.floor((offset * records.length) / 6);
+            const end = Math.floor(((offset + 1) * records.length) / 6);
+            const sliceEnd = Math.max(end, start + 1);
+            for (let i = start; i < sliceEnd && i < records.length; i++) {
+                volumeHistory[offset] += (Number(records[i].amount) || 0);
+            }
+            volumeHistory[offset] = Math.round(volumeHistory[offset]);
+        }
+
+        const lastTransaction = records.length > 0 ? new Date(records[records.length - 1].date).getTime() : Date.now();
         const trend: PortfolioMerchant['trend'] = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
         const riskLevel: PortfolioMerchant['riskLevel'] = trend === 'down' ? 'Medium' : 'Low';
         const churnRisk: PortfolioMerchant['churnRisk'] = trend === 'down' ? 'Medium' : 'Low';
-        const volumeHistory = Array.from({ length: 6 }, (_, offset) => {
-            const start = Math.floor((offset * records.length) / 6);
-            const end = Math.floor(((offset + 1) * records.length) / 6);
-            const slice = records.slice(start, Math.max(end, start + 1));
-            return Math.round(slice.reduce((sum, record) => sum + record.amount, 0));
-        });
 
         return {
             id: `imported_${index}_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
