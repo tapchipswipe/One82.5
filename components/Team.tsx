@@ -175,7 +175,11 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
   });
 
   return Array.from(grouped.entries()).map(([name, records], index) => {
-    const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+    // ⚡ Bolt: Consolidated chained map/reduce operations into a single for loop. Impact: Reduces redundant array allocations and simplifies single-pass accumulation.
+    let monthlyVolume = 0;
+    for (let i = 0; i < records.length; i++) {
+      monthlyVolume += (Number(records[i].amount) || 0);
+    }
     const trend: PortfolioMerchant['trend'] = records.length > 1 && records[records.length - 1].amount >= records[0].amount ? 'up' : 'flat';
 
     return {
