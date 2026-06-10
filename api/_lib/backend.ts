@@ -218,8 +218,24 @@ const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
+
+  // 🛡️ Sentinel: Use secure random for session ID
+  if (typeof crypto === 'undefined') {
+    throw new Error('Secure cryptography is not available in this environment');
+  }
+  let secureRand = '';
+  if ('randomUUID' in crypto) {
+    secureRand = (crypto as any).randomUUID().split('-')[0];
+  } else if ('getRandomValues' in crypto) {
+    const array = new Uint32Array(1);
+    (crypto as any).getRandomValues(array);
+    secureRand = array[0].toString(36).slice(0, 6);
+  } else {
+    throw new Error('Secure random generation is not supported in this environment');
+  }
+
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${secureRand}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -229,11 +245,22 @@ const createCookieSession = (user: User): AuthSession => {
 };
 
 const createSessionToken = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
+  if (typeof crypto === 'undefined') {
+    throw new Error('Secure cryptography is not available in this environment');
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  if ('randomUUID' in crypto) {
+    return `${(crypto as any).randomUUID()}_${Date.now().toString(36)}`;
+  }
+
+  if ('getRandomValues' in crypto) {
+    const array = new Uint32Array(4);
+    (crypto as any).getRandomValues(array);
+    const randStr = Array.from(array).map(n => n.toString(36)).join('').slice(0, 10);
+    return `st_${Date.now().toString(36)}_${randStr}`;
+  }
+
+  throw new Error('Secure random generation is not supported in this environment');
 };
 
 const roleFromEmail = (email: string): UserRole => {
