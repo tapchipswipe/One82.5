@@ -207,19 +207,43 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
         setLastHolidayDraftAt(Date.now());
     };
 
-    const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
-    const decliningCount = merchants.filter(m => m.trend === 'down').length;
-    const activeMerchantCount = merchants.filter((merchant) => merchant.status === 'Active').length;
-    const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
+    // ⚡ Bolt: Consolidated 9 array iterations and an O(N log N) sort into a single O(N) loop.
+    // Impact: Reduces O(9N + N log N) to O(N), improves render performance, and prevents call stack limits from Math.max spread.
+    let atRiskCount = 0;
+    let decliningCount = 0;
+    let activeMerchantCount = 0;
+    let estMonthlyResidual = 0;
+    let sumBps = 0;
+    let topMerchantVolume = 0;
+    let latestPortfolioTransactionAt: number | null = null;
+    const businessTypes = new Set<string>();
+
+    for (let i = 0; i < merchants.length; i++) {
+        const m = merchants[i];
+        if (m.churnRisk === 'High') atRiskCount++;
+        if (m.trend === 'down') decliningCount++;
+        if (m.status === 'Active') activeMerchantCount++;
+
+        estMonthlyResidual += m.monthlyVolume * (m.bps / 10000);
+        sumBps += (m.bps || 0);
+
+        const vol = m.monthlyVolume || 0;
+        if (vol > topMerchantVolume) topMerchantVolume = vol;
+
+        businessTypes.add(m.businessType);
+
+        const lastTx = m.lastTransaction;
+        if (Number.isFinite(lastTx)) {
+            if (latestPortfolioTransactionAt === null || lastTx > latestPortfolioTransactionAt) {
+                latestPortfolioTransactionAt = lastTx;
+            }
+        }
+    }
+
     const avgMerchantVolume = merchants.length > 0 ? totalVolume / merchants.length : 0;
-    const avgBps = merchants.length > 0 ? merchants.reduce((sum, merchant) => sum + (merchant.bps || 0), 0) / merchants.length : 0;
-    const topMerchantVolume = merchants.length > 0 ? Math.max(...merchants.map((merchant) => merchant.monthlyVolume || 0)) : 0;
+    const avgBps = merchants.length > 0 ? sumBps / merchants.length : 0;
     const atRiskRate = merchants.length > 0 ? (atRiskCount / merchants.length) * 100 : 0;
-    const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
-    const latestPortfolioTransactionAt = merchants
-        .map((merchant) => merchant.lastTransaction)
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => b - a)[0] || null;
+    const uniqueIndustries = businessTypes.size;
     const portfolioFreshness = isDemoMode
         ? 'Simulated freshness'
         : latestPortfolioTransactionAt
