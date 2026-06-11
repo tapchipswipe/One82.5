@@ -420,8 +420,16 @@ const Team: React.FC<TeamProps> = ({ onNavigate }) => {
   }, [assignments, buyRateProfiles, commissionRules]);
 
   const draftTotals = useMemo(() => {
-    const totalPayout = draftLineItems.reduce((sum, lineItem) => sum + lineItem.payout, 0);
-    const exceptions = draftLineItems.filter((lineItem) => Boolean(lineItem.exception)).length;
+    // ⚡ Bolt: Consolidated .reduce() and .filter() passes over draftLineItems into a single loop.
+    // Impact: Reduces time complexity from O(2N) to O(N).
+    let totalPayout = 0;
+    let exceptions = 0;
+    for (const lineItem of draftLineItems) {
+      totalPayout += lineItem.payout;
+      if (lineItem.exception) {
+        exceptions++;
+      }
+    }
     return { totalPayout, exceptions, lineCount: draftLineItems.length };
   }, [draftLineItems]);
 
