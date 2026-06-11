@@ -72,11 +72,18 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
     });
     setCategoryData(Object.keys(catCounts).map(k => ({ name: k, value: catCounts[k] })));
 
-    const newestTxTimestamp = transactions
-      .map((transaction) => new Date(transaction.date).getTime())
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => b - a)[0] || null;
-    setLastDataUpdateAt(newestTxTimestamp);
+    // ⚡ Bolt: Replaced chained .map().filter().sort() with a single O(N) loop to find the max timestamp.
+    // Impact: Reduces complexity from O(N log N) to O(N) and prevents maximum call stack issues.
+    let newestTxTimestamp: number | null = -Infinity;
+    for (let i = 0; i < transactions.length; i++) {
+      const time = new Date(transactions[i].date).getTime();
+      if (Number.isFinite(time) && time > newestTxTimestamp) {
+        newestTxTimestamp = time;
+      }
+    }
+    const finalTxTimestamp = newestTxTimestamp === -Infinity ? null : newestTxTimestamp;
+
+    setLastDataUpdateAt(finalTxTimestamp);
 
     // Check Cache
     const cached = StorageService.getCachedInsight(cacheKey);

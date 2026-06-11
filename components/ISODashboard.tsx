@@ -207,19 +207,46 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
         setLastHolidayDraftAt(Date.now());
     };
 
-    const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
-    const decliningCount = merchants.filter(m => m.trend === 'down').length;
-    const activeMerchantCount = merchants.filter((merchant) => merchant.status === 'Active').length;
-    const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
+    // ⚡ Bolt: Consolidated multiple array traversals over merchants into a single O(N) loop.
+    // Impact: Avoids 9 O(N) redundant iterations, significantly improving performance for large merchant lists.
+    let atRiskCount = 0;
+    let decliningCount = 0;
+    let activeMerchantCount = 0;
+    let estMonthlyResidual = 0;
+    let totalBps = 0;
+    let topMerchantVolume = 0;
+    const uniqueBusinessTypes = new Set();
+
+    for (let i = 0; i < merchants.length; i++) {
+        const m = merchants[i];
+        if (m.churnRisk === 'High') atRiskCount++;
+        if (m.trend === 'down') decliningCount++;
+        if (m.status === 'Active') activeMerchantCount++;
+
+        estMonthlyResidual += m.monthlyVolume * (m.bps / 10000);
+        totalBps += (m.bps || 0);
+
+        if ((m.monthlyVolume || 0) > topMerchantVolume) {
+            topMerchantVolume = m.monthlyVolume || 0;
+        }
+
+        uniqueBusinessTypes.add(m.businessType);
+    }
+
     const avgMerchantVolume = merchants.length > 0 ? totalVolume / merchants.length : 0;
-    const avgBps = merchants.length > 0 ? merchants.reduce((sum, merchant) => sum + (merchant.bps || 0), 0) / merchants.length : 0;
-    const topMerchantVolume = merchants.length > 0 ? Math.max(...merchants.map((merchant) => merchant.monthlyVolume || 0)) : 0;
+    const avgBps = merchants.length > 0 ? totalBps / merchants.length : 0;
     const atRiskRate = merchants.length > 0 ? (atRiskCount / merchants.length) * 100 : 0;
-    const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
-    const latestPortfolioTransactionAt = merchants
-        .map((merchant) => merchant.lastTransaction)
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => b - a)[0] || null;
+    const uniqueIndustries = uniqueBusinessTypes.size;
+    // ⚡ Bolt: Replaced chained .map().filter().sort() with a single O(N) loop to find the max timestamp.
+    // Impact: Reduces complexity from O(N log N) to O(N) and prevents maximum call stack issues.
+    let latestPortfolioTransactionAt: number | null = -Infinity;
+    for (let i = 0; i < merchants.length; i++) {
+        const time = merchants[i].lastTransaction;
+        if (Number.isFinite(time) && time > latestPortfolioTransactionAt) {
+            latestPortfolioTransactionAt = time;
+        }
+    }
+    latestPortfolioTransactionAt = latestPortfolioTransactionAt === -Infinity ? null : latestPortfolioTransactionAt;
     const portfolioFreshness = isDemoMode
         ? 'Simulated freshness'
         : latestPortfolioTransactionAt

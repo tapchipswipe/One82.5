@@ -42,8 +42,15 @@ const AIReport: React.FC<AIReportProps> = ({ onNavigate }) => {
       .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Uncategorized';
 
     const recentWindow = transactions.slice(0, 14);
-    const pendingCount = recentWindow.filter((transaction) => transaction.status === 'Pending').length;
-    const failedCount = recentWindow.filter((transaction) => transaction.status === 'Failed').length;
+
+    // ⚡ Bolt: Consolidated two consecutive .filter() passes over recentWindow into a single loop.
+    // Impact: Reduces time complexity from O(2N) to O(N).
+    let pendingCount = 0;
+    let failedCount = 0;
+    for (const transaction of recentWindow) {
+      if (transaction.status === 'Pending') pendingCount++;
+      else if (transaction.status === 'Failed') failedCount++;
+    }
 
     return {
       totalRevenue,
