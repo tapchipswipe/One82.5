@@ -31,11 +31,23 @@ const buildPortfolioFromTransactions = (transactions: Transaction[]): PortfolioM
     });
 
     return Array.from(grouped.entries()).map(([name, records], index) => {
-        const monthlyVolume = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+        // ⚡ Bolt: Consolidated multiple array passes (reduce, sort, slice, reduce) into an efficient process
+        // to avoid repeated O(N) operations and eliminate redundant iterations over 'records'.
+        let monthlyVolume = 0;
+        for (let i = 0; i < records.length; i++) {
+            monthlyVolume += Number(records[i].amount) || 0;
+        }
+
         const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         const lastTransaction = sorted.length > 0 ? new Date(sorted[sorted.length - 1].date).getTime() : Date.now();
-        const firstHalf = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
-        const secondHalf = sorted.slice(Math.max(1, Math.floor(sorted.length / 2))).reduce((sum, record) => sum + record.amount, 0);
+
+        const midpoint = Math.max(1, Math.floor(sorted.length / 2));
+        let firstHalf = 0;
+        let secondHalf = 0;
+        for (let i = 0; i < sorted.length; i++) {
+            if (i < midpoint) firstHalf += sorted[i].amount;
+            else secondHalf += sorted[i].amount;
+        }
         const trend: PortfolioMerchant['trend'] = secondHalf > firstHalf ? 'up' : secondHalf < firstHalf ? 'down' : 'flat';
         const riskLevel: PortfolioMerchant['riskLevel'] = trend === 'down' ? 'Medium' : 'Low';
         const churnRisk: PortfolioMerchant['churnRisk'] = trend === 'down' ? 'Medium' : 'Low';
@@ -207,19 +219,44 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
         setLastHolidayDraftAt(Date.now());
     };
 
-    const atRiskCount = merchants.filter(m => m.churnRisk === 'High').length;
-    const decliningCount = merchants.filter(m => m.trend === 'down').length;
-    const activeMerchantCount = merchants.filter((merchant) => merchant.status === 'Active').length;
-    const estMonthlyResidual = merchants.reduce((a, m) => a + m.monthlyVolume * (m.bps / 10000), 0);
+    // ⚡ Bolt: Consolidated multiple array iterations (filter, map, reduce, sort) over 'merchants'
+    // into a single O(N) for loop to avoid redundant passes, fix Math.max spread stack limits,
+    // and remove unnecessary O(N log N) sorting. Impact: Reduces O(N * 8 + N log N) to O(N).
+    let atRiskCount = 0;
+    let decliningCount = 0;
+    let activeMerchantCount = 0;
+    let estMonthlyResidual = 0;
+    let sumBps = 0;
+    let topMerchantVolume = 0;
+    const industrySet = new Set();
+    let latestPortfolioTransactionAt: number | null = null;
+
+    for (let i = 0; i < merchants.length; i++) {
+        const m = merchants[i];
+        if (m.churnRisk === 'High') atRiskCount++;
+        if (m.trend === 'down') decliningCount++;
+        if (m.status === 'Active') activeMerchantCount++;
+        estMonthlyResidual += m.monthlyVolume * (m.bps / 10000);
+        sumBps += m.bps || 0;
+
+        const vol = m.monthlyVolume || 0;
+        if (vol > topMerchantVolume) {
+            topMerchantVolume = vol;
+        }
+
+        industrySet.add(m.businessType);
+
+        if (Number.isFinite(m.lastTransaction)) {
+            if (latestPortfolioTransactionAt === null || m.lastTransaction > latestPortfolioTransactionAt) {
+                latestPortfolioTransactionAt = m.lastTransaction;
+            }
+        }
+    }
+
     const avgMerchantVolume = merchants.length > 0 ? totalVolume / merchants.length : 0;
-    const avgBps = merchants.length > 0 ? merchants.reduce((sum, merchant) => sum + (merchant.bps || 0), 0) / merchants.length : 0;
-    const topMerchantVolume = merchants.length > 0 ? Math.max(...merchants.map((merchant) => merchant.monthlyVolume || 0)) : 0;
+    const avgBps = merchants.length > 0 ? sumBps / merchants.length : 0;
     const atRiskRate = merchants.length > 0 ? (atRiskCount / merchants.length) * 100 : 0;
-    const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
-    const latestPortfolioTransactionAt = merchants
-        .map((merchant) => merchant.lastTransaction)
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => b - a)[0] || null;
+    const uniqueIndustries = industrySet.size;
     const portfolioFreshness = isDemoMode
         ? 'Simulated freshness'
         : latestPortfolioTransactionAt
