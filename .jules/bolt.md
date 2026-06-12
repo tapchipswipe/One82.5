@@ -1,0 +1,3 @@
+## 2026-06-12 - Math.max Spread Call Stack Overflow Prevention
+**Learning:** Found multiple instances where large arrays were spread into `Math.max(...array)`. In environments with large lists of transactions or merchants, this risks throwing a `RangeError: Maximum call stack size exceeded`. This anti-pattern was coupled with chained `.map()` and `.filter()` operations leading to redundant O(N) passes.
+**Action:** Replace `Math.max(...array)` and chained array operations with a single O(N) `for` loop that iteratively calculates max values. This ensures safety against call stack size limits while combining iterations for better performance.
