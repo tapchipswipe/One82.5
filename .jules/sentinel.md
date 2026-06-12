@@ -1,0 +1,4 @@
+## 2026-06-12 - Secure Session Token Generation
+**Vulnerability:** Weak randomness (`Math.random()`) was used as a fallback for generating session IDs and tokens in `api/_lib/backend.ts`.
+**Learning:** `Math.random()` is not cryptographically secure and tokens generated this way can be predicted. Relying on it for security-critical contexts like session tokens poses a risk, but completely removing it can break environments where `crypto` is missing.
+**Prevention:** Prefer using `crypto.randomUUID()` or `crypto.getRandomValues()` for security-critical random generation and cast `crypto` to `any` to avoid TS compiler errors in Next.js/Node environments where types might be missing, whilst leaving the `Math.random` fallback for graceful degradation in non-secure environments if strictly necessary.
