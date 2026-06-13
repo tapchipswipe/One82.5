@@ -33,11 +33,13 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // 🛡️ Sentinel: explicitly pick only allowed user-editable fields to prevent mass assignment of role, credits, plan
   const mergedUser = {
     ...auth.user,
-    ...incoming,
-    id: auth.user.id,
-    email: auth.user.email
+    name: incoming.name || auth.user.name,
+    businessType: incoming.businessType !== undefined ? incoming.businessType : auth.user.businessType,
+    organizationName: incoming.organizationName !== undefined ? incoming.organizationName : auth.user.organizationName,
+    onboardingComplete: typeof incoming.onboardingComplete === 'boolean' ? incoming.onboardingComplete : auth.user.onboardingComplete
   };
 
   const savedUser = await saveLoginUser(mergedUser, 'backend');
