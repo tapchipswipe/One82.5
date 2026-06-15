@@ -216,10 +216,15 @@ const ISODashboard: React.FC<ISODashboardProps> = ({ onNavigate }) => {
     const topMerchantVolume = merchants.length > 0 ? Math.max(...merchants.map((merchant) => merchant.monthlyVolume || 0)) : 0;
     const atRiskRate = merchants.length > 0 ? (atRiskCount / merchants.length) * 100 : 0;
     const uniqueIndustries = [...new Set(merchants.map(m => m.businessType))].length;
-    const latestPortfolioTransactionAt = merchants
-        .map((merchant) => merchant.lastTransaction)
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => b - a)[0] || null;
+    // ⚡ Bolt: Consolidated chained map/filter/sort into a single O(N) loop to track the maximum timestamp
+    // Impact: Reduces O(N log N) sorting and multiple array iterations to a single O(N) pass
+    let latestPortfolioTransactionAt: number | null = null;
+    for (const merchant of merchants) {
+      const value = merchant.lastTransaction;
+      if (Number.isFinite(value) && (latestPortfolioTransactionAt === null || value > latestPortfolioTransactionAt)) {
+        latestPortfolioTransactionAt = value;
+      }
+    }
     const portfolioFreshness = isDemoMode
         ? 'Simulated freshness'
         : latestPortfolioTransactionAt

@@ -90,10 +90,15 @@ const MerchantLedger: React.FC<MerchantLedgerProps> = ({ merchants }) => {
     const avgBps = Math.round(merchants.reduce((a, m) => a + m.bps, 0) / merchants.length);
     const projectedResidual = ((totalVolume * avgBps) / 10000).toFixed(0);
     const isDemoMode = StorageService.getDataMode() === 'demo';
-    const latestTransactionAt = StorageService.getTransactions()
-        .map((tx) => new Date(tx.date).getTime())
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => b - a)[0] || null;
+    // ⚡ Bolt: Consolidated chained map/filter/sort into a single O(N) loop to track the maximum timestamp
+    // Impact: Reduces O(N log N) sorting and multiple array iterations to a single O(N) pass
+    let latestTransactionAt: number | null = null;
+    for (const tx of StorageService.getTransactions()) {
+      const value = new Date(tx.date).getTime();
+      if (Number.isFinite(value) && (latestTransactionAt === null || value > latestTransactionAt)) {
+        latestTransactionAt = value;
+      }
+    }
     const freshness = isDemoMode
         ? 'Simulated freshness'
         : latestTransactionAt

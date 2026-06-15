@@ -177,10 +177,15 @@ const Profitability: React.FC = () => {
 
   const profitabilityFreshness = useMemo(() => {
     if (isDemoMode) return 'Simulated freshness';
-    const latest = transactions
-      .map((transaction) => new Date(transaction.date).getTime())
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => b - a)[0] || null;
+    // ⚡ Bolt: Consolidated chained map/filter/sort into a single O(N) loop to track the maximum timestamp
+    // Impact: Reduces O(N log N) sorting and multiple array iterations to a single O(N) pass
+    let latest: number | null = null;
+    for (const transaction of transactions) {
+      const value = new Date(transaction.date).getTime();
+      if (Number.isFinite(value) && (latest === null || value > latest)) {
+        latest = value;
+      }
+    }
     if (!latest) return 'No recent trusted transaction data';
     const hours = Math.floor((Date.now() - latest) / 3600000);
     return hours >= 24 ? `Stale (${hours}h since latest transaction)` : `Fresh (${hours}h since latest transaction)`;

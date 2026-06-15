@@ -1,0 +1,3 @@
+## 2026-06-15 - Array map, filter, sort Chains Optimization
+**Learning:** Chaining `.map()`, `.filter()`, and `.sort()` on arrays strictly to track a maximum value forces an unnecessary O(N log N) sorting cost and multiple O(N) iteration passes across the array elements, impacting rendering performance on the frontend when these components process potentially large transaction lists.
+**Action:** Replaced `.map(...).filter(...).sort(...)[0]` patterns with a single iterative `for` loop to accurately calculate extremum values (e.g. maximum timestamps) in a single O(N) pass, avoiding intermediate array allocations and expensive O(N log N) array sorts.
