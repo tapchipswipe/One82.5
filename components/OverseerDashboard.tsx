@@ -273,10 +273,15 @@ const OverseerDashboard: React.FC<OverseerDashboardProps> = ({ onNavigate }) => 
     const latestSyncAlertMessage = typeof syncAlert?.message === 'string' ? syncAlert.message : null;
     const latestSyncAlertAt = Number.isFinite(syncAlert?.timestamp) ? Number(syncAlert?.timestamp) : null;
 
-    const newestTransactionTs = transactions
-      .map((transaction) => new Date(transaction.date).getTime())
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => b - a)[0] || null;
+    // ⚡ Bolt: Consolidated chained map/filter/sort into a single O(N) loop to track the maximum timestamp
+    // Impact: Reduces O(N log N) sorting and multiple array iterations to a single O(N) pass
+    let newestTransactionTs: number | null = null;
+    for (const transaction of transactions) {
+      const value = new Date(transaction.date).getTime();
+      if (Number.isFinite(value) && (newestTransactionTs === null || value > newestTransactionTs)) {
+        newestTransactionTs = value;
+      }
+    }
 
     const dataStaleHours = newestTransactionTs
       ? Math.floor((Date.now() - newestTransactionTs) / 3600000)

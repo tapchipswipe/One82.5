@@ -82,10 +82,15 @@ const CalendarPlanner: React.FC = () => {
 
   const dataFreshness = useMemo(() => {
     if (dataMode === 'demo') return 'Simulated freshness';
-    const latestEvent = events
-      .map((event) => event.updatedAt || event.createdAt)
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => b - a)[0] || null;
+    // ⚡ Bolt: Consolidated chained map/filter/sort into a single O(N) loop to track the maximum timestamp
+    // Impact: Reduces O(N log N) sorting and multiple array iterations to a single O(N) pass
+    let latestEvent: number | null = null;
+    for (const event of events) {
+      const value = event.updatedAt || event.createdAt;
+      if (Number.isFinite(value) && (latestEvent === null || value > latestEvent)) {
+        latestEvent = value;
+      }
+    }
     if (!latestEvent) return 'No recent trusted calendar events';
     const hours = Math.floor((Date.now() - latestEvent) / 3600000);
     return hours >= 24 ? `Stale (${hours}h since latest calendar update)` : `Fresh (${hours}h since latest calendar update)`;
