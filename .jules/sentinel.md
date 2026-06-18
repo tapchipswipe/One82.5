@@ -1,0 +1,4 @@
+## 2025-02-23 - Prevent Mass Assignment in Profile Update
+**Vulnerability:** A mass assignment (over-posting) vulnerability was found in the `app/api/_legacy/handlers/auth/profile.ts` endpoint, where an incoming `user` object was blindly spread into the existing user object (`...incoming`), potentially allowing unauthenticated privilege escalation or data corruption (e.g., `role`, `credits`, `plan`).
+**Learning:** Always explicitly pick allowed fields when updating existing data objects based on external input. Blindly merging untrusted request data can lead to serious security gaps.
+**Prevention:** Implement strict whitelists when parsing user input or updating database records. Avoid using `...incoming` spread operations for object updates involving security-sensitive models like user accounts.

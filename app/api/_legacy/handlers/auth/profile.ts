@@ -35,7 +35,11 @@ export default async function handler(req: any, res: any) {
 
   const mergedUser = {
     ...auth.user,
-    ...incoming,
+    // 🛡️ Sentinel: Prevent mass assignment vulnerability by explicitly defining allowed fields
+    name: incoming.name !== undefined ? incoming.name : auth.user.name,
+    businessType: incoming.businessType !== undefined ? incoming.businessType : auth.user.businessType,
+    organizationName: incoming.organizationName !== undefined ? incoming.organizationName : auth.user.organizationName,
+    onboardingComplete: incoming.onboardingComplete !== undefined ? incoming.onboardingComplete : auth.user.onboardingComplete,
     id: auth.user.id,
     email: auth.user.email
   };
