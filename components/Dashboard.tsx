@@ -72,10 +72,16 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
     });
     setCategoryData(Object.keys(catCounts).map(k => ({ name: k, value: catCounts[k] })));
 
-    const newestTxTimestamp = transactions
-      .map((transaction) => new Date(transaction.date).getTime())
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => b - a)[0] || null;
+    // ⚡ Bolt: Consolidated chained map/filter/sort into a single O(N) loop.
+    // Impact: Reduces O(N log N) sort to O(N) iteration and prevents redundant iterations.
+    let newestTxTimestamp: number | null = -Infinity;
+    for (let i = 0; i < transactions.length; i++) {
+      const value = new Date(transactions[i].date).getTime();
+      if (Number.isFinite(value) && value > (newestTxTimestamp as number)) {
+        newestTxTimestamp = value;
+      }
+    }
+    if (newestTxTimestamp === -Infinity) newestTxTimestamp = null;
     setLastDataUpdateAt(newestTxTimestamp);
 
     // Check Cache
