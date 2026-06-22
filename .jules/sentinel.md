@@ -1,0 +1,4 @@
+## 2026-06-22 - Secure Session ID Generation
+**Vulnerability:** The application used insecure `Math.random()` to generate authentication session IDs and tokens (`sessionId`, `sessionToken`), which limits entropy and exposes the application to session prediction and hijacking attacks.
+**Learning:** Using `Math.random()` for any security-sensitive identifier generation is insufficient as it is not cryptographically secure and predictable. Global `crypto` object fallbacks need careful entropy preservation without downgrade vulnerabilities.
+**Prevention:** Always use `crypto.randomUUID()` or `crypto.getRandomValues()` with a sufficiently sized byte array (e.g., 16 bytes/128 bits) for generating secure random strings or tokens. Only fallback to `Math.random()` as an absolute last resort if `crypto` is entirely unavailable.
