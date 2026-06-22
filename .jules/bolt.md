@@ -1,0 +1,3 @@
+## 2026-06-22 - Prevent Maximum Call Stack and Avoid Unnecessary Sorting for Extremum Values
+**Learning:** Using chained array methods like `.map().filter().sort()[0]` or spread operators like `Math.max(...array)` on large arrays in this codebase can introduce O(N log N) overhead or throw a `RangeError: Maximum call stack size exceeded`.
+**Action:** Consolidate these chained data transformations into single `for` loops to iteratively track maximum/minimum values. Explicitly check for initialization bounds (e.g., `if (val === -Infinity) val = null;`) to handle `0` correctly and safely type the fallback tracker.
