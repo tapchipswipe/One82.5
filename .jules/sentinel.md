@@ -1,0 +1,4 @@
+## 2026-06-23 - Prevent Service Role Key Exposure in Diagnostic Endpoint
+**Vulnerability:** The `/api/auth/diag` endpoint was exposing masked versions of sensitive environment variables, including `SUPABASE_SERVICE_ROLE_KEY`, in its JSON response. Even though masked, exposing any part of the service role key or internal URLs in an unauthenticated diagnostic endpoint presents an information disclosure risk.
+**Learning:** Returning masked sensitive credentials in diagnostic or health check endpoints provides unnecessary attack surface and can still leak partial information, violating the principle of least privilege and secure defaults.
+**Prevention:** Remove environment variable values entirely from public or unauthenticated diagnostic endpoints. Use boolean flags (e.g., `configured`) to indicate their presence without exposing their content.
