@@ -65,17 +65,25 @@ const Dashboard: React.FC<DashboardProps> = ({ businessType, onNavigate }) => {
     if (timeRange === 'Last 30 Days') filtered = filtered.map(m => ({ ...m, revenue: m.revenue * 1.2 }));
     setDisplayMetrics(filtered);
 
+    // ⚡ Bolt: Consolidated category counting and timestamp extremum tracking into a single O(N) loop.
+    // Impact: Avoids redundant array iterations (.map, .filter) and an expensive O(N log N) .sort operation.
     const catCounts: Record<string, number> = {};
-    transactions.forEach(t => {
+    let newestTxTimestamp: number | null = -Infinity;
+
+    for (let i = 0; i < transactions.length; i++) {
+      const t = transactions[i];
       const cat = t.category || 'Uncategorized';
       catCounts[cat] = (catCounts[cat] || 0) + t.amount;
-    });
-    setCategoryData(Object.keys(catCounts).map(k => ({ name: k, value: catCounts[k] })));
 
-    const newestTxTimestamp = transactions
-      .map((transaction) => new Date(transaction.date).getTime())
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => b - a)[0] || null;
+      const time = new Date(t.date).getTime();
+      if (Number.isFinite(time) && time > (newestTxTimestamp as number)) {
+        newestTxTimestamp = time;
+      }
+    }
+
+    if (newestTxTimestamp === -Infinity) newestTxTimestamp = null;
+
+    setCategoryData(Object.keys(catCounts).map(k => ({ name: k, value: catCounts[k] })));
     setLastDataUpdateAt(newestTxTimestamp);
 
     // Check Cache
