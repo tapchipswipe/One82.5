@@ -1,0 +1,3 @@
+## 2026-06-26 - Optimize Extremum Value Finding in Arrays
+**Learning:** Using chained array methods like `.map().filter().sort()[0] || null` solely to find a maximum or minimum value introduces an unnecessary O(N log N) sorting step and redundant O(N) array allocations. React component memoization can mask these inefficient data transformations.
+**Action:** Consolidate chained array methods intended for finding extremum values into single O(N) `for` loops. Track the latest value iteratively, ensuring variables are explicitly typed to allow nulls (e.g., `let latest: number | null = -Infinity;`) and explicitly checked against initialization values (e.g., `if (latest === -Infinity) latest = null;`) to handle valid 0 values safely.
