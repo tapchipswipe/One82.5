@@ -219,7 +219,7 @@ const createCookieSession = (user: User): AuthSession => {
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().replace(/-/g, '').slice(0, 6) : Math.random().toString(36).slice(2, 8)}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -229,8 +229,16 @@ const createCookieSession = (user: User): AuthSession => {
 };
 
 const createSessionToken = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
+  if (typeof crypto !== 'undefined') {
+    if ('randomUUID' in crypto) {
+      return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
+    }
+    if ('getRandomValues' in crypto) {
+      const array = new Uint8Array(16);
+      (crypto as any).getRandomValues(array);
+      const randomStr = Array.from(array, (byte: number) => byte.toString(36).padStart(2, '0')).join('').slice(0, 10);
+      return `st_${Date.now().toString(36)}_${randomStr}`;
+    }
   }
 
   return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
