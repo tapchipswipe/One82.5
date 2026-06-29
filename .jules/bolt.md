@@ -1,0 +1,3 @@
+## 2026-06-29 - Consolidating redundant array operations
+**Learning:** Finding extremum values using chained array operations like `.map().filter().sort()[0]` introduces unnecessary O(N log N) overhead and intermediate array allocations in JavaScript/TypeScript. Additionally, in React apps, chained array operations in render loops can mask inefficient O(N log N) data transformations that could be O(N).
+**Action:** When finding max/min values, consolidate chained operations into a single O(N) `for` loop. Always use explicit types for track variables (e.g. `let latest: number | null = -Infinity`) and handle the `-Infinity` initialization safely to avoid evaluating a valid `0` to `null`.
