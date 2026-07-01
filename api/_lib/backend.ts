@@ -214,12 +214,21 @@ const tenantIdForUser = (user: User): string => {
   return user.id;
 };
 
+const generateSecureFallbackId = (length: number): string => {
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const bytes = new Uint8Array(length);
+    (crypto as any).getRandomValues(bytes);
+    return Array.from(bytes).map(b => (b % 36).toString(36)).join('');
+  }
+  return Math.random().toString(36).slice(2, 2 + length).padEnd(length, '0');
+};
+
 const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${generateSecureFallbackId(6)}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -233,7 +242,7 @@ const createSessionToken = (): string => {
     return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  return `st_${Date.now().toString(36)}_${generateSecureFallbackId(10)}`;
 };
 
 const roleFromEmail = (email: string): UserRole => {
