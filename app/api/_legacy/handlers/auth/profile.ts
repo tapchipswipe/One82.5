@@ -33,11 +33,13 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // 🛡️ Sentinel: Fix Mass Assignment by explicitly cherry-picking allowed fields
   const mergedUser = {
     ...auth.user,
-    ...incoming,
-    id: auth.user.id,
-    email: auth.user.email
+    name: incoming.name !== undefined ? incoming.name : auth.user.name,
+    businessType: incoming.businessType !== undefined ? incoming.businessType : auth.user.businessType,
+    organizationName: incoming.organizationName !== undefined ? incoming.organizationName : auth.user.organizationName,
+    onboardingComplete: incoming.onboardingComplete !== undefined ? incoming.onboardingComplete : auth.user.onboardingComplete,
   };
 
   const savedUser = await saveLoginUser(mergedUser, 'backend');
