@@ -218,8 +218,22 @@ const createCookieSession = (user: User): AuthSession => {
   const issuedAt = new Date();
   const expiresAt = new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000);
   const tenantId = tenantIdForUser(user);
+
+  let secureSuffix = '';
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    secureSuffix = crypto.randomUUID().split('-')[0] || '';
+  }
+  if (!secureSuffix && typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const array = new Uint8Array(8);
+    (crypto as any).getRandomValues(array);
+    secureSuffix = Array.from(array, (b: number) => b.toString(16).padStart(2, '0')).join('').slice(0, 8);
+  }
+  if (!secureSuffix) {
+    secureSuffix = Math.random().toString(36).slice(2, 10);
+  }
+
   return {
-    sessionId: `backend_session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: `backend_session_${Date.now()}_${secureSuffix}`,
     userId: user.id,
     tenantId,
     role: user.role,
@@ -233,7 +247,16 @@ const createSessionToken = (): string => {
     return `${crypto.randomUUID()}_${Date.now().toString(36)}`;
   }
 
-  return `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  let randomPart = '';
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const array = new Uint8Array(16);
+    (crypto as any).getRandomValues(array);
+    randomPart = Array.from(array, (b: number) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  } else {
+    randomPart = Math.random().toString(36).slice(2, 12);
+  }
+
+  return `st_${Date.now().toString(36)}_${randomPart}`;
 };
 
 const roleFromEmail = (email: string): UserRole => {
