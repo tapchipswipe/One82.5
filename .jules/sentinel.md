@@ -1,0 +1,4 @@
+## 2026-07-08 - Insecure Randomness in Auth Tokens
+**Vulnerability:** Weak pseudorandom number generator (`Math.random()`) was used as a fallback for generating session IDs and authentication tokens when `crypto.randomUUID` is unavailable.
+**Learning:** `Math.random()` is predictable and should never be used for security-critical identifiers. Even as a fallback, it introduces a severe risk of session hijacking or predictable tokens. When implementing a secure fallback with `crypto.getRandomValues()`, using a byte array mapped to a base-36 string ensures sufficient entropy, avoiding the downgrade vulnerability of a single padded integer.
+**Prevention:** Always use cryptographically secure random number generators (CSPRNG) like `crypto.randomUUID()` or `crypto.getRandomValues()` for authentication tokens, session IDs, and any security-sensitive randomness. Never fall back to `Math.random()`.
